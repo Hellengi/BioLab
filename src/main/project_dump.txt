@@ -1,0 +1,4650 @@
+﻿
+===== C:\Users\Admin\Favorites\Study\Semester 8\Project\biolab\src\main\java\com\hellengi\biolab\BiolabApplication.java =====
+
+package com.hellengi.biolab;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
+import org.springframework.scheduling.annotation.EnableScheduling;
+
+@SpringBootApplication
+@EnableScheduling
+@ConfigurationPropertiesScan
+public class BiolabApplication {
+
+	public static void main(String[] args) {
+		SpringApplication.run(BiolabApplication.class, args);
+	}
+
+}
+
+===== C:\Users\Admin\Favorites\Study\Semester 8\Project\biolab\src\main\java\com\hellengi\biolab\config\SimulationProperties.java =====
+
+package com.hellengi.biolab.config;
+
+import org.springframework.boot.context.properties.ConfigurationProperties;
+
+@ConfigurationProperties(prefix = "simulation")
+public class SimulationProperties {
+
+    private int worldWidth;
+    private int worldHeight;
+    private long simulationTickRateMs;
+
+    private int initialSaprotrophCount;
+    private int initialFoodCount;
+    private int foodGenerationIntensity;
+    private double foodGenerationMaxFrequencyMultiplier;
+
+    private double foodEnergyMin;
+    private double foodEnergyRange;
+    private double foodConsumptionRadius;
+
+    private double initialSaprotrophEnergyMin;
+    private double initialSaprotrophEnergyRange;
+
+    private double minCellEnergy;
+    private double saprotrophBaseEnergyDecayPerTick;
+    private double cellViscosityFactor;
+
+    private long deadCellLifetimeTicks;
+
+    private double initialSpawnCenterX;
+    private double initialSpawnCenterY;
+    private double initialSpawnOffsetRange;
+
+    private double clientSaprotrophBaseRadius;
+    private double clientSaprotrophRadiusScale;
+    private double clientDirectionVectorLength;
+    private double clientFoodRadiusAtMinEnergy;
+
+    private double divisionImpulseEnergyCostFactor;
+    private double minChildEnergyAfterDivision;
+
+    private GenomeProperties genome = new GenomeProperties();
+
+    public static class GenomeProperties {
+        private double initialDivisionThreshold;
+        private double initialDivisionImpulseStrength;
+        private double initialColorHue;
+        private double initialLightness;
+        private double initialMaxEnergy;
+
+        private double radiationMutationChance;
+
+        private double divisionThresholdMutationDelta;
+        private double divisionImpulseMutationDelta;
+        private double colorHueMutationDelta;
+        private double lightnessMutationDelta;
+        private double maxEnergyMutationDelta;
+
+        private double divisionThresholdMin;
+        private double divisionThresholdMax;
+
+        private double divisionImpulseMin;
+        private double divisionImpulseMax;
+
+        private double colorHueMin;
+        private double colorHueMax;
+
+        private double lightnessMin;
+        private double lightnessMax;
+
+        private double maxEnergyMin;
+        private double maxEnergyMax;
+
+        public double getInitialDivisionThreshold() {
+            return initialDivisionThreshold;
+        }
+
+        public void setInitialDivisionThreshold(double initialDivisionThreshold) {
+            this.initialDivisionThreshold = initialDivisionThreshold;
+        }
+
+        public double getInitialDivisionImpulseStrength() {
+            return initialDivisionImpulseStrength;
+        }
+
+        public void setInitialDivisionImpulseStrength(double initialDivisionImpulseStrength) {
+            this.initialDivisionImpulseStrength = initialDivisionImpulseStrength;
+        }
+
+        public double getInitialColorHue() {
+            return initialColorHue;
+        }
+
+        public void setInitialColorHue(double initialColorHue) {
+            this.initialColorHue = initialColorHue;
+        }
+
+        public double getInitialLightness() {
+            return initialLightness;
+        }
+
+        public void setInitialLightness(double initialLightness) {
+            this.initialLightness = initialLightness;
+        }
+
+        public double getInitialMaxEnergy() {
+            return initialMaxEnergy;
+        }
+
+        public void setInitialMaxEnergy(double initialMaxEnergy) {
+            this.initialMaxEnergy = initialMaxEnergy;
+        }
+
+        public double getRadiationMutationChance() {
+            return radiationMutationChance;
+        }
+
+        public void setRadiationMutationChance(double radiationMutationChance) {
+            this.radiationMutationChance = radiationMutationChance;
+        }
+
+        public double getDivisionThresholdMutationDelta() {
+            return divisionThresholdMutationDelta;
+        }
+
+        public void setDivisionThresholdMutationDelta(double divisionThresholdMutationDelta) {
+            this.divisionThresholdMutationDelta = divisionThresholdMutationDelta;
+        }
+
+        public double getDivisionImpulseMutationDelta() {
+            return divisionImpulseMutationDelta;
+        }
+
+        public void setDivisionImpulseMutationDelta(double divisionImpulseMutationDelta) {
+            this.divisionImpulseMutationDelta = divisionImpulseMutationDelta;
+        }
+
+        public double getColorHueMutationDelta() {
+            return colorHueMutationDelta;
+        }
+
+        public void setColorHueMutationDelta(double colorHueMutationDelta) {
+            this.colorHueMutationDelta = colorHueMutationDelta;
+        }
+
+        public double getLightnessMutationDelta() {
+            return lightnessMutationDelta;
+        }
+
+        public void setLightnessMutationDelta(double lightnessMutationDelta) {
+            this.lightnessMutationDelta = lightnessMutationDelta;
+        }
+
+        public double getMaxEnergyMutationDelta() {
+            return maxEnergyMutationDelta;
+        }
+
+        public void setMaxEnergyMutationDelta(double maxEnergyMutationDelta) {
+            this.maxEnergyMutationDelta = maxEnergyMutationDelta;
+        }
+
+        public double getDivisionThresholdMin() {
+            return divisionThresholdMin;
+        }
+
+        public void setDivisionThresholdMin(double divisionThresholdMin) {
+            this.divisionThresholdMin = divisionThresholdMin;
+        }
+
+        public double getDivisionThresholdMax() {
+            return divisionThresholdMax;
+        }
+
+        public void setDivisionThresholdMax(double divisionThresholdMax) {
+            this.divisionThresholdMax = divisionThresholdMax;
+        }
+
+        public double getDivisionImpulseMin() {
+            return divisionImpulseMin;
+        }
+
+        public void setDivisionImpulseMin(double divisionImpulseMin) {
+            this.divisionImpulseMin = divisionImpulseMin;
+        }
+
+        public double getDivisionImpulseMax() {
+            return divisionImpulseMax;
+        }
+
+        public void setDivisionImpulseMax(double divisionImpulseMax) {
+            this.divisionImpulseMax = divisionImpulseMax;
+        }
+
+        public double getColorHueMin() {
+            return colorHueMin;
+        }
+
+        public void setColorHueMin(double colorHueMin) {
+            this.colorHueMin = colorHueMin;
+        }
+
+        public double getColorHueMax() {
+            return colorHueMax;
+        }
+
+        public void setColorHueMax(double colorHueMax) {
+            this.colorHueMax = colorHueMax;
+        }
+
+        public double getLightnessMin() {
+            return lightnessMin;
+        }
+
+        public void setLightnessMin(double lightnessMin) {
+            this.lightnessMin = lightnessMin;
+        }
+
+        public double getLightnessMax() {
+            return lightnessMax;
+        }
+
+        public void setLightnessMax(double lightnessMax) {
+            this.lightnessMax = lightnessMax;
+        }
+
+        public double getMaxEnergyMin() {
+            return maxEnergyMin;
+        }
+
+        public void setMaxEnergyMin(double maxEnergyMin) {
+            this.maxEnergyMin = maxEnergyMin;
+        }
+
+        public double getMaxEnergyMax() {
+            return maxEnergyMax;
+        }
+
+        public void setMaxEnergyMax(double maxEnergyMax) {
+            this.maxEnergyMax = maxEnergyMax;
+        }
+    }
+
+    public int getWorldWidth() {
+        return worldWidth;
+    }
+
+    public void setWorldWidth(int worldWidth) {
+        this.worldWidth = worldWidth;
+    }
+
+    public int getWorldHeight() {
+        return worldHeight;
+    }
+
+    public void setWorldHeight(int worldHeight) {
+        this.worldHeight = worldHeight;
+    }
+
+    public long getSimulationTickRateMs() {
+        return simulationTickRateMs;
+    }
+
+    public void setSimulationTickRateMs(long simulationTickRateMs) {
+        this.simulationTickRateMs = simulationTickRateMs;
+    }
+
+    public int getInitialSaprotrophCount() {
+        return initialSaprotrophCount;
+    }
+
+    public void setInitialSaprotrophCount(int initialSaprotrophCount) {
+        this.initialSaprotrophCount = initialSaprotrophCount;
+    }
+
+    public int getInitialFoodCount() {
+        return initialFoodCount;
+    }
+
+    public void setInitialFoodCount(int initialFoodCount) {
+        this.initialFoodCount = initialFoodCount;
+    }
+
+    public int getFoodGenerationIntensity() {
+        return foodGenerationIntensity;
+    }
+
+    public void setFoodGenerationIntensity(int foodGenerationIntensity) {
+        this.foodGenerationIntensity = foodGenerationIntensity;
+    }
+
+    public double getFoodGenerationMaxFrequencyMultiplier() {
+        return foodGenerationMaxFrequencyMultiplier;
+    }
+
+    public void setFoodGenerationMaxFrequencyMultiplier(double foodGenerationMaxFrequencyMultiplier) {
+        this.foodGenerationMaxFrequencyMultiplier = foodGenerationMaxFrequencyMultiplier;
+    }
+
+    public double getFoodEnergyMin() {
+        return foodEnergyMin;
+    }
+
+    public void setFoodEnergyMin(double foodEnergyMin) {
+        this.foodEnergyMin = foodEnergyMin;
+    }
+
+    public double getFoodEnergyRange() {
+        return foodEnergyRange;
+    }
+
+    public void setFoodEnergyRange(double foodEnergyRange) {
+        this.foodEnergyRange = foodEnergyRange;
+    }
+
+    public double getFoodConsumptionRadius() {
+        return foodConsumptionRadius;
+    }
+
+    public void setFoodConsumptionRadius(double foodConsumptionRadius) {
+        this.foodConsumptionRadius = foodConsumptionRadius;
+    }
+
+    public double getInitialSaprotrophEnergyMin() {
+        return initialSaprotrophEnergyMin;
+    }
+
+    public void setInitialSaprotrophEnergyMin(double initialSaprotrophEnergyMin) {
+        this.initialSaprotrophEnergyMin = initialSaprotrophEnergyMin;
+    }
+
+    public double getInitialSaprotrophEnergyRange() {
+        return initialSaprotrophEnergyRange;
+    }
+
+    public void setInitialSaprotrophEnergyRange(double initialSaprotrophEnergyRange) {
+        this.initialSaprotrophEnergyRange = initialSaprotrophEnergyRange;
+    }
+
+    public double getMinCellEnergy() {
+        return minCellEnergy;
+    }
+
+    public void setMinCellEnergy(double minCellEnergy) {
+        this.minCellEnergy = minCellEnergy;
+    }
+
+    public double getSaprotrophBaseEnergyDecayPerTick() {
+        return saprotrophBaseEnergyDecayPerTick;
+    }
+
+    public void setSaprotrophBaseEnergyDecayPerTick(double saprotrophBaseEnergyDecayPerTick) {
+        this.saprotrophBaseEnergyDecayPerTick = saprotrophBaseEnergyDecayPerTick;
+    }
+
+    public double getCellViscosityFactor() {
+        return cellViscosityFactor;
+    }
+
+    public void setCellViscosityFactor(double cellViscosityFactor) {
+        this.cellViscosityFactor = cellViscosityFactor;
+    }
+
+    public long getDeadCellLifetimeTicks() {
+        return deadCellLifetimeTicks;
+    }
+
+    public void setDeadCellLifetimeTicks(long deadCellLifetimeTicks) {
+        this.deadCellLifetimeTicks = deadCellLifetimeTicks;
+    }
+
+    public double getInitialSpawnCenterX() {
+        return initialSpawnCenterX;
+    }
+
+    public void setInitialSpawnCenterX(double initialSpawnCenterX) {
+        this.initialSpawnCenterX = initialSpawnCenterX;
+    }
+
+    public double getInitialSpawnCenterY() {
+        return initialSpawnCenterY;
+    }
+
+    public void setInitialSpawnCenterY(double initialSpawnCenterY) {
+        this.initialSpawnCenterY = initialSpawnCenterY;
+    }
+
+    public double getInitialSpawnOffsetRange() {
+        return initialSpawnOffsetRange;
+    }
+
+    public void setInitialSpawnOffsetRange(double initialSpawnOffsetRange) {
+        this.initialSpawnOffsetRange = initialSpawnOffsetRange;
+    }
+
+    public double getClientSaprotrophBaseRadius() {
+        return clientSaprotrophBaseRadius;
+    }
+
+    public void setClientSaprotrophBaseRadius(double clientSaprotrophBaseRadius) {
+        this.clientSaprotrophBaseRadius = clientSaprotrophBaseRadius;
+    }
+
+    public double getClientSaprotrophRadiusScale() {
+        return clientSaprotrophRadiusScale;
+    }
+
+    public void setClientSaprotrophRadiusScale(double clientSaprotrophRadiusScale) {
+        this.clientSaprotrophRadiusScale = clientSaprotrophRadiusScale;
+    }
+
+    public double getClientDirectionVectorLength() {
+        return clientDirectionVectorLength;
+    }
+
+    public void setClientDirectionVectorLength(double clientDirectionVectorLength) {
+        this.clientDirectionVectorLength = clientDirectionVectorLength;
+    }
+
+    public double getClientFoodRadiusAtMinEnergy() {
+        return clientFoodRadiusAtMinEnergy;
+    }
+
+    public void setClientFoodRadiusAtMinEnergy(double clientFoodRadiusAtMinEnergy) {
+        this.clientFoodRadiusAtMinEnergy = clientFoodRadiusAtMinEnergy;
+    }
+
+    public double getDivisionImpulseEnergyCostFactor() {
+        return divisionImpulseEnergyCostFactor;
+    }
+
+    public void setDivisionImpulseEnergyCostFactor(double divisionImpulseEnergyCostFactor) {
+        this.divisionImpulseEnergyCostFactor = divisionImpulseEnergyCostFactor;
+    }
+
+    public double getMinChildEnergyAfterDivision() {
+        return minChildEnergyAfterDivision;
+    }
+
+    public void setMinChildEnergyAfterDivision(double minChildEnergyAfterDivision) {
+        this.minChildEnergyAfterDivision = minChildEnergyAfterDivision;
+    }
+
+    public GenomeProperties getGenome() {
+        return genome;
+    }
+
+    public void setGenome(GenomeProperties genome) {
+        this.genome = genome;
+    }
+}
+
+===== C:\Users\Admin\Favorites\Study\Semester 8\Project\biolab\src\main\java\com\hellengi\biolab\config\WebSocketConfig.java =====
+
+package com.hellengi.biolab.config;
+
+import com.hellengi.biolab.service.SimulationWebSocketHandler;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.socket.config.annotation.EnableWebSocket;
+import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
+import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry;
+
+@Configuration
+@EnableWebSocket
+public class WebSocketConfig implements WebSocketConfigurer {
+
+    private final SimulationWebSocketHandler simulationWebSocketHandler;
+
+    public WebSocketConfig(SimulationWebSocketHandler simulationWebSocketHandler) {
+        this.simulationWebSocketHandler = simulationWebSocketHandler;
+    }
+
+    @Override
+    public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
+        registry.addHandler(simulationWebSocketHandler, "/ws/simulation")
+                .setAllowedOrigins("*");
+    }
+}
+
+===== C:\Users\Admin\Favorites\Study\Semester 8\Project\biolab\src\main\java\com\hellengi\biolab\controller\CellController.java =====
+
+package com.hellengi.biolab.controller;
+
+import com.hellengi.biolab.dto.CellTemplateDto;
+import com.hellengi.biolab.dto.CreateCellRequestDto;
+import com.hellengi.biolab.dto.SaveCellTemplateRequestDto;
+import com.hellengi.biolab.service.CellTemplateService;
+import com.hellengi.biolab.service.SimulationService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/cells")
+@CrossOrigin
+public class CellController {
+
+    private final SimulationService simulationService;
+    private final CellTemplateService cellTemplateService;
+
+    public CellController(
+            SimulationService simulationService,
+            CellTemplateService cellTemplateService
+    ) {
+        this.simulationService = simulationService;
+        this.cellTemplateService = cellTemplateService;
+    }
+
+    @GetMapping("/templates")
+    public ResponseEntity<List<CellTemplateDto>> listTemplates() {
+        return ResponseEntity.ok(cellTemplateService.list());
+    }
+
+    @GetMapping("/templates/{id}")
+    public ResponseEntity<CellTemplateDto> getTemplate(@PathVariable Long id) {
+        return ResponseEntity.ok(cellTemplateService.get(id));
+    }
+
+    @PostMapping("/templates")
+    public ResponseEntity<CellTemplateDto> saveTemplate(@RequestBody SaveCellTemplateRequestDto requestDto) {
+        return ResponseEntity.ok(cellTemplateService.save(requestDto.name(), requestDto.cell()));
+    }
+
+    @GetMapping("/selected/{id}")
+    public ResponseEntity<CellTemplateDto> getSelectedCellInfo(@PathVariable long id) {
+        return ResponseEntity.ok(simulationService.getCellTemplateBySaprotrophId(id));
+    }
+
+    @PostMapping("/spawn")
+    public ResponseEntity<Map<String, String>> spawnCell(@RequestBody CreateCellRequestDto requestDto) {
+        simulationService.createCell(requestDto);
+        return ResponseEntity.ok(Map.of("status", "spawned"));
+    }
+
+    @DeleteMapping("/templates/{id}")
+    public ResponseEntity<Map<String, String>> deleteTemplate(@PathVariable Long id) {
+        cellTemplateService.delete(id);
+        return ResponseEntity.ok(Map.of("status", "deleted"));
+    }
+}
+
+===== C:\Users\Admin\Favorites\Study\Semester 8\Project\biolab\src\main\java\com\hellengi\biolab\controller\SimulationController.java =====
+
+package com.hellengi.biolab.controller;
+
+import com.hellengi.biolab.dto.SimulationConfigDto;
+import com.hellengi.biolab.dto.WorldStateDto;
+import com.hellengi.biolab.dto.SavedWorldRequestDto;
+import com.hellengi.biolab.dto.SavedWorldListItemDto;
+import com.hellengi.biolab.service.SimulationService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/simulation")
+@CrossOrigin
+public class SimulationController {
+
+    private final SimulationService simulationService;
+
+    public SimulationController(SimulationService simulationService) {
+        this.simulationService = simulationService;
+    }
+
+    @PostMapping("/start")
+    public ResponseEntity<Map<String, String>> start() {
+        simulationService.start();
+        return ResponseEntity.ok(Map.of("status", "started"));
+    }
+
+    @PostMapping("/stop")
+    public ResponseEntity<Map<String, String>> stop() {
+        simulationService.stop();
+        return ResponseEntity.ok(Map.of("status", "stopped"));
+    }
+
+    @PostMapping("/reset")
+    public ResponseEntity<Map<String, String>> reset() {
+        simulationService.reset();
+        return ResponseEntity.ok(Map.of("status", "reset"));
+    }
+
+    @GetMapping("/state")
+    public ResponseEntity<WorldStateDto> state() {
+        return ResponseEntity.ok(simulationService.getState());
+    }
+
+    @GetMapping("/config")
+    public ResponseEntity<SimulationConfigDto> config() {
+        return ResponseEntity.ok(simulationService.getConfig());
+    }
+
+    @PutMapping("/config")
+    public ResponseEntity<SimulationConfigDto> updateConfig(@RequestBody SimulationConfigDto configDto) {
+        return ResponseEntity.ok(simulationService.updateConfig(configDto));
+    }
+
+    @PostMapping("/config/reset")
+    public ResponseEntity<SimulationConfigDto> resetConfigToDefaults() {
+        return ResponseEntity.ok(simulationService.resetConfigToDefaults());
+    }
+
+    @PostMapping("/worlds")
+    public ResponseEntity<SavedWorldListItemDto> saveWorld(@RequestBody SavedWorldRequestDto requestDto) {
+        return ResponseEntity.ok(simulationService.saveWorld(requestDto.name()));
+    }
+
+    @GetMapping("/worlds")
+    public ResponseEntity<List<SavedWorldListItemDto>> listSavedWorlds() {
+        return ResponseEntity.ok(simulationService.listSavedWorlds());
+    }
+
+    @PostMapping("/worlds/{id}/load")
+    public ResponseEntity<Map<String, String>> loadWorld(@PathVariable Long id) {
+        simulationService.loadWorld(id);
+        return ResponseEntity.ok(Map.of("status", "loaded"));
+    }
+
+    @DeleteMapping("/worlds/{id}")
+    public ResponseEntity<Map<String, String>> deleteWorld(@PathVariable Long id) {
+        simulationService.deleteWorld(id);
+        return ResponseEntity.ok(Map.of("status", "deleted"));
+    }
+}
+
+
+===== C:\Users\Admin\Favorites\Study\Semester 8\Project\biolab\src\main\java\com\hellengi\biolab\dto\CellTemplateDto.java =====
+
+package com.hellengi.biolab.dto;
+
+public record CellTemplateDto(
+        Long id,
+        String name,
+        String code,
+        double divisionThreshold,
+        double divisionImpulseStrength,
+        double colorHue,
+        double lightness,
+        double maxEnergy
+) {
+}
+
+===== C:\Users\Admin\Favorites\Study\Semester 8\Project\biolab\src\main\java\com\hellengi\biolab\dto\CreateCellRequestDto.java =====
+
+package com.hellengi.biolab.dto;
+
+public record CreateCellRequestDto(
+        double x,
+        double y,
+        CellTemplateDto cell
+) {
+}
+
+===== C:\Users\Admin\Favorites\Study\Semester 8\Project\biolab\src\main\java\com\hellengi\biolab\dto\DeadCellDto.java =====
+
+package com.hellengi.biolab.dto;
+
+public record DeadCellDto(
+        long id,
+        double x,
+        double y,
+        double vx,
+        double vy,
+        double energy,
+        double radius,
+        long lifetimeTicks,
+        long maxLifetimeTicks
+) {
+}
+
+===== C:\Users\Admin\Favorites\Study\Semester 8\Project\biolab\src\main\java\com\hellengi\biolab\dto\FoodDto.java =====
+
+package com.hellengi.biolab.dto;
+
+public record FoodDto(
+        long id,
+        double x,
+        double y,
+        double energy,
+        double radius,
+        boolean consumed
+) {
+}
+
+===== C:\Users\Admin\Favorites\Study\Semester 8\Project\biolab\src\main\java\com\hellengi\biolab\dto\GenomeDto.java =====
+
+package com.hellengi.biolab.dto;
+
+public record GenomeDto(
+        double divisionThreshold,
+        double divisionImpulseStrength,
+        double colorHue,
+        double lightness,
+        double maxEnergy,
+        double saturation,
+        String code
+) {
+}
+
+===== C:\Users\Admin\Favorites\Study\Semester 8\Project\biolab\src\main\java\com\hellengi\biolab\dto\SaprotrophDto.java =====
+
+package com.hellengi.biolab.dto;
+
+public record SaprotrophDto(
+        long id,
+        double x,
+        double y,
+        double vx,
+        double vy,
+        double energy,
+        GenomeDto genome,
+        double radius,
+        boolean alive
+) {
+}
+
+===== C:\Users\Admin\Favorites\Study\Semester 8\Project\biolab\src\main\java\com\hellengi\biolab\dto\SaveCellTemplateRequestDto.java =====
+
+package com.hellengi.biolab.dto;
+
+public record SaveCellTemplateRequestDto(
+        String name,
+        CellTemplateDto cell
+) {
+}
+
+===== C:\Users\Admin\Favorites\Study\Semester 8\Project\biolab\src\main\java\com\hellengi\biolab\dto\SavedWorldListItemDto.java =====
+
+package com.hellengi.biolab.dto;
+
+import java.time.LocalDateTime;
+
+public record SavedWorldListItemDto(
+        Long id,
+        String name,
+        LocalDateTime createdAt
+) {
+}
+
+===== C:\Users\Admin\Favorites\Study\Semester 8\Project\biolab\src\main\java\com\hellengi\biolab\dto\SavedWorldRequestDto.java =====
+
+package com.hellengi.biolab.dto;
+
+public record SavedWorldRequestDto(
+        String name
+) {
+}
+
+===== C:\Users\Admin\Favorites\Study\Semester 8\Project\biolab\src\main\java\com\hellengi\biolab\dto\SavedWorldSnapshotDto.java =====
+
+package com.hellengi.biolab.dto;
+
+public record SavedWorldSnapshotDto(
+        WorldStateDto world,
+        SimulationConfigDto config
+) {
+}
+
+===== C:\Users\Admin\Favorites\Study\Semester 8\Project\biolab\src\main\java\com\hellengi\biolab\dto\SimulationConfigDto.java =====
+
+package com.hellengi.biolab.dto;
+
+public record SimulationConfigDto(
+        int worldWidth,
+        int worldHeight,
+        long simulationTickRateMs,
+        int initialSaprotrophCount,
+        int initialFoodCount,
+        int foodGenerationIntensity,
+        double foodEnergyMin,
+        double foodEnergyRange,
+        double minCellEnergy,
+        double saprotrophBaseEnergyDecayPerTick,
+        double cellViscosityFactor,
+        long deadCellLifetimeTicks,
+        double clientSaprotrophBaseRadius,
+        double clientSaprotrophRadiusScale,
+        double clientDirectionVectorLength,
+        double clientFoodRadiusAtMinEnergy
+) {
+}
+
+===== C:\Users\Admin\Favorites\Study\Semester 8\Project\biolab\src\main\java\com\hellengi\biolab\dto\WorldStateDto.java =====
+
+package com.hellengi.biolab.dto;
+
+import java.util.List;
+
+public record WorldStateDto(
+        long tick,
+        int width,
+        int height,
+        boolean running,
+        int saprotrophCount,
+        int deadCellCount,
+        int foodCount,
+        List<SaprotrophDto> saprotrophs,
+        List<DeadCellDto> deadCells,
+        List<FoodDto> foods
+) {
+}
+
+===== C:\Users\Admin\Favorites\Study\Semester 8\Project\biolab\src\main\java\com\hellengi\biolab\model\Cell.java =====
+
+package com.hellengi.biolab.model;
+
+public abstract class Cell {
+
+    private long id;
+    private double x;
+    private double y;
+    private double vx;
+    private double vy;
+    private double energy;
+    private boolean alive;
+
+    protected Cell(long id, double x, double y, double vx, double vy, double energy, boolean alive) {
+        this.id = id;
+        this.x = x;
+        this.y = y;
+        this.vx = vx;
+        this.vy = vy;
+        this.energy = energy;
+        this.alive = alive;
+    }
+
+    public void move() {
+        this.x += this.vx;
+        this.y += this.vy;
+    }
+
+    public long getId() {
+        return id;
+    }
+
+    public double getX() {
+        return x;
+    }
+
+    public double getY() {
+        return y;
+    }
+
+    public double getVx() {
+        return vx;
+    }
+
+    public double getVy() {
+        return vy;
+    }
+
+    public double getEnergy() {
+        return energy;
+    }
+
+    public boolean isAlive() {
+        return alive;
+    }
+
+    public void setX(double x) {
+        this.x = x;
+    }
+
+    public void setY(double y) {
+        this.y = y;
+    }
+
+    public void setVx(double vx) {
+        this.vx = vx;
+    }
+
+    public void setVy(double vy) {
+        this.vy = vy;
+    }
+
+    public void setEnergy(double energy) {
+        this.energy = energy;
+    }
+
+    public void setAlive(boolean alive) {
+        this.alive = alive;
+    }
+}
+
+
+===== C:\Users\Admin\Favorites\Study\Semester 8\Project\biolab\src\main\java\com\hellengi\biolab\model\DeadCell.java =====
+
+package com.hellengi.biolab.model;
+
+public class DeadCell extends Cell {
+
+    private long lifetimeTicks;
+
+    public DeadCell(
+            long id,
+            double x,
+            double y,
+            double vx,
+            double vy,
+            double energy
+    ) {
+        this(id, x, y, vx, vy, energy, 0L);
+    }
+
+    public DeadCell(
+            long id,
+            double x,
+            double y,
+            double vx,
+            double vy,
+            double energy,
+            long lifetimeTicks
+    ) {
+        super(id, x, y, vx, vy, energy, false);
+        this.lifetimeTicks = lifetimeTicks;
+    }
+
+    public long getLifetimeTicks() {
+        return lifetimeTicks;
+    }
+
+    public void setLifetimeTicks(long lifetimeTicks) {
+        this.lifetimeTicks = lifetimeTicks;
+    }
+
+    public void incrementLifetimeTicks() {
+        this.lifetimeTicks++;
+    }
+}
+
+===== C:\Users\Admin\Favorites\Study\Semester 8\Project\biolab\src\main\java\com\hellengi\biolab\model\Food.java =====
+
+package com.hellengi.biolab.model;
+
+public class Food {
+
+    private final long id;
+    private final double x;
+    private final double y;
+    private double energy;
+    private boolean consumed = false;
+
+    public Food(long id, double x, double y, double energy) {
+        this.id = id;
+        this.x = x;
+        this.y = y;
+        this.energy = energy;
+    }
+
+    public long getId() {
+        return id;
+    }
+
+    public double getX() {
+        return x;
+    }
+
+    public double getY() {
+        return y;
+    }
+
+    public double getEnergy() {
+        return energy;
+    }
+
+    public boolean isConsumed() {
+        return consumed;
+    }
+
+    public void setConsumed(boolean consumed) {
+        this.consumed = consumed;
+    }
+
+    public void setEnergy(double energy) {
+        this.energy = energy;
+    }
+}
+
+
+===== C:\Users\Admin\Favorites\Study\Semester 8\Project\biolab\src\main\java\com\hellengi\biolab\model\Genome.java =====
+
+package com.hellengi.biolab.model;
+
+public class Genome {
+
+    private double divisionThreshold;
+    private double divisionImpulseStrength;
+    private double colorHue;
+    private double lightness;
+    private double maxEnergy;
+
+    public Genome(
+            double divisionThreshold,
+            double divisionImpulseStrength,
+            double colorHue,
+            double lightness,
+            double maxEnergy
+    ) {
+        this.divisionThreshold = divisionThreshold;
+        this.divisionImpulseStrength = divisionImpulseStrength;
+        this.colorHue = colorHue;
+        this.lightness = lightness;
+        this.maxEnergy = maxEnergy;
+    }
+
+    public double getDivisionThreshold() {
+        return divisionThreshold;
+    }
+
+    public void setDivisionThreshold(double divisionThreshold) {
+        this.divisionThreshold = divisionThreshold;
+    }
+
+    public double getDivisionImpulseStrength() {
+        return divisionImpulseStrength;
+    }
+
+    public void setDivisionImpulseStrength(double divisionImpulseStrength) {
+        this.divisionImpulseStrength = divisionImpulseStrength;
+    }
+
+    public double getColorHue() {
+        return colorHue;
+    }
+
+    public void setColorHue(double colorHue) {
+        this.colorHue = colorHue;
+    }
+
+    public double getLightness() {
+        return lightness;
+    }
+
+    public void setLightness(double lightness) {
+        this.lightness = lightness;
+    }
+
+    public double getMaxEnergy() {
+        return maxEnergy;
+    }
+
+    public void setMaxEnergy(double maxEnergy) {
+        this.maxEnergy = maxEnergy;
+    }
+
+    public Genome copy() {
+        return new Genome(
+                divisionThreshold,
+                divisionImpulseStrength,
+                colorHue,
+                lightness,
+                maxEnergy
+        );
+    }
+}
+
+===== C:\Users\Admin\Favorites\Study\Semester 8\Project\biolab\src\main\java\com\hellengi\biolab\model\Saprotroph.java =====
+
+package com.hellengi.biolab.model;
+
+public class Saprotroph extends Cell {
+
+    private Genome genome;
+
+    public Saprotroph(
+            long id,
+            double x,
+            double y,
+            double vx,
+            double vy,
+            double energy,
+            Genome genome
+    ) {
+        super(id, x, y, vx, vy, energy, true);
+        this.genome = genome;
+    }
+
+    public Genome getGenome() {
+        return genome;
+    }
+
+    public void setGenome(Genome genome) {
+        this.genome = genome;
+    }
+}
+
+
+===== C:\Users\Admin\Favorites\Study\Semester 8\Project\biolab\src\main\java\com\hellengi\biolab\model\SavedCellTemplate.java =====
+
+package com.hellengi.biolab.model;
+
+import jakarta.persistence.*;
+
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "saved_cell_template")
+public class SavedCellTemplate {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, length = 200)
+    private String name;
+
+    @Column(nullable = false)
+    private LocalDateTime createdAt;
+
+    @Column(nullable = false)
+    private double divisionThreshold;
+
+    @Column(nullable = false)
+    private double divisionImpulseStrength;
+
+    @Column(nullable = false)
+    private double colorHue;
+
+    @Column(nullable = false)
+    private double lightness;
+
+    @Column(nullable = false)
+    private double maxEnergy;
+
+    public SavedCellTemplate() {
+    }
+
+    public SavedCellTemplate(
+            String name,
+            LocalDateTime createdAt,
+            double divisionThreshold,
+            double divisionImpulseStrength,
+            double colorHue,
+            double lightness,
+            double maxEnergy
+    ) {
+        this.name = name;
+        this.createdAt = createdAt;
+        this.divisionThreshold = divisionThreshold;
+        this.divisionImpulseStrength = divisionImpulseStrength;
+        this.colorHue = colorHue;
+        this.lightness = lightness;
+        this.maxEnergy = maxEnergy;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public double getDivisionThreshold() {
+        return divisionThreshold;
+    }
+
+    public double getDivisionImpulseStrength() {
+        return divisionImpulseStrength;
+    }
+
+    public double getColorHue() {
+        return colorHue;
+    }
+
+    public double getLightness() {
+        return lightness;
+    }
+
+    public double getMaxEnergy() {
+        return maxEnergy;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public void setDivisionThreshold(double divisionThreshold) {
+        this.divisionThreshold = divisionThreshold;
+    }
+
+    public void setDivisionImpulseStrength(double divisionImpulseStrength) {
+        this.divisionImpulseStrength = divisionImpulseStrength;
+    }
+
+    public void setColorHue(double colorHue) {
+        this.colorHue = colorHue;
+    }
+
+    public void setLightness(double lightness) {
+        this.lightness = lightness;
+    }
+
+    public void setMaxEnergy(double maxEnergy) {
+        this.maxEnergy = maxEnergy;
+    }
+}
+
+===== C:\Users\Admin\Favorites\Study\Semester 8\Project\biolab\src\main\java\com\hellengi\biolab\model\SavedWorld.java =====
+
+package com.hellengi.biolab.model;
+
+import jakarta.persistence.*;
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "saved_world")
+public class SavedWorld {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, length = 200)
+    private String name;
+
+    @Column(nullable = false)
+    private LocalDateTime createdAt;
+
+    @Lob
+    @Column(nullable = false, columnDefinition = "TEXT")
+    private String worldJson;
+
+    @Lob
+    @Column(nullable = false, columnDefinition = "TEXT")
+    private String configJson;
+
+    public SavedWorld() {
+    }
+
+    public SavedWorld(String name, LocalDateTime createdAt, String worldJson, String configJson) {
+        this.name = name;
+        this.createdAt = createdAt;
+        this.worldJson = worldJson;
+        this.configJson = configJson;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public String getWorldJson() {
+        return worldJson;
+    }
+
+    public String getConfigJson() {
+        return configJson;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public void setWorldJson(String worldJson) {
+        this.worldJson = worldJson;
+    }
+
+    public void setConfigJson(String configJson) {
+        this.configJson = configJson;
+    }
+}
+
+===== C:\Users\Admin\Favorites\Study\Semester 8\Project\biolab\src\main\java\com\hellengi\biolab\repository\SavedCellTemplateRepository.java =====
+
+package com.hellengi.biolab.repository;
+
+import com.hellengi.biolab.model.SavedCellTemplate;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+
+public interface SavedCellTemplateRepository extends JpaRepository<SavedCellTemplate, Long> {
+
+    List<SavedCellTemplate> findAllByOrderByCreatedAtDesc();
+}
+
+===== C:\Users\Admin\Favorites\Study\Semester 8\Project\biolab\src\main\java\com\hellengi\biolab\repository\SavedWorldRepository.java =====
+
+package com.hellengi.biolab.repository;
+
+import com.hellengi.biolab.model.SavedWorld;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+
+public interface SavedWorldRepository extends JpaRepository<SavedWorld, Long> {
+
+    List<SavedWorld> findAllByOrderByCreatedAtDesc();
+}
+
+===== C:\Users\Admin\Favorites\Study\Semester 8\Project\biolab\src\main\java\com\hellengi\biolab\service\CellTemplateService.java =====
+
+package com.hellengi.biolab.service;
+
+import com.hellengi.biolab.dto.CellTemplateDto;
+import com.hellengi.biolab.model.Genome;
+import com.hellengi.biolab.model.SavedCellTemplate;
+import com.hellengi.biolab.repository.SavedCellTemplateRepository;
+import com.hellengi.biolab.util.GenomeCodeCodec;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+@Service
+public class CellTemplateService {
+
+    private final SavedCellTemplateRepository repository;
+
+    public CellTemplateService(SavedCellTemplateRepository repository) {
+        this.repository = repository;
+    }
+
+    @Transactional
+    public CellTemplateDto save(String name, CellTemplateDto dto) {
+        String normalizedName = normalizeName(name);
+
+        SavedCellTemplate entity = new SavedCellTemplate(
+                normalizedName,
+                LocalDateTime.now(),
+                dto.divisionThreshold(),
+                dto.divisionImpulseStrength(),
+                dto.colorHue(),
+                dto.lightness(),
+                dto.maxEnergy()
+        );
+
+        SavedCellTemplate saved = repository.save(entity);
+        return toDto(saved);
+    }
+
+    @Transactional(readOnly = true)
+    public List<CellTemplateDto> list() {
+        return repository.findAllByOrderByCreatedAtDesc().stream()
+                .map(this::toDto)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public CellTemplateDto get(Long id) {
+        SavedCellTemplate entity = repository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Cell template not found: " + id));
+
+        return toDto(entity);
+    }
+
+    @Transactional
+    public void delete(Long id) {
+        if (!repository.existsById(id)) {
+            throw new IllegalArgumentException("Cell template not found: " + id);
+        }
+
+        repository.deleteById(id);
+    }
+
+    private CellTemplateDto toDto(SavedCellTemplate entity) {
+        Genome genome = new Genome(
+                entity.getDivisionThreshold(),
+                entity.getDivisionImpulseStrength(),
+                entity.getColorHue(),
+                entity.getLightness(),
+                entity.getMaxEnergy()
+        );
+
+        return new CellTemplateDto(
+                entity.getId(),
+                entity.getName(),
+                GenomeCodeCodec.encode(genome),
+                entity.getDivisionThreshold(),
+                entity.getDivisionImpulseStrength(),
+                entity.getColorHue(),
+                entity.getLightness(),
+                entity.getMaxEnergy()
+        );
+    }
+
+    private String normalizeName(String name) {
+        if (name == null || name.trim().isEmpty()) {
+            throw new IllegalArgumentException("Cell name must not be empty");
+        }
+
+        String trimmed = name.trim();
+        if (trimmed.length() > 200) {
+            throw new IllegalArgumentException("Cell name is too long");
+        }
+
+        return trimmed;
+    }
+}
+
+===== C:\Users\Admin\Favorites\Study\Semester 8\Project\biolab\src\main\java\com\hellengi\biolab\service\GenomeMutationService.java =====
+
+package com.hellengi.biolab.service;
+
+import com.hellengi.biolab.config.SimulationProperties;
+import com.hellengi.biolab.model.Genome;
+import com.hellengi.biolab.util.GenomeCodeCodec;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.Random;
+
+@Component
+public class GenomeMutationService {
+
+    private static final Logger log = LoggerFactory.getLogger(GenomeMutationService.class);
+
+    private final SimulationProperties config;
+    private final Random random = new Random();
+
+    public GenomeMutationService(SimulationProperties config) {
+        this.config = config;
+    }
+
+    public Genome copyGenomeWithPossibleMutation(Genome parentGenome) {
+        Genome oldGenome = parentGenome.copy();
+        Genome genome = parentGenome.copy();
+
+        if (random.nextDouble() >= config.getGenome().getRadiationMutationChance()) {
+            return genome;
+        }
+
+        int mutationTarget = random.nextInt(3);
+
+        switch (mutationTarget) {
+            case 0 -> genome.setDivisionThreshold(
+                    mutateValue(
+                            genome.getDivisionThreshold(),
+                            config.getGenome().getDivisionThresholdMutationDelta(),
+                            config.getGenome().getDivisionThresholdMin(),
+                            config.getGenome().getDivisionThresholdMax()
+                    )
+            );
+            case 1 -> genome.setDivisionImpulseStrength(
+                    mutateValue(
+                            genome.getDivisionImpulseStrength(),
+                            config.getGenome().getDivisionImpulseMutationDelta(),
+                            config.getGenome().getDivisionImpulseMin(),
+                            config.getGenome().getDivisionImpulseMax()
+                    )
+            );
+            case 2 -> genome.setMaxEnergy(
+                    mutateValue(
+                            genome.getMaxEnergy(),
+                            config.getGenome().getMaxEnergyMutationDelta(),
+                            config.getGenome().getMaxEnergyMin(),
+                            config.getGenome().getMaxEnergyMax()
+                    )
+            );
+            default -> {
+            }
+        }
+
+        genome.setColorHue(
+                mutateHue(
+                        genome.getColorHue(),
+                        config.getGenome().getColorHueMutationDelta()
+                )
+        );
+
+        genome.setLightness(
+                mutateValue(
+                        genome.getLightness(),
+                        config.getGenome().getLightnessMutationDelta(),
+                        config.getGenome().getLightnessMin(),
+                        config.getGenome().getLightnessMax()
+                )
+        );
+
+        logGenomeMutation(oldGenome, genome);
+        return genome;
+    }
+
+    private double mutateValue(double value, double mutationDelta, double minValue, double maxValue) {
+        double mutatedValue = value + (random.nextDouble() * 2.0 - 1.0) * mutationDelta;
+        return Math.max(minValue, Math.min(maxValue, mutatedValue));
+    }
+
+    private double mutateHue(double hue, double delta) {
+        double mutatedHue = hue + (random.nextDouble() * 2.0 - 1.0) * delta;
+
+        while (mutatedHue < config.getGenome().getColorHueMin()) {
+            mutatedHue += 360.0;
+        }
+
+        while (mutatedHue > config.getGenome().getColorHueMax()) {
+            mutatedHue -= 360.0;
+        }
+
+        return mutatedHue;
+    }
+
+    private void logGenomeMutation(Genome oldGenome, Genome newGenome) {
+        String oldCode = GenomeCodeCodec.encode(oldGenome);
+        String newCode = GenomeCodeCodec.encode(newGenome);
+
+        List<String> changes = new ArrayList<>();
+        addGenomeChange(changes, "divisionThreshold", oldGenome.getDivisionThreshold(), newGenome.getDivisionThreshold());
+        addGenomeChange(changes, "divisionImpulseStrength", oldGenome.getDivisionImpulseStrength(), newGenome.getDivisionImpulseStrength());
+        addGenomeChange(changes, "colorHue", oldGenome.getColorHue(), newGenome.getColorHue());
+        addGenomeChange(changes, "lightness", oldGenome.getLightness(), newGenome.getLightness());
+        addGenomeChange(changes, "maxEnergy", oldGenome.getMaxEnergy(), newGenome.getMaxEnergy());
+
+        log.info("Mutation: {} -> {} | {}", oldCode, newCode, String.join("; ", changes));
+    }
+
+    private void addGenomeChange(List<String> changes, String name, double oldValue, double newValue) {
+        if (Double.compare(oldValue, newValue) != 0) {
+            changes.add(name + ": " + formatDouble(oldValue) + " -> " + formatDouble(newValue));
+        }
+    }
+
+    private String formatDouble(double value) {
+        return String.format(Locale.US, "%.2f", value);
+    }
+}
+
+===== C:\Users\Admin\Favorites\Study\Semester 8\Project\biolab\src\main\java\com\hellengi\biolab\service\SavedWorldService.java =====
+
+package com.hellengi.biolab.service;
+
+import com.hellengi.biolab.dto.SavedWorldListItemDto;
+import com.hellengi.biolab.dto.SavedWorldSnapshotDto;
+import com.hellengi.biolab.model.SavedWorld;
+import com.hellengi.biolab.repository.SavedWorldRepository;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.json.JsonMapper;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+@Service
+public class SavedWorldService {
+
+    private final SavedWorldRepository savedWorldRepository;
+    private final JsonMapper jsonMapper;
+
+    public SavedWorldService(
+            SavedWorldRepository savedWorldRepository,
+            JsonMapper jsonMapper
+    ) {
+        this.savedWorldRepository = savedWorldRepository;
+        this.jsonMapper = jsonMapper;
+    }
+
+    @Transactional
+    public SavedWorldListItemDto save(String name, SavedWorldSnapshotDto snapshot) {
+        try {
+            String normalizedName = normalizeName(name);
+            String worldJson = jsonMapper.writeValueAsString(snapshot.world());
+            String configJson = jsonMapper.writeValueAsString(snapshot.config());
+
+            SavedWorld savedWorld = new SavedWorld(
+                    normalizedName,
+                    LocalDateTime.now(),
+                    worldJson,
+                    configJson
+            );
+
+            SavedWorld persisted = savedWorldRepository.save(savedWorld);
+
+            return new SavedWorldListItemDto(
+                    persisted.getId(),
+                    persisted.getName(),
+                    persisted.getCreatedAt()
+            );
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to save world", e);
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public List<SavedWorldListItemDto> list() {
+        return savedWorldRepository.findAllByOrderByCreatedAtDesc().stream()
+                .map(savedWorld -> new SavedWorldListItemDto(
+                        savedWorld.getId(),
+                        savedWorld.getName(),
+                        savedWorld.getCreatedAt()
+                ))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public SavedWorldSnapshotDto load(Long id) {
+        SavedWorld savedWorld = savedWorldRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Saved world not found: " + id));
+
+        try {
+            return new SavedWorldSnapshotDto(
+                    jsonMapper.readValue(savedWorld.getWorldJson(), com.hellengi.biolab.dto.WorldStateDto.class),
+                    jsonMapper.readValue(savedWorld.getConfigJson(), com.hellengi.biolab.dto.SimulationConfigDto.class)
+            );
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to load world", e);
+        }
+    }
+
+    private String normalizeName(String name) {
+        if (name == null) {
+            throw new IllegalArgumentException("World name must not be null");
+        }
+
+        String trimmed = name.trim();
+        if (trimmed.isEmpty()) {
+            throw new IllegalArgumentException("World name must not be empty");
+        }
+
+        if (trimmed.length() > 200) {
+            throw new IllegalArgumentException("World name is too long");
+        }
+
+        return trimmed;
+    }
+
+    @Transactional
+    public void delete(Long id) {
+        if (!savedWorldRepository.existsById(id)) {
+            throw new IllegalArgumentException("Saved world not found: " + id);
+        }
+        savedWorldRepository.deleteById(id);
+    }
+}
+
+===== C:\Users\Admin\Favorites\Study\Semester 8\Project\biolab\src\main\java\com\hellengi\biolab\service\SimulationBroadcaster.java =====
+
+package com.hellengi.biolab.service;
+
+import com.hellengi.biolab.dto.WorldStateDto;
+import org.springframework.stereotype.Component;
+import org.springframework.web.socket.TextMessage;
+import org.springframework.web.socket.WebSocketSession;
+import tools.jackson.databind.json.JsonMapper;
+
+import java.util.Iterator;
+
+@Component
+public class SimulationBroadcaster {
+
+    private final SimulationWebSocketHandler webSocketHandler;
+    private final JsonMapper objectMapper;
+
+    public SimulationBroadcaster(
+            SimulationWebSocketHandler webSocketHandler,
+            JsonMapper objectMapper
+    ) {
+        this.webSocketHandler = webSocketHandler;
+        this.objectMapper = objectMapper;
+    }
+
+    public void broadcast(WorldStateDto dto) {
+        try {
+            String json = objectMapper.writeValueAsString(dto);
+            TextMessage message = new TextMessage(json);
+
+            Iterator<WebSocketSession> iterator = webSocketHandler.getSessions().iterator();
+            while (iterator.hasNext()) {
+                WebSocketSession session = iterator.next();
+                try {
+                    if (session.isOpen()) {
+                        session.sendMessage(message);
+                    }
+                } catch (Exception e) {
+                    try {
+                        session.close();
+                    } catch (Exception ignored) {
+                    }
+                    iterator.remove();
+                }
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to broadcast world state", e);
+        }
+    }
+}
+
+===== C:\Users\Admin\Favorites\Study\Semester 8\Project\biolab\src\main\java\com\hellengi\biolab\service\SimulationEntityFactory.java =====
+
+package com.hellengi.biolab.service;
+
+import com.hellengi.biolab.config.SimulationProperties;
+import com.hellengi.biolab.model.DeadCell;
+import com.hellengi.biolab.model.Food;
+import com.hellengi.biolab.model.Genome;
+import com.hellengi.biolab.model.Saprotroph;
+import com.hellengi.biolab.util.IdGenerator;
+import org.springframework.stereotype.Component;
+
+import java.util.Random;
+
+@Component
+public class SimulationEntityFactory {
+
+    private final SimulationProperties config;
+    private final Random random = new Random();
+
+    public SimulationEntityFactory(SimulationProperties config) {
+        this.config = config;
+    }
+
+    public Saprotroph createRandomSaprotroph(double centerX, double centerY) {
+        double angle = random.nextDouble() * Math.PI * 2.0;
+        double vx = Math.cos(angle) * config.getGenome().getInitialDivisionImpulseStrength();
+        double vy = Math.sin(angle) * config.getGenome().getInitialDivisionImpulseStrength();
+
+        double initialEnergy = config.getInitialSaprotrophEnergyMin()
+                + random.nextDouble() * config.getInitialSaprotrophEnergyRange();
+
+        double x = centerX + randomOffset(config.getInitialSpawnOffsetRange());
+        double y = centerY + randomOffset(config.getInitialSpawnOffsetRange());
+
+        Genome genome = new Genome(
+                config.getGenome().getInitialDivisionThreshold(),
+                config.getGenome().getInitialDivisionImpulseStrength(),
+                config.getGenome().getInitialColorHue(),
+                config.getGenome().getInitialLightness(),
+                config.getGenome().getInitialMaxEnergy()
+        );
+
+        initialEnergy = Math.min(initialEnergy, genome.getMaxEnergy());
+
+        return new Saprotroph(
+                IdGenerator.nextId(),
+                x,
+                y,
+                vx,
+                vy,
+                initialEnergy,
+                genome
+        );
+    }
+
+    public Food createRandomFood() {
+        double x = random.nextDouble() * config.getWorldWidth();
+        double y = random.nextDouble() * config.getWorldHeight();
+        double energy = config.getFoodEnergyMin()
+                + random.nextDouble() * config.getFoodEnergyRange();
+
+        return new Food(IdGenerator.nextId(), x, y, energy);
+    }
+
+    public Food createFoodAtPosition(double x, double y, double energy) {
+        return new Food(
+                IdGenerator.nextId(),
+                x,
+                y,
+                Math.max(config.getFoodEnergyMin(), energy)
+        );
+    }
+
+    public DeadCell createDeadCellFromSaprotroph(Saprotroph saprotroph) {
+        return new DeadCell(
+                IdGenerator.nextId(),
+                saprotroph.getX(),
+                saprotroph.getY(),
+                saprotroph.getVx(),
+                saprotroph.getVy(),
+                saprotroph.getEnergy()
+        );
+    }
+
+    private double randomOffset(double halfRange) {
+        return random.nextDouble() * 2.0 * halfRange - halfRange;
+    }
+}
+
+===== C:\Users\Admin\Favorites\Study\Semester 8\Project\biolab\src\main\java\com\hellengi\biolab\service\SimulationMapper.java =====
+
+package com.hellengi.biolab.service;
+
+import com.hellengi.biolab.config.SimulationProperties;
+import com.hellengi.biolab.dto.DeadCellDto;
+import com.hellengi.biolab.dto.FoodDto;
+import com.hellengi.biolab.dto.GenomeDto;
+import com.hellengi.biolab.dto.SaprotrophDto;
+import com.hellengi.biolab.dto.WorldStateDto;
+import com.hellengi.biolab.model.DeadCell;
+import com.hellengi.biolab.model.Food;
+import com.hellengi.biolab.model.Genome;
+import com.hellengi.biolab.model.Saprotroph;
+import com.hellengi.biolab.util.GenomeCodeCodec;
+import org.springframework.stereotype.Component;
+
+import java.util.List;
+
+@Component
+public class SimulationMapper {
+
+    private final SimulationProperties config;
+
+    public SimulationMapper(SimulationProperties config) {
+        this.config = config;
+    }
+
+    public WorldStateDto toWorldStateDto(
+            SimulationWorld world,
+            long deadCellLifetimeTicks
+    ) {
+        List<SaprotrophDto> saprotrophDtos = world.getSaprotrophs().stream()
+                .map(saprotroph -> new SaprotrophDto(
+                        saprotroph.getId(),
+                        saprotroph.getX(),
+                        saprotroph.getY(),
+                        saprotroph.getVx(),
+                        saprotroph.getVy(),
+                        saprotroph.getEnergy(),
+                        toGenomeDto(saprotroph.getGenome(), saprotroph.getEnergy()),
+                        calculateSaprotrophRadius(
+                                saprotroph.getEnergy(),
+                                saprotroph.getGenome().getDivisionThreshold()
+                        ),
+                        saprotroph.isAlive()
+                ))
+                .toList();
+
+        List<DeadCellDto> deadCellDtos = world.getDeadCells().stream()
+                .map(deadCell -> new DeadCellDto(
+                        deadCell.getId(),
+                        deadCell.getX(),
+                        deadCell.getY(),
+                        deadCell.getVx(),
+                        deadCell.getVy(),
+                        deadCell.getEnergy(),
+                        calculateDeadCellRadius(deadCell.getEnergy()),
+                        deadCell.getLifetimeTicks(),
+                        deadCellLifetimeTicks
+                ))
+                .toList();
+
+        List<FoodDto> foodDtos = world.getFoods().stream()
+                .map(food -> new FoodDto(
+                        food.getId(),
+                        food.getX(),
+                        food.getY(),
+                        food.getEnergy(),
+                        calculateFoodRadius(food.getEnergy()),
+                        food.isConsumed()
+                ))
+                .toList();
+
+        return new WorldStateDto(
+                world.getTick(),
+                config.getWorldWidth(),
+                config.getWorldHeight(),
+                world.isRunning(),
+                saprotrophDtos.size(),
+                deadCellDtos.size(),
+                foodDtos.size(),
+                saprotrophDtos,
+                deadCellDtos,
+                foodDtos
+        );
+    }
+
+    private GenomeDto toGenomeDto(Genome genome, double energy) {
+        return new GenomeDto(
+                genome.getDivisionThreshold(),
+                genome.getDivisionImpulseStrength(),
+                genome.getColorHue(),
+                genome.getLightness(),
+                genome.getMaxEnergy(),
+                calculateSaprotrophSaturation(energy, genome.getMaxEnergy()),
+                GenomeCodeCodec.encode(genome)
+        );
+    }
+
+    private double calculateSaprotrophRadius(double energy, double divisionThreshold) {
+        double energyNorm = Math.min(1.0, energy / divisionThreshold);
+        return config.getClientSaprotrophBaseRadius()
+                + energyNorm * config.getClientSaprotrophRadiusScale();
+    }
+
+    private double calculateFoodRadius(double energy) {
+        return config.getClientFoodRadiusAtMinEnergy()
+                * Math.sqrt(energy / config.getFoodEnergyMin());
+    }
+
+    private double calculateDeadCellRadius(double energy) {
+        double denominator = Math.max(0.1, config.getFoodEnergyRange());
+        double energyNorm = Math.min(1.0, energy / denominator);
+        return config.getClientSaprotrophBaseRadius()
+                + energyNorm * config.getClientSaprotrophRadiusScale();
+    }
+
+    private double calculateSaprotrophSaturation(double energy, double maxEnergy) {
+        if (maxEnergy <= 0.0) {
+            return 50.0;
+        }
+
+        double energyRatio = Math.max(0.0, Math.min(1.0, energy / maxEnergy));
+        return 50.0 + energyRatio * 50.0;
+    }
+}
+
+===== C:\Users\Admin\Favorites\Study\Semester 8\Project\biolab\src\main\java\com\hellengi\biolab\service\SimulationRuntimeOverrides.java =====
+
+package com.hellengi.biolab.service;
+
+import com.hellengi.biolab.config.SimulationProperties;
+import com.hellengi.biolab.dto.SimulationConfigDto;
+
+public class SimulationRuntimeOverrides {
+
+    private Integer initialSaprotrophCount;
+    private Integer foodGenerationIntensity;
+    private Long deadCellLifetimeTicks;
+
+    public int getInitialSaprotrophCount(SimulationProperties baseConfig) {
+        return initialSaprotrophCount != null
+                ? initialSaprotrophCount
+                : baseConfig.getInitialSaprotrophCount();
+    }
+
+    public int getFoodGenerationIntensity(SimulationProperties baseConfig) {
+        return foodGenerationIntensity != null
+                ? foodGenerationIntensity
+                : baseConfig.getFoodGenerationIntensity();
+    }
+
+    public long getDeadCellLifetimeTicks(SimulationProperties baseConfig) {
+        return deadCellLifetimeTicks != null
+                ? deadCellLifetimeTicks
+                : baseConfig.getDeadCellLifetimeTicks();
+    }
+
+    public void update(int initialSaprotrophCount, int foodGenerationIntensity, long deadCellLifetimeTicks) {
+        this.initialSaprotrophCount = Math.max(0, initialSaprotrophCount);
+        this.foodGenerationIntensity = Math.max(0, foodGenerationIntensity);
+        this.deadCellLifetimeTicks = Math.max(1L, deadCellLifetimeTicks);
+    }
+
+    public void reset() {
+        this.initialSaprotrophCount = null;
+        foodGenerationIntensity = null;
+        this.deadCellLifetimeTicks = null;
+    }
+
+    public void loadFromConfig(SimulationConfigDto configDto) {
+        this.initialSaprotrophCount = Math.max(0, configDto.initialSaprotrophCount());
+        this.foodGenerationIntensity = Math.max(0, configDto.foodGenerationIntensity());
+        this.deadCellLifetimeTicks = Math.max(1L, configDto.deadCellLifetimeTicks());
+    }
+}
+
+===== C:\Users\Admin\Favorites\Study\Semester 8\Project\biolab\src\main\java\com\hellengi\biolab\service\SimulationService.java =====
+
+package com.hellengi.biolab.service;
+
+import com.hellengi.biolab.config.SimulationProperties;
+import com.hellengi.biolab.dto.SimulationConfigDto;
+import com.hellengi.biolab.dto.WorldStateDto;
+import com.hellengi.biolab.dto.DeadCellDto;
+import com.hellengi.biolab.dto.FoodDto;
+import com.hellengi.biolab.dto.GenomeDto;
+import com.hellengi.biolab.dto.SaprotrophDto;
+import com.hellengi.biolab.dto.SavedWorldListItemDto;
+import com.hellengi.biolab.dto.SavedWorldSnapshotDto;
+import com.hellengi.biolab.dto.CellTemplateDto;
+import com.hellengi.biolab.dto.CreateCellRequestDto;
+import com.hellengi.biolab.util.GenomeCodeCodec;
+import com.hellengi.biolab.util.IdGenerator;
+import com.hellengi.biolab.model.DeadCell;
+import com.hellengi.biolab.model.Food;
+import com.hellengi.biolab.model.Genome;
+import com.hellengi.biolab.model.Saprotroph;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Random;
+
+@Service
+public class SimulationService {
+
+    private static final long SCHEDULER_POLL_INTERVAL_MS = 10L;
+
+    private final SimulationProperties baseConfig;
+    private final SimulationRuntimeOverrides runtimeOverrides = new SimulationRuntimeOverrides();
+    private final SimulationEntityFactory entityFactory;
+    private final GenomeMutationService genomeMutationService;
+    private final SimulationMapper simulationMapper;
+    private final SimulationBroadcaster simulationBroadcaster;
+    private final SavedWorldService savedWorldService;
+
+    private final SimulationWorld world = new SimulationWorld();
+    private final Random random = new Random();
+
+    public SimulationService(
+            SimulationProperties baseConfig,
+            SimulationEntityFactory entityFactory,
+            GenomeMutationService genomeMutationService,
+            SimulationMapper simulationMapper,
+            SimulationBroadcaster simulationBroadcaster,
+            SavedWorldService savedWorldService
+    ) {
+        this.baseConfig = baseConfig;
+        this.entityFactory = entityFactory;
+        this.genomeMutationService = genomeMutationService;
+        this.simulationMapper = simulationMapper;
+        this.simulationBroadcaster = simulationBroadcaster;
+        this.savedWorldService = savedWorldService;
+        reset();
+    }
+
+    private int currentInitialSaprotrophCount() {
+        return runtimeOverrides.getInitialSaprotrophCount(baseConfig);
+    }
+
+    private int currentFoodGenerationIntensity() {
+        return runtimeOverrides.getFoodGenerationIntensity(baseConfig);
+    }
+
+    private long currentDeadCellLifetimeTicks() {
+        return runtimeOverrides.getDeadCellLifetimeTicks(baseConfig);
+    }
+
+    private SimulationConfigDto buildCurrentConfigDto() {
+        return new SimulationConfigDto(
+                baseConfig.getWorldWidth(),
+                baseConfig.getWorldHeight(),
+                baseConfig.getSimulationTickRateMs(),
+                currentInitialSaprotrophCount(),
+                baseConfig.getInitialFoodCount(),
+                currentFoodGenerationIntensity(),
+                baseConfig.getFoodEnergyMin(),
+                baseConfig.getFoodEnergyRange(),
+                baseConfig.getMinCellEnergy(),
+                baseConfig.getSaprotrophBaseEnergyDecayPerTick(),
+                baseConfig.getCellViscosityFactor(),
+                currentDeadCellLifetimeTicks(),
+                baseConfig.getClientSaprotrophBaseRadius(),
+                baseConfig.getClientSaprotrophRadiusScale(),
+                baseConfig.getClientDirectionVectorLength(),
+                baseConfig.getClientFoodRadiusAtMinEnergy()
+        );
+    }
+
+    public synchronized void start() {
+        world.setRunning(true);
+        world.setLastSimulationStepTimeMs(System.currentTimeMillis());
+    }
+
+    public synchronized void stop() {
+        world.setRunning(false);
+        world.setLastSimulationStepTimeMs(System.currentTimeMillis());
+    }
+
+    public synchronized void reset() {
+        world.setRunning(false);
+        world.setTick(0L);
+        world.clear();
+
+        for (int i = 0; i < currentInitialSaprotrophCount(); i++) {
+            world.getSaprotrophs().add(
+                    entityFactory.createRandomSaprotroph(
+                            baseConfig.getInitialSpawnCenterX(),
+                            baseConfig.getInitialSpawnCenterY()
+                    )
+            );
+        }
+
+        for (int i = 0; i < baseConfig.getInitialFoodCount(); i++) {
+            world.getFoods().add(entityFactory.createRandomFood());
+        }
+    }
+
+    public synchronized WorldStateDto getState() {
+        return simulationMapper.toWorldStateDto(world, currentDeadCellLifetimeTicks());
+    }
+
+    public synchronized SimulationConfigDto getConfig() {
+        return buildCurrentConfigDto();
+    }
+
+    public synchronized SimulationConfigDto updateConfig(SimulationConfigDto configDto) {
+        runtimeOverrides.update(
+                configDto.initialSaprotrophCount(),
+                configDto.foodGenerationIntensity(),
+                configDto.deadCellLifetimeTicks()
+        );
+        return buildCurrentConfigDto();
+    }
+
+    public synchronized SimulationConfigDto resetConfigToDefaults() {
+        runtimeOverrides.reset();
+        return buildCurrentConfigDto();
+    }
+
+    @Scheduled(fixedRate = SCHEDULER_POLL_INTERVAL_MS)
+    public void simulationTick() {
+        WorldStateDto snapshot;
+
+        synchronized (this) {
+            if (world.isRunning()) {
+                long now = System.currentTimeMillis();
+                long interval = baseConfig.getSimulationTickRateMs();
+                long elapsed = now - world.getLastSimulationStepTimeMs();
+
+                if (elapsed >= interval) {
+                    long steps = Math.max(1L, elapsed / interval);
+                    steps = Math.min(steps, 10L);
+
+                    for (long i = 0; i < steps; i++) {
+                        performSimulationStep();
+                    }
+
+                    world.setLastSimulationStepTimeMs(now);
+                }
+            }
+
+            snapshot = simulationMapper.toWorldStateDto(world, currentDeadCellLifetimeTicks());
+        }
+
+        simulationBroadcaster.broadcast(snapshot);
+    }
+
+    public synchronized SavedWorldListItemDto saveWorld(String name) {
+        SavedWorldSnapshotDto snapshot = new SavedWorldSnapshotDto(
+                getState(),
+                getConfig()
+        );
+        return savedWorldService.save(name, snapshot);
+    }
+
+    public synchronized List<SavedWorldListItemDto> listSavedWorlds() {
+        return savedWorldService.list();
+    }
+
+    public synchronized void loadWorld(Long id) {
+        SavedWorldSnapshotDto snapshot = savedWorldService.load(id);
+        loadSnapshot(snapshot);
+    }
+
+    public synchronized void deleteWorld(Long id) {
+        savedWorldService.delete(id);
+    }
+
+    public synchronized void createCell(CreateCellRequestDto requestDto) {
+        CellTemplateDto dto = requestDto.cell();
+
+        Genome genome = new Genome(
+                dto.divisionThreshold(),
+                dto.divisionImpulseStrength(),
+                dto.colorHue(),
+                dto.lightness(),
+                dto.maxEnergy()
+        );
+
+        double initialEnergy = Math.max(
+                baseConfig.getMinCellEnergy(),
+                genome.getMaxEnergy() / 2.0
+        );
+
+        double angle = random.nextDouble() * Math.PI * 2.0;
+        double speed = genome.getDivisionImpulseStrength();
+
+        double initialVx = Math.cos(angle) * speed;
+        double initialVy = Math.sin(angle) * speed;
+
+        Saprotroph saprotroph = new Saprotroph(
+                IdGenerator.nextId(),
+                clampX(requestDto.x()),
+                clampY(requestDto.y()),
+                initialVx,
+                initialVy,
+                initialEnergy,
+                genome
+        );
+
+        world.getSaprotrophs().add(saprotroph);
+    }
+
+    public synchronized CellTemplateDto getCellTemplateBySaprotrophId(long saprotrophId) {
+        Saprotroph saprotroph = world.getSaprotrophs().stream()
+                .filter(cell -> cell.getId() == saprotrophId)
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Saprotroph not found: " + saprotrophId));
+
+        return new CellTemplateDto(
+                null,
+                null,
+                GenomeCodeCodec.encode(saprotroph.getGenome()),
+                saprotroph.getGenome().getDivisionThreshold(),
+                saprotroph.getGenome().getDivisionImpulseStrength(),
+                saprotroph.getGenome().getColorHue(),
+                saprotroph.getGenome().getLightness(),
+                saprotroph.getGenome().getMaxEnergy()
+        );
+    }
+
+    private void performSimulationStep() {
+        world.incrementTick();
+        updateSaprotrophs();
+        updateDeadCells();
+        cleanupFoods();
+        spawnPeriodicFood();
+    }
+
+    private void updateSaprotrophs() {
+        List<Saprotroph> newborns = new ArrayList<>();
+        List<DeadCell> newDeadCells = new ArrayList<>();
+
+        for (Saprotroph saprotroph : world.getSaprotrophs()) {
+            if (!saprotroph.isAlive()) {
+                continue;
+            }
+
+            moveCell(saprotroph);
+            applyViscosity(saprotroph);
+
+            saprotroph.setEnergy(
+                    saprotroph.getEnergy() - baseConfig.getSaprotrophBaseEnergyDecayPerTick()
+            );
+
+            for (Food food : world.getFoods()) {
+                if (food.isConsumed()) {
+                    continue;
+                }
+
+                double dx = saprotroph.getX() - food.getX();
+                double dy = saprotroph.getY() - food.getY();
+                double distanceSquared = dx * dx + dy * dy;
+                double consumptionRadius = baseConfig.getFoodConsumptionRadius();
+
+                if (distanceSquared <= consumptionRadius * consumptionRadius) {
+                    double currentEnergy = saprotroph.getEnergy();
+                    double maxEnergy = saprotroph.getGenome().getMaxEnergy();
+                    double energyDeficit = maxEnergy - currentEnergy;
+
+                    if (energyDeficit <= 0.0) {
+                        continue;
+                    }
+
+                    double foodEnergy = food.getEnergy();
+
+                    if (foodEnergy <= energyDeficit) {
+                        saprotroph.setEnergy(currentEnergy + foodEnergy);
+                        food.setConsumed(true);
+                    } else {
+                        saprotroph.setEnergy(maxEnergy);
+                        food.setEnergy(foodEnergy - energyDeficit);
+                    }
+                }
+            }
+
+            if (saprotroph.getEnergy() <= baseConfig.getMinCellEnergy()) {
+                saprotroph.setAlive(false);
+                newDeadCells.add(entityFactory.createDeadCellFromSaprotroph(saprotroph));
+                continue;
+            }
+
+            if (saprotroph.getEnergy() >= saprotroph.getGenome().getDivisionThreshold()) {
+                List<Saprotroph> children = divideSaprotroph(saprotroph);
+
+                if (!children.isEmpty()) {
+                    newborns.addAll(children);
+                    saprotroph.setAlive(false);
+                }
+            }
+        }
+
+        world.getSaprotrophs().addAll(newborns);
+        world.getDeadCells().addAll(newDeadCells);
+        world.getSaprotrophs().removeIf(saprotroph -> !saprotroph.isAlive());
+    }
+
+    private void updateDeadCells() {
+        List<Food> foodsFromDeadCells = new ArrayList<>();
+
+        Iterator<DeadCell> iterator = world.getDeadCells().iterator();
+        while (iterator.hasNext()) {
+            DeadCell deadCell = iterator.next();
+
+            moveCell(deadCell);
+            applyViscosity(deadCell);
+            deadCell.incrementLifetimeTicks();
+
+            if (deadCell.getLifetimeTicks() >= currentDeadCellLifetimeTicks()) {
+                foodsFromDeadCells.add(
+                        entityFactory.createFoodAtPosition(
+                                deadCell.getX(),
+                                deadCell.getY(),
+                                deadCell.getEnergy()
+                        )
+                );
+                iterator.remove();
+            }
+        }
+
+        world.getFoods().addAll(foodsFromDeadCells);
+    }
+
+    private double currentFoodGenerationFrequencyMultiplier() {
+        int intensity = currentFoodGenerationIntensity();
+
+        if (intensity <= 0) {
+            return 0.0;
+        }
+
+        double maxMultiplier = Math.max(1.0, baseConfig.getFoodGenerationMaxFrequencyMultiplier());
+        double normalized = intensity / 50.0 - 1.0;
+
+        return Math.pow(maxMultiplier, normalized);
+    }
+
+    private double currentFoodSpawnsPerTick() {
+        return currentFoodGenerationFrequencyMultiplier() / 10.0;
+    }
+
+    private void spawnPeriodicFood() {
+        double spawnsPerTick = currentFoodSpawnsPerTick();
+
+        if (spawnsPerTick <= 0.0) {
+            return;
+        }
+
+        int guaranteedSpawns = (int) Math.floor(spawnsPerTick);
+        double fractionalPart = spawnsPerTick - guaranteedSpawns;
+
+        for (int i = 0; i < guaranteedSpawns; i++) {
+            world.getFoods().add(entityFactory.createRandomFood());
+        }
+
+        if (random.nextDouble() < fractionalPart) {
+            world.getFoods().add(entityFactory.createRandomFood());
+        }
+    }
+
+    private List<Saprotroph> divideSaprotroph(Saprotroph parent) {
+        Genome firstGenome = genomeMutationService.copyGenomeWithPossibleMutation(parent.getGenome());
+        Genome secondGenome = genomeMutationService.copyGenomeWithPossibleMutation(parent.getGenome());
+
+        double firstDivisionImpulse = firstGenome.getDivisionImpulseStrength();
+        double secondDivisionImpulse = secondGenome.getDivisionImpulseStrength();
+
+        double firstImpulseEnergyCost =
+                firstDivisionImpulse * baseConfig.getDivisionImpulseEnergyCostFactor();
+        double secondImpulseEnergyCost =
+                secondDivisionImpulse * baseConfig.getDivisionImpulseEnergyCostFactor();
+
+        double remainingEnergy =
+                parent.getEnergy() - firstImpulseEnergyCost - secondImpulseEnergyCost;
+
+        double baseChildEnergy = remainingEnergy / 2.0;
+
+        double firstChildEnergy = Math.min(baseChildEnergy, firstGenome.getMaxEnergy());
+        double secondChildEnergy = Math.min(baseChildEnergy, secondGenome.getMaxEnergy());
+
+        if (firstChildEnergy < baseConfig.getMinChildEnergyAfterDivision()
+                || secondChildEnergy < baseConfig.getMinChildEnergyAfterDivision()) {
+            return List.of();
+        }
+
+        double angle = random.nextDouble() * Math.PI * 2.0;
+        double directionX = Math.cos(angle);
+        double directionY = Math.sin(angle);
+
+        double firstChildRadius = calculateSaprotrophRadius(
+                firstChildEnergy,
+                firstGenome.getDivisionThreshold()
+        );
+        double secondChildRadius = calculateSaprotrophRadius(
+                secondChildEnergy,
+                secondGenome.getDivisionThreshold()
+        );
+
+        double distanceBetweenCenters = firstChildRadius + secondChildRadius;
+        double offsetFromParent = distanceBetweenCenters / 2.0;
+
+        double firstChildX = parent.getX() + directionX * offsetFromParent;
+        double firstChildY = parent.getY() + directionY * offsetFromParent;
+
+        double secondChildX = parent.getX() - directionX * offsetFromParent;
+        double secondChildY = parent.getY() - directionY * offsetFromParent;
+
+        double firstChildVx = parent.getVx() + directionX * firstDivisionImpulse;
+        double firstChildVy = parent.getVy() + directionY * firstDivisionImpulse;
+
+        double secondChildVx = parent.getVx() - directionX * secondDivisionImpulse;
+        double secondChildVy = parent.getVy() - directionY * secondDivisionImpulse;
+
+        Saprotroph firstChild = new Saprotroph(
+                com.hellengi.biolab.util.IdGenerator.nextId(),
+                clampX(firstChildX),
+                clampY(firstChildY),
+                firstChildVx,
+                firstChildVy,
+                firstChildEnergy,
+                firstGenome
+        );
+
+        Saprotroph secondChild = new Saprotroph(
+                com.hellengi.biolab.util.IdGenerator.nextId(),
+                clampX(secondChildX),
+                clampY(secondChildY),
+                secondChildVx,
+                secondChildVy,
+                secondChildEnergy,
+                secondGenome
+        );
+
+        return List.of(firstChild, secondChild);
+    }
+
+    private double calculateSaprotrophRadius(double energy, double divisionThreshold) {
+        double energyNorm = Math.min(1.0, energy / divisionThreshold);
+        return baseConfig.getClientSaprotrophBaseRadius()
+                + energyNorm * baseConfig.getClientSaprotrophRadiusScale();
+    }
+
+    private void moveCell(com.hellengi.biolab.model.Cell cell) {
+        cell.move();
+
+        if (cell.getX() < 0.0) {
+            cell.setX(0.0);
+            cell.setVx(-cell.getVx());
+        } else if (cell.getX() > baseConfig.getWorldWidth()) {
+            cell.setX(baseConfig.getWorldWidth());
+            cell.setVx(-cell.getVx());
+        }
+
+        if (cell.getY() < 0.0) {
+            cell.setY(0.0);
+            cell.setVy(-cell.getVy());
+        } else if (cell.getY() > baseConfig.getWorldHeight()) {
+            cell.setY(baseConfig.getWorldHeight());
+            cell.setVy(-cell.getVy());
+        }
+    }
+
+    private void applyViscosity(com.hellengi.biolab.model.Cell cell) {
+        double viscosityFactor = Math.max(0.0, Math.min(1.0, baseConfig.getCellViscosityFactor()));
+
+        cell.setVx(cell.getVx() * viscosityFactor);
+        cell.setVy(cell.getVy() * viscosityFactor);
+
+        if (Math.abs(cell.getVx()) < 0.001) {
+            cell.setVx(0.0);
+        }
+
+        if (Math.abs(cell.getVy()) < 0.001) {
+            cell.setVy(0.0);
+        }
+    }
+
+    private double clampX(double x) {
+        return Math.max(0.0, Math.min(baseConfig.getWorldWidth(), x));
+    }
+
+    private double clampY(double y) {
+        return Math.max(0.0, Math.min(baseConfig.getWorldHeight(), y));
+    }
+
+    private void cleanupFoods() {
+        world.getFoods().removeIf(Food::isConsumed);
+    }
+
+    private void loadSnapshot(SavedWorldSnapshotDto snapshot) {
+        WorldStateDto savedWorld = snapshot.world();
+        SimulationConfigDto savedConfig = snapshot.config();
+
+        runtimeOverrides.loadFromConfig(savedConfig);
+
+        world.setRunning(savedWorld.running());
+        world.setTick(savedWorld.tick());
+        world.clear();
+
+        for (SaprotrophDto saprotrophDto : savedWorld.saprotrophs()) {
+            world.getSaprotrophs().add(fromSaprotrophDto(saprotrophDto));
+        }
+
+        for (DeadCellDto deadCellDto : savedWorld.deadCells()) {
+            world.getDeadCells().add(fromDeadCellDto(deadCellDto));
+        }
+
+        for (FoodDto foodDto : savedWorld.foods()) {
+            world.getFoods().add(fromFoodDto(foodDto));
+        }
+
+        world.setLastSimulationStepTimeMs(System.currentTimeMillis());
+    }
+
+    private Saprotroph fromSaprotrophDto(SaprotrophDto dto) {
+        Genome genome = fromGenomeDto(dto.genome());
+
+        Saprotroph saprotroph = new Saprotroph(
+                dto.id(),
+                dto.x(),
+                dto.y(),
+                dto.vx(),
+                dto.vy(),
+                dto.energy(),
+                genome
+        );
+        saprotroph.setAlive(dto.alive());
+        return saprotroph;
+    }
+
+    private DeadCell fromDeadCellDto(DeadCellDto dto) {
+        return new DeadCell(
+                dto.id(),
+                dto.x(),
+                dto.y(),
+                dto.vx(),
+                dto.vy(),
+                dto.energy(),
+                dto.lifetimeTicks()
+        );
+    }
+
+    private Food fromFoodDto(FoodDto dto) {
+        Food food = new Food(
+                dto.id(),
+                dto.x(),
+                dto.y(),
+                dto.energy()
+        );
+        food.setConsumed(dto.consumed());
+        return food;
+    }
+
+    private Genome fromGenomeDto(GenomeDto dto) {
+        return new Genome(
+                dto.divisionThreshold(),
+                dto.divisionImpulseStrength(),
+                dto.colorHue(),
+                dto.lightness(),
+                dto.maxEnergy()
+        );
+    }
+}
+
+===== C:\Users\Admin\Favorites\Study\Semester 8\Project\biolab\src\main\java\com\hellengi\biolab\service\SimulationWebSocketHandler.java =====
+
+package com.hellengi.biolab.service;
+
+import org.springframework.stereotype.Component;
+import org.springframework.web.socket.CloseStatus;
+import org.springframework.web.socket.TextMessage;
+import org.springframework.web.socket.WebSocketSession;
+import org.springframework.web.socket.handler.TextWebSocketHandler;
+
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+
+@Component
+public class SimulationWebSocketHandler extends TextWebSocketHandler {
+
+    private final Set<WebSocketSession> sessions = ConcurrentHashMap.newKeySet();
+
+    @Override
+    public void afterConnectionEstablished(WebSocketSession session) {
+        sessions.add(session);
+    }
+
+    @Override
+    public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
+        sessions.remove(session);
+    }
+
+    @Override
+    protected void handleTextMessage(WebSocketSession session, TextMessage message) {
+        // РќР° С‚РµРєСѓС‰РµРј СЌС‚Р°РїРµ РєР»РёРµРЅС‚ РЅРµ РѕС‚РїСЂР°РІР»СЏРµС‚ РєРѕРјР°РЅРґС‹ С‡РµСЂРµР· WebSocket.
+        // Р’СЃРµ СѓРїСЂР°РІР»СЏСЋС‰РёРµ РґРµР№СЃС‚РІРёСЏ РёРґСѓС‚ С‡РµСЂРµР· REST API.
+    }
+
+    public Set<WebSocketSession> getSessions() {
+        return sessions;
+    }
+}
+
+===== C:\Users\Admin\Favorites\Study\Semester 8\Project\biolab\src\main\java\com\hellengi\biolab\service\SimulationWorld.java =====
+
+package com.hellengi.biolab.service;
+
+import com.hellengi.biolab.model.DeadCell;
+import com.hellengi.biolab.model.Food;
+import com.hellengi.biolab.model.Saprotroph;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class SimulationWorld {
+
+    private final List<Saprotroph> saprotrophs = new ArrayList<>();
+    private final List<DeadCell> deadCells = new ArrayList<>();
+    private final List<Food> foods = new ArrayList<>();
+
+    private boolean running = false;
+    private long tick = 0L;
+    private long lastSimulationStepTimeMs = System.currentTimeMillis();
+
+    public List<Saprotroph> getSaprotrophs() {
+        return saprotrophs;
+    }
+
+    public List<DeadCell> getDeadCells() {
+        return deadCells;
+    }
+
+    public List<Food> getFoods() {
+        return foods;
+    }
+
+    public boolean isRunning() {
+        return running;
+    }
+
+    public void setRunning(boolean running) {
+        this.running = running;
+    }
+
+    public long getTick() {
+        return tick;
+    }
+
+    public void setTick(long tick) {
+        this.tick = tick;
+    }
+
+    public void incrementTick() {
+        this.tick++;
+    }
+
+    public long getLastSimulationStepTimeMs() {
+        return lastSimulationStepTimeMs;
+    }
+
+    public void setLastSimulationStepTimeMs(long lastSimulationStepTimeMs) {
+        this.lastSimulationStepTimeMs = lastSimulationStepTimeMs;
+    }
+
+    public void clear() {
+        saprotrophs.clear();
+        deadCells.clear();
+        foods.clear();
+    }
+}
+
+===== C:\Users\Admin\Favorites\Study\Semester 8\Project\biolab\src\main\java\com\hellengi\biolab\util\GenomeCodeCodec.java =====
+
+package com.hellengi.biolab.util;
+
+import com.hellengi.biolab.model.Genome;
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+public final class GenomeCodeCodec {
+
+    private static final Pattern CODE_PATTERN = Pattern.compile(
+            "^SPR-D(?<d>\\d{4})-I(?<i>\\d{4})-H(?<h>\\d{4})-L(?<l>\\d{4})-M(?<m>\\d{4})$"
+    );
+
+    private GenomeCodeCodec() {
+    }
+
+    public static String encode(Genome genome) {
+        return "SPR-D%04d-I%04d-H%04d-L%04d-M%04d".formatted(
+                scale(genome.getDivisionThreshold()),
+                scale(genome.getDivisionImpulseStrength()),
+                scale(genome.getColorHue()),
+                scale(genome.getLightness()),
+                scale(genome.getMaxEnergy())
+        );
+    }
+
+    public static Genome decode(String code) {
+        Matcher matcher = CODE_PATTERN.matcher(code);
+
+        if (!matcher.matches()) {
+            throw new IllegalArgumentException("Invalid genome code: " + code);
+        }
+
+        return new Genome(
+                unscale(matcher.group("d")),
+                unscale(matcher.group("i")),
+                unscale(matcher.group("h")),
+                unscale(matcher.group("l")),
+                unscale(matcher.group("m"))
+        );
+    }
+
+    private static int scale(double value) {
+        return (int) Math.round(value * 10.0);
+    }
+
+    private static double unscale(String value) {
+        return Integer.parseInt(value) / 10.0;
+    }
+}
+
+===== C:\Users\Admin\Favorites\Study\Semester 8\Project\biolab\src\main\java\com\hellengi\biolab\util\IdGenerator.java =====
+
+package com.hellengi.biolab.util;
+
+import java.util.concurrent.atomic.AtomicLong;
+
+public final class IdGenerator {
+
+    private static final AtomicLong SEQUENCE = new AtomicLong(1);
+
+    private IdGenerator() {
+    }
+
+    public static long nextId() {
+        return SEQUENCE.getAndIncrement();
+    }
+}
+
+
+===== C:\Users\Admin\Favorites\Study\Semester 8\Project\biolab\src\main\resources\application.yml =====
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/biolab
+    username: postgres
+    password: password
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+
+simulation:
+  world-width: 1200
+  world-height: 600
+  simulation-tick-rate-ms: 10
+
+  initial-saprotroph-count: 20
+  initial-food-count: 300
+  food-generation-intensity: 50
+  food-generation-max-frequency-multiplier: 20.0
+
+  food-energy-min: 10.0
+  food-energy-range: 10.0
+  food-consumption-radius: 12.0
+
+  initial-saprotroph-energy-min: 20.0
+  initial-saprotroph-energy-range: 20.0
+
+  min-cell-energy: 0.0
+  saprotroph-base-energy-decay-per-tick: 0.15
+  cell-viscosity-factor: 1
+
+  dead-cell-lifetime-ticks: 80
+
+  initial-spawn-center-x: 600.0
+  initial-spawn-center-y: 300.0
+  initial-spawn-offset-range: 20.0
+
+  client-saprotroph-base-radius: 6.0
+  client-saprotroph-radius-scale: 4.0
+  client-direction-vector-length: 12.0
+  client-food-radius-at-min-energy: 2.0
+
+  division-impulse-energy-cost-factor: 1.0
+  min-child-energy-after-division: 1.0
+
+  genome:
+    initial-division-threshold: 50.0
+    initial-division-impulse-strength: 2.0
+    initial-color-hue: 195.0
+    initial-lightness: 62.0
+    initial-max-energy: 60.0
+
+    radiation-mutation-chance: 0.08
+
+    division-threshold-mutation-delta: 2.0
+    division-impulse-mutation-delta: 0.25
+    color-hue-mutation-delta: 12.0
+    lightness-mutation-delta: 6.0
+    max-energy-mutation-delta: 4.0
+
+    division-threshold-min: 20.0
+    division-threshold-max: 100.0
+
+    division-impulse-min: 0.5
+    division-impulse-max: 6.0
+
+    color-hue-min: 0.0
+    color-hue-max: 360.0
+
+    lightness-min: 35.0
+    lightness-max: 75.0
+
+    max-energy-min: 20.0
+    max-energy-max: 200.0
+
+===== C:\Users\Admin\Favorites\Study\Semester 8\Project\biolab\src\main\resources\static\app.js =====
+
+const canvas = document.getElementById("world");
+const ctx = canvas.getContext("2d");
+const statsEl = document.getElementById("stats");
+
+const startBtn = document.getElementById("startBtn");
+const stopBtn = document.getElementById("stopBtn");
+const resetBtn = document.getElementById("resetBtn");
+
+const worldNameInput = document.getElementById("worldNameInput");
+const saveWorldBtn = document.getElementById("saveWorldBtn");
+const savedWorldsList = document.getElementById("savedWorldsList");
+const loadSelectedWorldBtn = document.getElementById("loadSelectedWorldBtn");
+const deleteSelectedWorldBtn = document.getElementById("deleteSelectedWorldBtn");
+
+const cellPanelEmpty = document.getElementById("cellPanelEmpty");
+const cellPanelSelected = document.getElementById("cellPanelSelected");
+const cellPanelCreate = document.getElementById("cellPanelCreate");
+
+const startCreateCellBtn = document.getElementById("startCreateCellBtn");
+const cancelCreateCellBtn = document.getElementById("cancelCreateCellBtn");
+const armPlaceCellBtn = document.getElementById("armPlaceCellBtn");
+
+const savedCellTemplatesList = document.getElementById("savedCellTemplatesList");
+const loadCellTemplateBtn = document.getElementById("loadCellTemplateBtn");
+const deleteCellTemplateBtn = document.getElementById("deleteCellTemplateBtn");
+
+const selectedCellDivisionThreshold = document.getElementById("selectedCellDivisionThreshold");
+const selectedCellDivisionImpulse = document.getElementById("selectedCellDivisionImpulse");
+const selectedCellMaxEnergy = document.getElementById("selectedCellMaxEnergy");
+const selectedCellPreviewCanvas = document.getElementById("selectedCellPreviewCanvas");
+const selectedCellPreviewCtx = selectedCellPreviewCanvas.getContext("2d");
+
+const selectedCellCode = document.getElementById("selectedCellCode");
+const selectedCellEnergy = document.getElementById("selectedCellEnergy");
+const selectedCellRgb = document.getElementById("selectedCellRgb");
+const selectedCellSpeed = document.getElementById("selectedCellSpeed");
+
+const saveSelectedCellNameInput = document.getElementById("saveSelectedCellNameInput");
+const saveSelectedCellBtn = document.getElementById("saveSelectedCellBtn");
+
+const createCellTemplateNameInput = document.getElementById("createCellTemplateNameInput");
+const createDivisionThresholdInput = document.getElementById("createDivisionThresholdInput");
+const createDivisionImpulseInput = document.getElementById("createDivisionImpulseInput");
+const createColorHueInput = document.getElementById("createColorHueInput");
+const createLightnessInput = document.getElementById("createLightnessInput");
+const createMaxEnergyInput = document.getElementById("createMaxEnergyInput");
+const saveCreateTemplateBtn = document.getElementById("saveCreateTemplateBtn");
+const createCellModeHint = document.getElementById("createCellModeHint");
+const saveSelectedCellSuccess = document.getElementById("saveSelectedCellSuccess");
+const saveCreateTemplateSuccess = document.getElementById("saveCreateTemplateSuccess");
+
+let worldState = null;
+let simulationConfig = null;
+let socket = null;
+let draftSettings = null;
+let defaultConfig = null;
+
+let previousDeadCellsById = new Map();
+let deadCellDisappearEffects = [];
+
+let savedWorlds = [];
+
+let selectedSaprotrophId = null;
+let selectedCellTemplate = null;
+let savedCellTemplates = [];
+let createCellDraft = null;
+let placementModeArmed = false;
+
+const DEAD_CELL_DISAPPEAR_EFFECT_DURATION_MS = 500;
+const DEAD_CELL_DISAPPEAR_EFFECT_MAX_BLUR_PX = 12;
+const DEAD_CELL_DISAPPEAR_EFFECT_GROWTH = 1.35;
+
+const settingsBtn = document.getElementById("settingsBtn");
+
+const settingsOverlay = document.getElementById("settingsOverlay");
+const initialSaprotrophCountSlider = document.getElementById("initialSaprotrophCountSlider");
+const initialSaprotrophCountValue = document.getElementById("initialSaprotrophCountValue");
+
+const foodSpawnRateSlider = document.getElementById("foodSpawnRateSlider");
+const foodSpawnRateValue = document.getElementById("foodSpawnRateValue");
+
+const deadCellLifetimeTicksSlider = document.getElementById("deadCellLifetimeTicksSlider");
+const deadCellLifetimeTicksValue = document.getElementById("deadCellLifetimeTicksValue");
+
+const resetSettingsBtn = document.getElementById("resetSettingsBtn");
+const cancelSettingsBtn = document.getElementById("cancelSettingsBtn");
+const saveSettingsBtn = document.getElementById("saveSettingsBtn");
+
+const createCellPreviewCanvas = document.getElementById("createCellPreviewCanvas");
+const createCellPreviewCtx = createCellPreviewCanvas.getContext("2d");
+
+const createDivisionThresholdSlider = document.getElementById("createDivisionThresholdSlider");
+const createDivisionImpulseSlider = document.getElementById("createDivisionImpulseSlider");
+const createColorHueSlider = document.getElementById("createColorHueSlider");
+const createLightnessSlider = document.getElementById("createLightnessSlider");
+const createMaxEnergySlider = document.getElementById("createMaxEnergySlider");
+
+async function loadSimulationConfig() {
+    const response = await fetch("/api/simulation/config");
+
+    if (!response.ok) {
+        throw new Error(`Failed to load config: ${response.status}`);
+    }
+
+    simulationConfig = await response.json();
+
+    if (!defaultConfig) {
+        defaultConfig = { ...simulationConfig };
+    }
+}
+
+function applySimulationConfig() {
+    if (!simulationConfig) {
+        return;
+    }
+
+    canvas.width = simulationConfig.worldWidth;
+    canvas.height = simulationConfig.worldHeight;
+}
+
+function showCellPanelMode(mode) {
+    saveSelectedCellSuccess?.classList.remove("visible");
+    saveCreateTemplateSuccess?.classList.remove("visible");
+    cellPanelEmpty.classList.add("hidden");
+    cellPanelSelected.classList.add("hidden");
+    cellPanelCreate.classList.add("hidden");
+
+    if (mode === "selected") {
+        cellPanelSelected.classList.remove("hidden");
+    } else if (mode === "create") {
+        cellPanelCreate.classList.remove("hidden");
+    } else {
+        cellPanelEmpty.classList.remove("hidden");
+    }
+}
+
+function buildDefaultCreateCellDraft() {
+    return {
+        id: null,
+        name: null,
+        code: "",
+        divisionThreshold: 50.0,
+        divisionImpulseStrength: 2.0,
+        colorHue: 195.0,
+        lightness: 62.0,
+        maxEnergy: 60.0
+    };
+}
+
+function syncCreateCellForm() {
+    if (!createCellDraft) {
+        return;
+    }
+
+    createDivisionThresholdSlider.value = String(createCellDraft.divisionThreshold);
+    createDivisionThresholdInput.value = String(createCellDraft.divisionThreshold);
+
+    createDivisionImpulseSlider.value = String(createCellDraft.divisionImpulseStrength);
+    createDivisionImpulseInput.value = String(createCellDraft.divisionImpulseStrength);
+
+    createColorHueSlider.value = String(createCellDraft.colorHue);
+    createColorHueInput.value = String(createCellDraft.colorHue);
+
+    createLightnessSlider.value = String(createCellDraft.lightness);
+    createLightnessInput.value = String(createCellDraft.lightness);
+
+    createMaxEnergySlider.value = String(createCellDraft.maxEnergy);
+    createMaxEnergyInput.value = String(createCellDraft.maxEnergy);
+
+    drawCreateCellPreview();
+}
+
+function readCreateCellDraftFromForm() {
+    return {
+        id: null,
+        name: null,
+        code: "",
+        divisionThreshold: Number(createDivisionThresholdInput.value),
+        divisionImpulseStrength: Number(createDivisionImpulseInput.value),
+        colorHue: Number(createColorHueInput.value),
+        lightness: Number(createLightnessInput.value),
+        maxEnergy: Number(createMaxEnergyInput.value)
+    };
+}
+
+function bindRangeAndNumber(rangeInput, numberInput, onChange) {
+    rangeInput.addEventListener("input", () => {
+        numberInput.value = rangeInput.value;
+        onChange();
+    });
+
+    numberInput.addEventListener("input", () => {
+        rangeInput.value = numberInput.value;
+        onChange();
+    });
+}
+
+function setPlacementModeArmed(value) {
+    placementModeArmed = value;
+    createCellModeHint.textContent = value
+        ? "Placement mode is ON вЂ” click on the field"
+        : "Placement mode is off";
+
+    canvas.classList.toggle("cell-create-mode-active", value);
+}
+
+function clearSelectedCell() {
+    selectedSaprotrophId = null;
+    selectedCellTemplate = null;
+    saveSelectedCellNameInput.value = "";
+    drawSelectedCellPreview(null, null);
+
+    if (createCellDraft) {
+        showCellPanelMode("create");
+    } else {
+        showCellPanelMode("empty");
+    }
+}
+
+async function fetchSavedCellTemplates() {
+    const response = await fetch("/api/cells/templates");
+
+    if (!response.ok) {
+        throw new Error(`Failed to load cell templates: ${response.status}`);
+    }
+
+    savedCellTemplates = await response.json();
+    renderSavedCellTemplates();
+}
+
+function renderSavedCellTemplates() {
+    savedCellTemplatesList.innerHTML = "";
+
+    for (const cell of savedCellTemplates) {
+        const option = document.createElement("option");
+        option.value = String(cell.id);
+        option.textContent = cell.name;
+        savedCellTemplatesList.appendChild(option);
+    }
+}
+
+function showSuccessToast(element) {
+    if (!element) {
+        return;
+    }
+
+    element.classList.add("visible");
+
+    setTimeout(() => {
+        element.classList.remove("visible");
+    }, 1600);
+}
+
+function roundTo(value, digits) {
+    const factor = 10 ** digits;
+    return Math.round(value * factor) / factor;
+}
+
+function formatTwoDecimals(value) {
+    return roundTo(value, 2).toFixed(2);
+}
+
+function hslToRgb(h, s, l) {
+    const hue = ((h % 360) + 360) % 360;
+    const sat = Math.max(0, Math.min(100, s)) / 100;
+    const lig = Math.max(0, Math.min(100, l)) / 100;
+
+    const c = (1 - Math.abs(2 * lig - 1)) * sat;
+    const x = c * (1 - Math.abs((hue / 60) % 2 - 1));
+    const m = lig - c / 2;
+
+    let rPrime = 0;
+    let gPrime = 0;
+    let bPrime = 0;
+
+    if (hue < 60) {
+        rPrime = c;
+        gPrime = x;
+    } else if (hue < 120) {
+        rPrime = x;
+        gPrime = c;
+    } else if (hue < 180) {
+        gPrime = c;
+        bPrime = x;
+    } else if (hue < 240) {
+        gPrime = x;
+        bPrime = c;
+    } else if (hue < 300) {
+        rPrime = x;
+        bPrime = c;
+    } else {
+        rPrime = c;
+        bPrime = x;
+    }
+
+    return {
+        r: Math.round((rPrime + m) * 255),
+        g: Math.round((gPrime + m) * 255),
+        b: Math.round((bPrime + m) * 255)
+    };
+}
+
+function getSelectedCellRgbString(cellTemplate) {
+    const rgb = hslToRgb(
+        cellTemplate.colorHue,
+        100,
+        cellTemplate.lightness
+    );
+
+    return `${rgb.r}, ${rgb.g}, ${rgb.b}`;
+}
+
+function drawSelectedCellPreview(worldCell, cellTemplate) {
+    if (!selectedCellPreviewCtx || !selectedCellPreviewCanvas) {
+        return;
+    }
+
+    const ctx2 = selectedCellPreviewCtx;
+    const width = selectedCellPreviewCanvas.width;
+    const height = selectedCellPreviewCanvas.height;
+
+    ctx2.clearRect(0, 0, width, height);
+
+    ctx2.fillStyle = "#181818";
+    ctx2.fillRect(0, 0, width, height);
+
+    if (!worldCell || !cellTemplate) {
+        return;
+    }
+
+    const centerX = width / 2;
+    const centerY = height / 2;
+
+    const energyRatio = cellTemplate.maxEnergy > 0
+        ? Math.max(0, Math.min(1, worldCell.energy / cellTemplate.maxEnergy))
+        : 0;
+
+    const saturation = 50 + energyRatio * 50;
+
+    const previewRadius = 42;
+
+    ctx2.beginPath();
+    ctx2.arc(centerX, centerY, previewRadius, 0, Math.PI * 2);
+    ctx2.fillStyle = `hsl(${cellTemplate.colorHue}, ${saturation}%, ${cellTemplate.lightness}%)`;
+    ctx2.fill();
+
+    const speed = Math.hypot(worldCell.vx, worldCell.vy);
+    if (speed > 0) {
+        const dirX = worldCell.vx / speed;
+        const dirY = worldCell.vy / speed;
+
+        const arrowLength = Math.min(70, Math.max(18, speed * 14));
+        const endX = centerX + dirX * arrowLength;
+        const endY = centerY + dirY * arrowLength;
+
+        ctx2.beginPath();
+        ctx2.moveTo(centerX, centerY);
+        ctx2.lineTo(endX, endY);
+        ctx2.strokeStyle = "#ffffff";
+        ctx2.lineWidth = 1;
+        ctx2.stroke();
+
+        const headSize = 7;
+        const angle = Math.atan2(dirY, dirX);
+
+        ctx2.beginPath();
+        ctx2.moveTo(endX, endY);
+        ctx2.lineTo(
+            endX - Math.cos(angle - Math.PI / 6) * headSize,
+            endY - Math.sin(angle - Math.PI / 6) * headSize
+        );
+        ctx2.moveTo(endX, endY);
+        ctx2.lineTo(
+            endX - Math.cos(angle + Math.PI / 6) * headSize,
+            endY - Math.sin(angle + Math.PI / 6) * headSize
+        );
+        ctx2.strokeStyle = "#ffffff";
+        ctx2.lineWidth = 1;
+        ctx2.stroke();
+    }
+}
+
+function drawCreateCellPreview() {
+    if (!createCellPreviewCtx || !createCellPreviewCanvas) {
+        return;
+    }
+
+    const ctx2 = createCellPreviewCtx;
+    const width = createCellPreviewCanvas.width;
+    const height = createCellPreviewCanvas.height;
+
+    ctx2.clearRect(0, 0, width, height);
+    ctx2.fillStyle = "#181818";
+    ctx2.fillRect(0, 0, width, height);
+
+    if (!createCellDraft) {
+        return;
+    }
+
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const previewRadius = 42;
+
+    ctx2.beginPath();
+    ctx2.arc(centerX, centerY, previewRadius, 0, Math.PI * 2);
+    ctx2.fillStyle = `hsl(${createCellDraft.colorHue}, 100%, ${createCellDraft.lightness}%)`;
+    ctx2.fill();
+
+    const speed = createCellDraft.divisionImpulseStrength;
+    const arrowLength = Math.min(70, Math.max(18, speed * 14));
+
+    ctx2.beginPath();
+    ctx2.moveTo(centerX, centerY);
+    ctx2.lineTo(centerX + arrowLength, centerY);
+    ctx2.strokeStyle = "#ffffff";
+    ctx2.lineWidth = 1;
+    ctx2.stroke();
+
+    const headSize = 7;
+    const endX = centerX + arrowLength;
+    const endY = centerY;
+
+    ctx2.beginPath();
+    ctx2.moveTo(endX, endY);
+    ctx2.lineTo(endX - headSize, endY - headSize / 2);
+    ctx2.moveTo(endX, endY);
+    ctx2.lineTo(endX - headSize, endY + headSize / 2);
+    ctx2.strokeStyle = "#ffffff";
+    ctx2.lineWidth = 1;
+    ctx2.stroke();
+}
+
+async function selectSaprotrophById(id) {
+    const response = await fetch(`/api/cells/selected/${id}`);
+
+    if (!response.ok) {
+        throw new Error(`Failed to load selected cell info: ${response.status}`);
+    }
+
+    const template = await response.json();
+    const selectedWorldCell = worldState?.saprotrophs?.find(cell => cell.id === id);
+
+    if (!selectedWorldCell) {
+        throw new Error(`Selected cell ${id} is missing in world state`);
+    }
+
+    selectedCellTemplate = template;
+    selectedSaprotrophId = id;
+
+    const speed = Math.hypot(selectedWorldCell.vx, selectedWorldCell.vy);
+
+    selectedCellCode.textContent = selectedCellTemplate.code;
+    selectedCellEnergy.textContent =
+        `${formatTwoDecimals(selectedWorldCell.energy)} / ${formatTwoDecimals(selectedCellTemplate.maxEnergy)}`;
+    selectedCellDivisionThreshold.textContent = formatTwoDecimals(selectedCellTemplate.divisionThreshold);
+    selectedCellDivisionImpulse.textContent = formatTwoDecimals(selectedCellTemplate.divisionImpulseStrength);
+    selectedCellRgb.textContent = getSelectedCellRgbString(selectedCellTemplate);
+    selectedCellMaxEnergy.textContent = formatTwoDecimals(selectedCellTemplate.maxEnergy);
+    selectedCellSpeed.textContent = formatTwoDecimals(speed);
+
+    drawSelectedCellPreview(selectedWorldCell, selectedCellTemplate);
+    showCellPanelMode("selected");
+}
+
+function refreshSelectedCellPanelFromWorldState() {
+    if (!selectedSaprotrophId || !selectedCellTemplate || !worldState?.saprotrophs) {
+        return;
+    }
+
+    const selectedWorldCell = worldState.saprotrophs.find(cell => cell.id === selectedSaprotrophId);
+
+    if (!selectedWorldCell) {
+        drawSelectedCellPreview(null, null);
+        return;
+    }
+
+    const speed = Math.hypot(selectedWorldCell.vx, selectedWorldCell.vy);
+
+    selectedCellEnergy.textContent =
+        `${formatTwoDecimals(selectedWorldCell.energy)} / ${formatTwoDecimals(selectedCellTemplate.maxEnergy)}`;
+
+    selectedCellSpeed.textContent = formatTwoDecimals(speed);
+
+    drawSelectedCellPreview(selectedWorldCell, selectedCellTemplate);
+}
+
+async function saveSelectedCellToDb() {
+    if (!selectedCellTemplate) {
+        return;
+    }
+
+    const name = saveSelectedCellNameInput.value.trim();
+    if (!name) {
+        alert("Р’РІРµРґРёС‚Рµ РёРјСЏ С€Р°Р±Р»РѕРЅР° РєР»РµС‚РєРё");
+        return;
+    }
+
+    const response = await fetch("/api/cells/templates", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            name,
+            cell: selectedCellTemplate
+        })
+    });
+
+    if (!response.ok) {
+        throw new Error(`Failed to save cell template: ${response.status}`);
+    }
+
+    await fetchSavedCellTemplates();
+    showSuccessToast(saveSelectedCellSuccess);
+}
+
+async function loadCellTemplateToCreatePanel() {
+    const selectedId = savedCellTemplatesList.value;
+
+    if (!selectedId) {
+        alert("Р’С‹Р±РµСЂРёС‚Рµ С€Р°Р±Р»РѕРЅ РєР»РµС‚РєРё");
+        return;
+    }
+
+    const response = await fetch(`/api/cells/templates/${selectedId}`);
+
+    if (!response.ok) {
+        throw new Error(`Failed to load cell template: ${response.status}`);
+    }
+
+    createCellDraft = await response.json();
+    createCellTemplateNameInput.value = createCellDraft.name ?? "";
+    syncCreateCellForm();
+    showCellPanelMode("create");
+}
+
+async function deleteSelectedCellTemplate() {
+    const selectedId = savedCellTemplatesList.value;
+
+    if (!selectedId) {
+        alert("Р’С‹Р±РµСЂРёС‚Рµ С€Р°Р±Р»РѕРЅ РєР»РµС‚РєРё РґР»СЏ СѓРґР°Р»РµРЅРёСЏ");
+        return;
+    }
+
+    const confirmed = confirm("РЈРґР°Р»РёС‚СЊ РІС‹Р±СЂР°РЅРЅС‹Р№ С€Р°Р±Р»РѕРЅ РєР»РµС‚РєРё?");
+    if (!confirmed) {
+        return;
+    }
+
+    const response = await fetch(`/api/cells/templates/${selectedId}`, {
+        method: "DELETE"
+    });
+
+    if (!response.ok) {
+        throw new Error(`Failed to delete cell template: ${response.status}`);
+    }
+
+    await fetchSavedCellTemplates();
+}
+
+async function spawnCellAt(x, y) {
+    if (!createCellDraft) {
+        return;
+    }
+
+    const response = await fetch("/api/cells/spawn", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            x,
+            y,
+            cell: createCellDraft
+        })
+    });
+
+    if (!response.ok) {
+        throw new Error(`Failed to spawn cell: ${response.status}`);
+    }
+}
+
+function getCanvasCoordinates(event) {
+    const rect = canvas.getBoundingClientRect();
+    return {
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top
+    };
+}
+
+function findSaprotrophAt(x, y) {
+    if (!worldState || !worldState.saprotrophs) {
+        return null;
+    }
+
+    for (let i = worldState.saprotrophs.length - 1; i >= 0; i--) {
+        const cell = worldState.saprotrophs[i];
+        const dx = x - cell.x;
+        const dy = y - cell.y;
+
+        if (dx * dx + dy * dy <= cell.radius * cell.radius) {
+            return cell;
+        }
+    }
+
+    return null;
+}
+
+function connectWebSocket() {
+    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+    socket = new WebSocket(`${protocol}://${window.location.host}/ws/simulation`);
+
+    socket.onopen = () => {
+        console.log("WebSocket connected");
+    };
+
+    socket.onmessage = (event) => {
+        worldState = JSON.parse(event.data);
+        refreshSelectedCellPanelFromWorldState();
+        render();
+        updateStats();
+    };
+
+    socket.onclose = () => {
+        console.log("WebSocket disconnected. Reconnecting...");
+        setTimeout(connectWebSocket, 1000);
+    };
+
+    socket.onerror = (error) => {
+        console.error("WebSocket error", error);
+        socket.close();
+    };
+}
+
+function render() {
+    if (!worldState || !simulationConfig) {
+        return;
+    }
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = "#202020";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    for (const food of worldState.foods) {
+        drawFood(food);
+    }
+
+    for (const saprotroph of worldState.saprotrophs) {
+        drawSaprotroph(saprotroph)
+    }
+
+    drawSelectedCellOutline();
+
+    for (const deadCell of worldState.deadCells) {
+        drawDeadCell(deadCell);
+    }
+
+    detectDeadCellDisappearEffects();
+    drawDeadCellDisappearEffects();
+}
+
+function drawSelectedCellOutline() {
+    if (!selectedSaprotrophId || !worldState || !worldState.saprotrophs) {
+        return;
+    }
+
+    const selectedCell = worldState.saprotrophs.find(cell => cell.id === selectedSaprotrophId);
+    if (!selectedCell) {
+        selectedSaprotrophId = null;
+        selectedCellTemplate = null;
+        showCellPanelMode(createCellDraft ? "create" : "empty");
+        return;
+    }
+
+    ctx.beginPath();
+    ctx.arc(selectedCell.x, selectedCell.y, selectedCell.radius + 4, 0, Math.PI * 2);
+    ctx.strokeStyle = "#6ee7ff";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+}
+
+function animationLoop() {
+    if (worldState && simulationConfig) {
+        render();
+    }
+
+    requestAnimationFrame(animationLoop);
+}
+
+function updateStats() {
+    if (!worldState || !simulationConfig) {
+        return;
+    }
+
+    statsEl.textContent =
+        `Tick: ${worldState.tick} | Running: ${worldState.running} | ` +
+        `Saprotrophs: ${worldState.saprotrophCount} | Dead cells: ${worldState.deadCellCount} | Food: ${worldState.foodCount} | ` +
+        `World: ${simulationConfig.worldWidth}x${simulationConfig.worldHeight}`;
+}
+
+async function post(url) {
+    await fetch(url, { method: "POST" });
+}
+
+async function openSettingsModal() {
+    if (!simulationConfig) {
+        return;
+    }
+
+    draftSettings = {
+        initialSaprotrophCount: simulationConfig.initialSaprotrophCount,
+        foodGenerationIntensity: simulationConfig.foodGenerationIntensity,
+        deadCellLifetimeTicks: simulationConfig.deadCellLifetimeTicks
+    };
+
+    syncSettingsFormFromDraft();
+    await fetchSavedWorlds();
+    settingsOverlay.classList.remove("hidden");
+}
+
+function closeSettingsModal() {
+    settingsOverlay.classList.add("hidden");
+}
+
+function syncSettingsFormFromDraft() {
+    if (!draftSettings) {
+        return;
+    }
+
+    initialSaprotrophCountSlider.value = String(draftSettings.initialSaprotrophCount);
+    initialSaprotrophCountValue.value = String(draftSettings.initialSaprotrophCount);
+
+    foodSpawnRateSlider.value = String(draftSettings.foodGenerationIntensity);
+    foodSpawnRateValue.value = String(draftSettings.foodGenerationIntensity);
+
+    deadCellLifetimeTicksSlider.value = String(draftSettings.deadCellLifetimeTicks);
+    deadCellLifetimeTicksValue.value = String(draftSettings.deadCellLifetimeTicks);
+}
+
+async function saveDraftSettings() {
+    if (!simulationConfig || !draftSettings) {
+        return;
+    }
+
+    const payload = {
+        ...simulationConfig,
+        initialSaprotrophCount: draftSettings.initialSaprotrophCount,
+        foodGenerationIntensity: draftSettings.foodGenerationIntensity,
+        deadCellLifetimeTicks: draftSettings.deadCellLifetimeTicks
+    };
+
+    const response = await fetch("/api/simulation/config", {
+        method: "PUT",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+        throw new Error(`Failed to save config: ${response.status}`);
+    }
+
+    simulationConfig = await response.json();
+    closeSettingsModal();
+    updateStats();
+}
+
+async function fetchSavedWorlds() {
+    const response = await fetch("/api/simulation/worlds");
+
+    if (!response.ok) {
+        throw new Error(`Failed to load saved worlds: ${response.status}`);
+    }
+
+    savedWorlds = await response.json();
+    renderSavedWorldsList();
+}
+
+function renderSavedWorldsList() {
+    savedWorldsList.innerHTML = "";
+
+    for (const world of savedWorlds) {
+        const option = document.createElement("option");
+        option.value = String(world.id);
+        option.textContent = `${world.name} (${formatSavedWorldDate(world.createdAt)})`;
+        savedWorldsList.appendChild(option);
+    }
+}
+
+function formatSavedWorldDate(value) {
+    const date = new Date(value);
+    return date.toLocaleString();
+}
+
+async function saveCurrentWorld() {
+    const name = worldNameInput.value.trim();
+
+    if (!name) {
+        alert("Р’РІРµРґРёС‚Рµ РёРјСЏ РјРёСЂР°");
+        return;
+    }
+
+    const response = await fetch("/api/simulation/worlds", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ name })
+    });
+
+    if (!response.ok) {
+        throw new Error(`Failed to save world: ${response.status}`);
+    }
+
+    await fetchSavedWorlds();
+}
+
+async function loadSelectedWorld() {
+    const selectedId = savedWorldsList.value;
+
+    if (!selectedId) {
+        alert("Р’С‹Р±РµСЂРёС‚Рµ СЃРѕС…СЂР°РЅС‘РЅРЅС‹Р№ РјРёСЂ");
+        return;
+    }
+
+    const response = await fetch(`/api/simulation/worlds/${selectedId}/load`, {
+        method: "POST"
+    });
+
+    if (!response.ok) {
+        throw new Error(`Failed to load world: ${response.status}`);
+    }
+
+    const configResponse = await fetch("/api/simulation/config");
+    if (!configResponse.ok) {
+        throw new Error(`Failed to reload config after world load: ${configResponse.status}`);
+    }
+
+    simulationConfig = await configResponse.json();
+    applySimulationConfig();
+    resetClientState();
+    render();
+    updateStats();
+    closeSettingsModal();
+}
+
+async function deleteSelectedWorld() {
+    const selectedId = savedWorldsList.value;
+
+    if (!selectedId) {
+        alert("Р’С‹Р±РµСЂРёС‚Рµ РјРёСЂ РґР»СЏ СѓРґР°Р»РµРЅРёСЏ");
+        return;
+    }
+
+    const confirmed = confirm("РЈРґР°Р»РёС‚СЊ РІС‹Р±СЂР°РЅРЅС‹Р№ РјРёСЂ?");
+    if (!confirmed) {
+        return;
+    }
+
+    const response = await fetch(`/api/simulation/worlds/${selectedId}`, {
+        method: "DELETE"
+    });
+
+    if (!response.ok) {
+        throw new Error(`Failed to delete world: ${response.status}`);
+    }
+
+    await fetchSavedWorlds();
+}
+
+async function resetConfigToDefaultsOnServer() {
+    const response = await fetch("/api/simulation/config/reset", {
+        method: "POST"
+    });
+
+    if (!response.ok) {
+        throw new Error(`Failed to reset config: ${response.status}`);
+    }
+
+    simulationConfig = await response.json();
+    draftSettings = {
+        initialSaprotrophCount: simulationConfig.initialSaprotrophCount,
+        foodGenerationIntensity: simulationConfig.foodGenerationIntensity,
+        deadCellLifetimeTicks: simulationConfig.deadCellLifetimeTicks
+    };
+    syncSettingsFormFromDraft();
+    updateStats();
+}
+
+async function initializePage() {
+    resetClientState();
+    await loadSimulationConfig();
+    applySimulationConfig();
+    await fetchSavedCellTemplates();
+    showCellPanelMode("empty");
+    bindRangeAndNumber(createDivisionThresholdSlider, createDivisionThresholdInput, () => {
+        createCellDraft = readCreateCellDraftFromForm();
+        drawCreateCellPreview();
+    });
+
+    bindRangeAndNumber(createDivisionImpulseSlider, createDivisionImpulseInput, () => {
+        createCellDraft = readCreateCellDraftFromForm();
+        drawCreateCellPreview();
+    });
+
+    bindRangeAndNumber(createColorHueSlider, createColorHueInput, () => {
+        createCellDraft = readCreateCellDraftFromForm();
+        drawCreateCellPreview();
+    });
+
+    bindRangeAndNumber(createLightnessSlider, createLightnessInput, () => {
+        createCellDraft = readCreateCellDraftFromForm();
+        drawCreateCellPreview();
+    });
+
+    bindRangeAndNumber(createMaxEnergySlider, createMaxEnergyInput, () => {
+        createCellDraft = readCreateCellDraftFromForm();
+        drawCreateCellPreview();
+    });
+    connectWebSocket();
+    requestAnimationFrame(animationLoop);
+}
+
+function startDeadCellDisappearEffect(deadCell) {
+    deadCellDisappearEffects.push({
+        x: deadCell.x,
+        y: deadCell.y,
+        radius: deadCell.radius,
+        startTime: performance.now()
+    });
+}
+
+function detectDeadCellDisappearEffects() {
+    const currentDeadCellsById = new Map(
+        (worldState.deadCells || []).map(deadCell => [deadCell.id, deadCell])
+    );
+
+    for (const [deadCellId, previousDeadCell] of previousDeadCellsById.entries()) {
+        if (!currentDeadCellsById.has(deadCellId)) {
+            startDeadCellDisappearEffect(previousDeadCell);
+        }
+    }
+
+    previousDeadCellsById = currentDeadCellsById;
+}
+
+function drawDeadCellDisappearEffects() {
+    const now = performance.now();
+
+    deadCellDisappearEffects = deadCellDisappearEffects.filter(effect => {
+        const progress = (now - effect.startTime) / DEAD_CELL_DISAPPEAR_EFFECT_DURATION_MS;
+
+        if (progress >= 1) {
+            return false;
+        }
+
+        const blurPx = progress * DEAD_CELL_DISAPPEAR_EFFECT_MAX_BLUR_PX;
+        const alpha = 1 - progress;
+        const radius = effect.radius * (1 + progress * (DEAD_CELL_DISAPPEAR_EFFECT_GROWTH - 1));
+
+        ctx.save();
+        ctx.filter = `blur(${blurPx}px)`;
+        ctx.globalAlpha = alpha;
+
+        ctx.beginPath();
+        ctx.arc(effect.x, effect.y, radius, 0, Math.PI * 2);
+        ctx.fillStyle = "#7a4b2f";
+        ctx.fill();
+
+        ctx.restore();
+
+        return true;
+    });
+}
+
+function drawFood(food) {
+    if (food.consumed) {
+        return;
+    }
+
+    const radius = food.radius;
+
+    ctx.beginPath();
+    ctx.arc(food.x, food.y, radius, 0, Math.PI * 2);
+    ctx.fillStyle = "hsl(52, 85%, 60%)";
+    ctx.fill();
+}
+
+function drawSaprotroph(saprotroph) {
+    const radius = saprotroph.radius;
+
+    ctx.beginPath();
+    ctx.arc(saprotroph.x, saprotroph.y, radius, 0, Math.PI * 2);
+    ctx.fillStyle = `hsl(${saprotroph.genome.colorHue}, ${saprotroph.genome.saturation}%, ${saprotroph.genome.lightness}%)`;
+    ctx.fill();
+
+    drawDirectionVector(saprotroph);
+}
+
+function drawDeadCell(deadCell) {
+    const radius = deadCell.radius;
+
+    ctx.beginPath();
+    ctx.arc(deadCell.x, deadCell.y, radius, 0, Math.PI * 2);
+    ctx.fillStyle = "#7a4b2f";
+    ctx.fill();
+}
+
+function drawDirectionVector(cell) {
+    const vectorLength = Math.hypot(cell.vx, cell.vy) || 1;
+    const directionX = cell.vx / vectorLength;
+    const directionY = cell.vy / vectorLength;
+
+    ctx.beginPath();
+    ctx.moveTo(cell.x, cell.y);
+    ctx.lineTo(
+        cell.x + directionX * simulationConfig.clientDirectionVectorLength,
+        cell.y + directionY * simulationConfig.clientDirectionVectorLength
+    );
+    ctx.strokeStyle = "#ff8c42";
+    ctx.stroke();
+}
+
+function resetClientState() {
+    previousDeadCellsById = new Map();
+    deadCellDisappearEffects = [];
+}
+
+initialSaprotrophCountSlider.addEventListener("input", () => {
+    const value = Number(initialSaprotrophCountSlider.value);
+    draftSettings.initialSaprotrophCount = value;
+    initialSaprotrophCountValue.value = String(value);
+});
+
+initialSaprotrophCountValue.addEventListener("input", () => {
+    const value = Number(initialSaprotrophCountValue.value);
+    draftSettings.initialSaprotrophCount = value;
+    initialSaprotrophCountSlider.value = String(value);
+});
+
+foodSpawnRateSlider.addEventListener("input", () => {
+    const value = Number(foodSpawnRateSlider.value);
+    draftSettings.foodGenerationIntensity = value;
+    foodSpawnRateValue.value = String(value);
+});
+
+foodSpawnRateValue.addEventListener("input", () => {
+    const value = Math.max(0, Math.min(100, Number(foodSpawnRateValue.value)));
+    draftSettings.foodGenerationIntensity = value;
+    foodSpawnRateSlider.value = String(value);
+    foodSpawnRateValue.value = String(value);
+});
+
+deadCellLifetimeTicksSlider.addEventListener("input", () => {
+    const value = Number(deadCellLifetimeTicksSlider.value);
+    draftSettings.deadCellLifetimeTicks = value;
+    deadCellLifetimeTicksValue.value = String(value);
+});
+
+deadCellLifetimeTicksValue.addEventListener("input", () => {
+    const value = Number(deadCellLifetimeTicksValue.value);
+    draftSettings.deadCellLifetimeTicks = value;
+    deadCellLifetimeTicksSlider.value = String(value);
+});
+
+saveWorldBtn.addEventListener("click", () => {
+    saveCurrentWorld().catch((error) => {
+        console.error("Save world error", error);
+        alert("РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕС…СЂР°РЅРёС‚СЊ РјРёСЂ");
+    });
+});
+
+loadSelectedWorldBtn.addEventListener("click", () => {
+    loadSelectedWorld().catch((error) => {
+        console.error("Load world error", error);
+        alert("РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РіСЂСѓР·РёС‚СЊ РјРёСЂ");
+    });
+});
+
+deleteSelectedWorldBtn.addEventListener("click", () => {
+    deleteSelectedWorld().catch((error) => {
+        console.error("Delete world error", error);
+        alert("РќРµ СѓРґР°Р»РѕСЃСЊ СѓРґР°Р»РёС‚СЊ РјРёСЂ");
+    });
+});
+
+settingsBtn.addEventListener("click", () => {
+    openSettingsModal().catch((error) => {
+        console.error("Open settings error", error);
+        alert("РќРµ СѓРґР°Р»РѕСЃСЊ РѕС‚РєСЂС‹С‚СЊ РЅР°СЃС‚СЂРѕР№РєРё");
+    });
+});
+cancelSettingsBtn.addEventListener("click", closeSettingsModal);
+saveSettingsBtn.addEventListener("click", saveDraftSettings);
+resetSettingsBtn.addEventListener("click", resetConfigToDefaultsOnServer);
+
+settingsOverlay.addEventListener("click", (event) => {
+    if (event.target === settingsOverlay) {
+        closeSettingsModal();
+    }
+});
+
+startBtn.addEventListener("click", () => post("/api/simulation/start"));
+stopBtn.addEventListener("click", () => post("/api/simulation/stop"));
+resetBtn.addEventListener("click", async () => {
+    await post("/api/simulation/reset");
+    resetClientState();
+
+    const response = await fetch("/api/simulation/config");
+    if (!response.ok) {
+        throw new Error(`Failed to load config after reset: ${response.status}`);
+    }
+
+    simulationConfig = await response.json();
+    applySimulationConfig();
+    render();
+    updateStats();
+});
+
+canvas.addEventListener("click", (event) => {
+    const { x, y } = getCanvasCoordinates(event);
+
+    if (placementModeArmed && createCellDraft) {
+        createCellDraft = readCreateCellDraftFromForm();
+
+        spawnCellAt(x, y).catch((error) => {
+            console.error("Spawn cell error", error);
+            alert("РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕР·РґР°С‚СЊ РєР»РµС‚РєСѓ");
+        });
+
+        return;
+    }
+
+    const clickedCell = findSaprotrophAt(x, y);
+
+    if (clickedCell) {
+        selectSaprotrophById(clickedCell.id).catch((error) => {
+            console.error("Select cell error", error);
+            alert("РќРµ СѓРґР°Р»РѕСЃСЊ РІС‹Р±СЂР°С‚СЊ РєР»РµС‚РєСѓ");
+        });
+        return;
+    }
+
+    clearSelectedCell();
+});
+
+startCreateCellBtn.addEventListener("click", () => {
+    createCellDraft = buildDefaultCreateCellDraft();
+    createCellTemplateNameInput.value = "";
+    syncCreateCellForm();
+    setPlacementModeArmed(false);
+    showCellPanelMode("create");
+});
+
+cancelCreateCellBtn.addEventListener("click", () => {
+    createCellDraft = null;
+    setPlacementModeArmed(false);
+    drawCreateCellPreview();
+    showCellPanelMode(selectedSaprotrophId ? "selected" : "empty");
+});
+
+armPlaceCellBtn.addEventListener("click", () => {
+    createCellDraft = readCreateCellDraftFromForm();
+    drawCreateCellPreview();
+    setPlacementModeArmed(true);
+});
+
+loadCellTemplateBtn.addEventListener("click", () => {
+    loadCellTemplateToCreatePanel().catch((error) => {
+        console.error("Load cell template error", error);
+        alert("РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РіСЂСѓР·РёС‚СЊ С€Р°Р±Р»РѕРЅ РєР»РµС‚РєРё");
+    });
+});
+
+deleteCellTemplateBtn.addEventListener("click", () => {
+    deleteSelectedCellTemplate().catch((error) => {
+        console.error("Delete cell template error", error);
+        alert("РќРµ СѓРґР°Р»РѕСЃСЊ СѓРґР°Р»РёС‚СЊ С€Р°Р±Р»РѕРЅ РєР»РµС‚РєРё");
+    });
+});
+
+saveSelectedCellBtn.addEventListener("click", () => {
+    saveSelectedCellToDb().catch((error) => {
+        console.error("Save selected cell error", error);
+        alert("РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕС…СЂР°РЅРёС‚СЊ РєР»РµС‚РєСѓ");
+    });
+});
+
+saveCreateTemplateBtn.addEventListener("click", () => {
+    const draft = readCreateCellDraftFromForm();
+    const name = createCellTemplateNameInput.value.trim();
+
+    if (!name) {
+        alert("Р’РІРµРґРёС‚Рµ РёРјСЏ С€Р°Р±Р»РѕРЅР° РєР»РµС‚РєРё");
+        return;
+    }
+
+    fetch("/api/cells/templates", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            name,
+            cell: draft
+        })
+    })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Failed to save create template: ${response.status}`);
+            }
+            return fetchSavedCellTemplates().then(() => {
+                showSuccessToast(saveCreateTemplateSuccess);
+            });
+        })
+        .catch((error) => {
+            console.error("Save create template error", error);
+            alert("РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕС…СЂР°РЅРёС‚СЊ С€Р°Р±Р»РѕРЅ");
+        });
+});
+
+initializePage().catch((error) => {
+    console.error("Initialization error", error);
+    statsEl.textContent = "РћС€РёР±РєР° Р·Р°РіСЂСѓР·РєРё РєРѕРЅС„РёРіСѓСЂР°С†РёРё";
+});
+
+
+===== C:\Users\Admin\Favorites\Study\Semester 8\Project\biolab\src\main\resources\static\index.html =====
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>BioLab Engine</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="toolbar">
+    <button id="startBtn">Start</button>
+    <button id="stopBtn">Stop</button>
+    <button id="resetBtn">Reset</button>
+    <button id="settingsBtn">Settings</button>
+    <span id="stats">Loading...</span>
+</div>
+
+<div class="main-layout">
+    <canvas id="world"></canvas>
+
+    <aside class="cell-sidebar">
+        <h2>Cell control</h2>
+
+        <div id="cellPanelEmpty" class="cell-panel-section">
+            <p>No cell selected</p>
+            <button id="startCreateCellBtn" type="button">Create cell</button>
+
+            <div class="cell-panel-spacer"></div>
+
+            <label for="savedCellTemplatesList">Saved cells</label>
+            <select id="savedCellTemplatesList" size="8"></select>
+
+            <div class="cell-panel-spacer"></div>
+
+            <div class="settings-input-row">
+                <button id="loadCellTemplateBtn" type="button">Load cell</button>
+                <button id="deleteCellTemplateBtn" type="button" class="danger-btn">Delete selected</button>
+            </div>
+        </div>
+
+        <div id="cellPanelSelected" class="cell-panel-section hidden">
+            <h3>Selected cell</h3>
+            <div class="selected-cell-preview-wrap">
+                <canvas id="selectedCellPreviewCanvas" width="220" height="220"></canvas>
+            </div>
+
+            <div class="cell-info-grid">
+                <div class="cell-info-label">Code</div>
+                <div id="selectedCellCode"></div>
+
+                <div class="cell-info-label">Energy</div>
+                <div id="selectedCellEnergy"></div>
+
+                <div class="cell-info-label">Division threshold</div>
+                <div id="selectedCellDivisionThreshold"></div>
+
+                <div class="cell-info-label">Division impulse</div>
+                <div id="selectedCellDivisionImpulse"></div>
+
+                <div class="cell-info-label">RGB</div>
+                <div id="selectedCellRgb"></div>
+
+                <div class="cell-info-label">Speed</div>
+                <div id="selectedCellSpeed"></div>
+            </div>
+
+            <div class="cell-panel-spacer"></div>
+
+            <label for="saveSelectedCellNameInput">Template name</label>
+            <input id="saveSelectedCellNameInput" type="text" maxlength="200" placeholder="Enter template name">
+
+            <div class="cell-panel-spacer"></div>
+
+            <button id="saveSelectedCellBtn" type="button">Save cell to DB</button>
+            <div id="saveSelectedCellSuccess" class="success-toast">Cell saved successfully</div>
+        </div>
+
+        <div id="cellPanelCreate" class="cell-panel-section hidden">
+            <h3>Create cell</h3>
+
+            <div class="selected-cell-preview-wrap">
+                <canvas id="createCellPreviewCanvas" width="220" height="220"></canvas>
+            </div>
+
+            <label for="createCellTemplateNameInput">Template name</label>
+            <input id="createCellTemplateNameInput" type="text" maxlength="200" placeholder="Optional template name">
+
+            <div class="cell-panel-spacer"></div>
+
+            <div class="settings-field">
+                <label for="createDivisionThresholdSlider">Division threshold</label>
+                <div class="settings-input-row">
+                    <input id="createDivisionThresholdSlider" type="range" min="20" max="100" step="0.1">
+                    <input id="createDivisionThresholdInput" type="number" min="20" max="100" step="0.1">
+                </div>
+            </div>
+
+            <div class="settings-field">
+                <label for="createDivisionImpulseSlider">Division impulse strength</label>
+                <div class="settings-input-row">
+                    <input id="createDivisionImpulseSlider" type="range" min="0.5" max="6" step="0.1">
+                    <input id="createDivisionImpulseInput" type="number" min="0.5" max="6" step="0.1">
+                </div>
+            </div>
+
+            <div class="settings-field">
+                <label for="createColorHueSlider">Color hue</label>
+                <div class="settings-input-row">
+                    <input id="createColorHueSlider" type="range" min="0" max="360" step="0.1">
+                    <input id="createColorHueInput" type="number" min="0" max="360" step="0.1">
+                </div>
+            </div>
+
+            <div class="settings-field">
+                <label for="createLightnessSlider">Lightness</label>
+                <div class="settings-input-row">
+                    <input id="createLightnessSlider" type="range" min="35" max="75" step="0.1">
+                    <input id="createLightnessInput" type="number" min="35" max="75" step="0.1">
+                </div>
+            </div>
+
+            <div class="settings-field">
+                <label for="createMaxEnergySlider">Max energy</label>
+                <div class="settings-input-row">
+                    <input id="createMaxEnergySlider" type="range" min="20" max="200" step="0.1">
+                    <input id="createMaxEnergyInput" type="number" min="20" max="200" step="0.1">
+                </div>
+            </div>
+
+            <div class="cell-panel-spacer"></div>
+
+            <button id="saveCreateTemplateBtn" type="button">Save template</button>
+            <div id="saveCreateTemplateSuccess" class="success-toast">Template saved successfully</div>
+
+            <button id="armPlaceCellBtn" type="button">Place on the field</button>
+            <button id="cancelCreateCellBtn" type="button">Cancel</button>
+
+            <div class="cell-panel-spacer"></div>
+            <div id="createCellModeHint">Placement mode is off</div>
+        </div>
+    </aside>
+</div>
+
+<div id="settingsOverlay" class="settings-overlay hidden">
+    <div class="settings-modal">
+        <h2>Simulation settings</h2>
+
+        <div class="settings-field">
+            <label for="initialSaprotrophCountSlider">Initial number of cells</label>
+            <div class="settings-input-row">
+                <input id="initialSaprotrophCountSlider" type="range" min="0" max="300" step="1">
+                <input id="initialSaprotrophCountValue" type="number" min="0" max="300" step="1">
+            </div>
+        </div>
+
+        <div class="settings-field">
+            <label for="foodSpawnRateSlider">Intensity of food generation</label>
+            <div class="settings-input-row">
+                <input id="foodSpawnRateSlider" type="range" min="0" max="100" step="1">
+                <input id="foodSpawnRateValue" type="number" min="0" max="100" step="1">
+            </div>
+        </div>
+
+        <div class="settings-field">
+            <label for="deadCellLifetimeTicksSlider">The lifetime of a dead cell</label>
+            <div class="settings-input-row">
+                <input id="deadCellLifetimeTicksSlider" type="range" min="1" max="500" step="1">
+                <input id="deadCellLifetimeTicksValue" type="number" min="1" max="500" step="1">
+            </div>
+        </div>
+
+        <div class="settings-field">
+            <label for="worldNameInput">World name</label>
+            <div class="settings-input-row">
+                <input id="worldNameInput" type="text" maxlength="200" placeholder="Enter world name">
+                <button id="saveWorldBtn" type="button">Save world</button>
+            </div>
+        </div>
+
+        <div class="settings-field">
+            <label for="savedWorldsList">Saved worlds</label>
+            <select id="savedWorldsList" size="8"></select>
+            <div class="settings-spacer-md"></div>
+            <div class="settings-input-row">
+                <button id="loadSelectedWorldBtn" type="button">Load selected</button>
+                <button id="deleteSelectedWorldBtn" type="button" class="danger-btn">Delete selected</button>
+            </div>
+        </div>
+
+        <div class="settings-middle-actions">
+            <button id="resetSettingsBtn" type="button">Reset</button>
+        </div>
+
+        <div class="settings-bottom-actions">
+            <button id="cancelSettingsBtn" type="button">Cancel</button>
+            <button id="saveSettingsBtn" type="button">Apply</button>
+        </div>
+    </div>
+</div>
+
+<script type="module" src="/app.js"></script>
+</body>
+</html>
+
+
+===== C:\Users\Admin\Favorites\Study\Semester 8\Project\biolab\src\main\resources\static\style.css =====
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #111;
+    color: #eee;
+}
+
+.toolbar {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    padding: 12px;
+    background: #1a1a1a;
+    border-bottom: 1px solid #333;
+}
+
+button {
+    padding: 8px 14px;
+    border: none;
+    background: #2d6cdf;
+    color: white;
+    cursor: pointer;
+    border-radius: 6px;
+}
+
+button:hover {
+    background: #1f57ba;
+}
+
+#stats {
+    margin-left: 10px;
+}
+
+canvas {
+    display: block;
+    margin: 10px auto;
+    background: #1f1f1f;
+    border: 1px solid #444;
+}
+
+.page {
+    display: flex;
+    min-height: calc(100vh - 58px);
+}
+
+.sidebar {
+    width: 360px;
+    padding: 14px;
+    background: #171717;
+    border-right: 1px solid #333;
+    box-sizing: border-box;
+    overflow-y: auto;
+}
+
+.canvas-wrap {
+    flex: 1;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 10px;
+    box-sizing: border-box;
+}
+
+.config-hint {
+    color: #bdbdbd;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.config-section {
+    margin-top: 18px;
+}
+
+.config-section h3 {
+    margin: 0 0 10px 0;
+    font-size: 16px;
+}
+
+.config-row {
+    margin-bottom: 14px;
+    padding: 10px;
+    background: #202020;
+    border: 1px solid #303030;
+    border-radius: 8px;
+}
+
+.config-row-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 8px;
+    font-size: 13px;
+}
+
+.config-row-header strong {
+    font-weight: 600;
+}
+
+.config-scope {
+    color: #a8a8a8;
+    font-size: 12px;
+}
+
+.config-inputs {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.config-inputs input[type="range"] {
+    flex: 1;
+}
+
+.config-inputs input[type="number"] {
+    width: 90px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    border: 1px solid #444;
+    background: #101010;
+    color: #eee;
+    box-sizing: border-box;
+}
+
+.settings-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.62);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.settings-overlay.hidden {
+    display: none;
+}
+
+.settings-modal {
+    width: min(560px, calc(100vw - 40px));
+    background: #1b1b1b;
+    border: 1px solid #3a3a3a;
+    border-radius: 14px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+    padding: 22px;
+    box-sizing: border-box;
+}
+
+.settings-modal h2 {
+    margin-top: 0;
+    margin-bottom: 18px;
+}
+
+.settings-field {
+    margin-bottom: 18px;
+}
+
+.settings-field label {
+    display: block;
+    margin-bottom: 8px;
+}
+
+.settings-input-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.settings-input-row input[type="range"] {
+    flex: 1;
+}
+
+.settings-input-row input[type="number"] {
+    width: 90px;
+    padding: 8px;
+    border-radius: 6px;
+    border: 1px solid #444;
+    background: #101010;
+    color: #eee;
+    box-sizing: border-box;
+}
+
+.settings-note {
+    margin-top: 6px;
+    font-size: 12px;
+    color: #bdbdbd;
+}
+
+.settings-middle-actions {
+    display: flex;
+    justify-content: center;
+    margin-top: 18px;
+    margin-bottom: 18px;
+}
+
+.settings-bottom-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+#worldNameInput {
+    flex: 1;
+    min-width: 0;
+    padding: 8px;
+    background: #222;
+    color: #eee;
+    border: 1px solid #444;
+}
+
+#savedWorldsList {
+    width: 100%;
+    min-height: 180px;
+    padding: 8px;
+    background: #222;
+    color: #eee;
+    border: 1px solid #444;
+    box-sizing: border-box;
+}
+
+.settings-spacer-md {
+    height: 12px;
+}
+
+.main-layout {
+    display: flex;
+    align-items: flex-start;
+    height: calc(100vh - 58px);
+    overflow: hidden;
+}
+
+#world {
+    flex: 0 0 auto;
+    display: block;
+    border-right: 1px solid #333;
+    align-self: flex-start;
+}
+
+.cell-sidebar {
+    width: 340px;
+    min-width: 340px;
+    height: 100%;
+    box-sizing: border-box;
+    padding: 16px;
+    background: #171717;
+    color: #eee;
+    border-left: 1px solid #333;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.cell-sidebar h2,
+.cell-sidebar h3 {
+    margin-top: 0;
+}
+
+.cell-panel-section {
+    display: flex;
+    flex-direction: column;
+}
+
+.cell-panel-section.hidden {
+    display: none;
+}
+
+.cell-panel-section input,
+.cell-panel-section select {
+    margin-top: 6px;
+    margin-bottom: 8px;
+    padding: 8px;
+    background: #222;
+    color: #eee;
+    border: 1px solid #444;
+    box-sizing: border-box;
+}
+
+.cell-panel-section button {
+    margin-top: 6px;
+    margin-bottom: 8px;
+    padding: 8px;
+    box-sizing: border-box;
+}
+
+.cell-panel-spacer {
+    height: 14px;
+}
+
+.cell-info-grid {
+    display: grid;
+    grid-template-columns: 130px 1fr;
+    gap: 8px 10px;
+    align-items: start;
+}
+
+.cell-info-label {
+    color: #aaa;
+}
+
+.cell-create-mode-active {
+    outline: 2px dashed #7fd4ff;
+    outline-offset: -2px;
+}
+
+button {
+    background: #1f5fbf;
+    color: #eaf3ff;
+    border: 1px solid #2d74de;
+    transition: background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #2f74df;
+    border-color: #4690ff;
+    box-shadow: 0 0 0 1px rgba(70, 144, 255, 0.16);
+}
+
+.danger-btn {
+    background: #5a1f1f;
+    color: #ffb3b3;
+    border: 1px solid #7a2a2a;
+}
+
+.danger-btn:hover {
+    background: #7a2a2a;
+    border-color: #9d3a3a;
+    box-shadow: 0 0 0 1px rgba(157, 58, 58, 0.18);
+}
+
+.success-toast {
+    margin-top: 8px;
+    padding: 8px 10px;
+    border: 1px solid #2a6b44;
+    background: rgba(34, 92, 59, 0.22);
+    color: #8df0b3;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.35s ease;
+}
+
+.success-toast.visible {
+    opacity: 1;
+}
+
+.selected-cell-preview-wrap {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 10px 0 16px;
+    padding: 10px;
+    background: #101010;
+    border: 1px solid #303030;
+}
+
+#selectedCellPreviewCanvas {
+    display: block;
+    background: #181818;
+    border: 1px solid #2f2f2f;
+}

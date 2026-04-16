@@ -1,0 +1,358 @@
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #111;
+    color: #eee;
+}
+
+.toolbar {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    padding: 12px;
+    background: #1a1a1a;
+    border-bottom: 1px solid #333;
+}
+
+button {
+    padding: 8px 14px;
+    border: none;
+    background: #2d6cdf;
+    color: white;
+    cursor: pointer;
+    border-radius: 6px;
+}
+
+button:hover {
+    background: #1f57ba;
+}
+
+#stats {
+    margin-left: 10px;
+}
+
+canvas {
+    display: block;
+    margin: 10px auto;
+    background: #1f1f1f;
+    border: 1px solid #444;
+}
+
+.page {
+    display: flex;
+    min-height: calc(100vh - 58px);
+}
+
+.sidebar {
+    width: 360px;
+    padding: 14px;
+    background: #171717;
+    border-right: 1px solid #333;
+    box-sizing: border-box;
+    overflow-y: auto;
+}
+
+.canvas-wrap {
+    flex: 1;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 10px;
+    box-sizing: border-box;
+}
+
+.config-hint {
+    color: #bdbdbd;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.config-section {
+    margin-top: 18px;
+}
+
+.config-section h3 {
+    margin: 0 0 10px 0;
+    font-size: 16px;
+}
+
+.config-row {
+    margin-bottom: 14px;
+    padding: 10px;
+    background: #202020;
+    border: 1px solid #303030;
+    border-radius: 8px;
+}
+
+.config-row-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 8px;
+    font-size: 13px;
+}
+
+.config-row-header strong {
+    font-weight: 600;
+}
+
+.config-scope {
+    color: #a8a8a8;
+    font-size: 12px;
+}
+
+.config-inputs {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.config-inputs input[type="range"] {
+    flex: 1;
+}
+
+.config-inputs input[type="number"] {
+    width: 90px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    border: 1px solid #444;
+    background: #101010;
+    color: #eee;
+    box-sizing: border-box;
+}
+
+.settings-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.62);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.settings-overlay.hidden {
+    display: none;
+}
+
+.settings-modal {
+    width: min(560px, calc(100vw - 40px));
+    background: #1b1b1b;
+    border: 1px solid #3a3a3a;
+    border-radius: 14px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+    padding: 22px;
+    box-sizing: border-box;
+}
+
+.settings-modal h2 {
+    margin-top: 0;
+    margin-bottom: 18px;
+}
+
+.settings-field {
+    margin-bottom: 18px;
+}
+
+.settings-field label {
+    display: block;
+    margin-bottom: 8px;
+}
+
+.settings-input-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.settings-input-row input[type="range"] {
+    flex: 1;
+}
+
+.settings-input-row input[type="number"] {
+    width: 90px;
+    padding: 8px;
+    border-radius: 6px;
+    border: 1px solid #444;
+    background: #101010;
+    color: #eee;
+    box-sizing: border-box;
+}
+
+.settings-note {
+    margin-top: 6px;
+    font-size: 12px;
+    color: #bdbdbd;
+}
+
+.settings-middle-actions {
+    display: flex;
+    justify-content: center;
+    margin-top: 18px;
+    margin-bottom: 18px;
+}
+
+.settings-bottom-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+#worldNameInput {
+    flex: 1;
+    min-width: 0;
+    padding: 8px;
+    background: #222;
+    color: #eee;
+    border: 1px solid #444;
+}
+
+#savedWorldsList {
+    width: 100%;
+    min-height: 180px;
+    padding: 8px;
+    background: #222;
+    color: #eee;
+    border: 1px solid #444;
+    box-sizing: border-box;
+}
+
+.settings-spacer-md {
+    height: 12px;
+}
+
+.main-layout {
+    display: flex;
+    align-items: flex-start;
+    height: calc(100vh - 58px);
+    overflow: hidden;
+}
+
+#world {
+    flex: 0 0 auto;
+    display: block;
+    border-right: 1px solid #333;
+    align-self: flex-start;
+}
+
+.cell-sidebar {
+    width: 340px;
+    min-width: 340px;
+    height: 100%;
+    box-sizing: border-box;
+    padding: 16px;
+    background: #171717;
+    color: #eee;
+    border-left: 1px solid #333;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.cell-sidebar h2,
+.cell-sidebar h3 {
+    margin-top: 0;
+}
+
+.cell-panel-section {
+    display: flex;
+    flex-direction: column;
+}
+
+.cell-panel-section.hidden {
+    display: none;
+}
+
+.cell-panel-section input,
+.cell-panel-section select {
+    margin-top: 6px;
+    margin-bottom: 8px;
+    padding: 8px;
+    background: #222;
+    color: #eee;
+    border: 1px solid #444;
+    box-sizing: border-box;
+}
+
+.cell-panel-section button {
+    margin-top: 6px;
+    margin-bottom: 8px;
+    padding: 8px;
+    box-sizing: border-box;
+}
+
+.cell-panel-spacer {
+    height: 14px;
+}
+
+.cell-info-grid {
+    display: grid;
+    grid-template-columns: 130px 1fr;
+    gap: 8px 10px;
+    align-items: start;
+}
+
+.cell-info-label {
+    color: #aaa;
+}
+
+.cell-create-mode-active {
+    outline: 2px dashed #7fd4ff;
+    outline-offset: -2px;
+}
+
+button {
+    background: #1f5fbf;
+    color: #eaf3ff;
+    border: 1px solid #2d74de;
+    transition: background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #2f74df;
+    border-color: #4690ff;
+    box-shadow: 0 0 0 1px rgba(70, 144, 255, 0.16);
+}
+
+.danger-btn {
+    background: #5a1f1f;
+    color: #ffb3b3;
+    border: 1px solid #7a2a2a;
+}
+
+.danger-btn:hover {
+    background: #7a2a2a;
+    border-color: #9d3a3a;
+    box-shadow: 0 0 0 1px rgba(157, 58, 58, 0.18);
+}
+
+.success-toast {
+    margin-top: 8px;
+    padding: 8px 10px;
+    border: 1px solid #2a6b44;
+    background: rgba(34, 92, 59, 0.22);
+    color: #8df0b3;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.35s ease;
+}
+
+.success-toast.visible {
+    opacity: 1;
+}
+
+.selected-cell-preview-wrap {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 10px 0 16px;
+    padding: 10px;
+    background: #101010;
+    border: 1px solid #303030;
+}
+
+#selectedCellPreviewCanvas {
+    display: block;
+    background: #181818;
+    border: 1px solid #2f2f2f;
+}

@@ -1,0 +1,77 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/biolab
+    username: postgres
+    password: password
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+
+simulation:
+  world-width: 1200
+  world-height: 600
+  simulation-tick-rate-ms: 10
+
+  initial-saprotroph-count: 20
+  initial-food-count: 300
+  food-generation-intensity: 50
+  food-generation-max-frequency-multiplier: 20.0
+
+  food-energy-min: 10.0
+  food-energy-range: 10.0
+  food-consumption-radius: 12.0
+
+  initial-saprotroph-energy-min: 20.0
+  initial-saprotroph-energy-range: 20.0
+
+  min-cell-energy: 0.0
+  saprotroph-base-energy-decay-per-tick: 0.15
+  cell-viscosity-factor: 1
+
+  dead-cell-lifetime-ticks: 80
+
+  initial-spawn-center-x: 600.0
+  initial-spawn-center-y: 300.0
+  initial-spawn-offset-range: 20.0
+
+  client-saprotroph-base-radius: 6.0
+  client-saprotroph-radius-scale: 4.0
+  client-direction-vector-length: 12.0
+  client-food-radius-at-min-energy: 2.0
+
+  division-impulse-energy-cost-factor: 1.0
+  min-child-energy-after-division: 1.0
+
+  genome:
+    initial-division-threshold: 50.0
+    initial-division-impulse-strength: 2.0
+    initial-color-hue: 195.0
+    initial-lightness: 62.0
+    initial-max-energy: 60.0
+
+    radiation-mutation-chance: 0.08
+
+    division-threshold-mutation-delta: 2.0
+    division-impulse-mutation-delta: 0.25
+    color-hue-mutation-delta: 12.0
+    lightness-mutation-delta: 6.0
+    max-energy-mutation-delta: 4.0
+
+    division-threshold-min: 20.0
+    division-threshold-max: 100.0
+
+    division-impulse-min: 0.5
+    division-impulse-max: 6.0
+
+    color-hue-min: 0.0
+    color-hue-max: 360.0
+
+    lightness-min: 35.0
+    lightness-max: 75.0
+
+    max-energy-min: 20.0
+    max-energy-max: 200.0

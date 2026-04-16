@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>BioLab Engine</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="toolbar">
+    <button id="startBtn">Start</button>
+    <button id="stopBtn">Stop</button>
+    <button id="resetBtn">Reset</button>
+    <button id="settingsBtn">Settings</button>
+    <span id="stats">Loading...</span>
+</div>
+
+<div class="main-layout">
+    <canvas id="world"></canvas>
+
+    <aside class="cell-sidebar">
+        <h2>Cell control</h2>
+
+        <div id="cellPanelEmpty" class="cell-panel-section">
+            <p>No cell selected</p>
+            <button id="startCreateCellBtn" type="button">Create cell</button>
+
+            <div class="cell-panel-spacer"></div>
+
+            <label for="savedCellTemplatesList">Saved cells</label>
+            <select id="savedCellTemplatesList" size="8"></select>
+
+            <div class="cell-panel-spacer"></div>
+
+            <div class="settings-input-row">
+                <button id="loadCellTemplateBtn" type="button">Load cell</button>
+                <button id="deleteCellTemplateBtn" type="button" class="danger-btn">Delete selected</button>
+            </div>
+        </div>
+
+        <div id="cellPanelSelected" class="cell-panel-section hidden">
+            <h3>Selected cell</h3>
+            <div class="selected-cell-preview-wrap">
+                <canvas id="selectedCellPreviewCanvas" width="220" height="220"></canvas>
+            </div>
+
+            <div class="cell-info-grid">
+                <div class="cell-info-label">Code</div>
+                <div id="selectedCellCode"></div>
+
+                <div class="cell-info-label">Energy</div>
+                <div id="selectedCellEnergy"></div>
+
+                <div class="cell-info-label">Division threshold</div>
+                <div id="selectedCellDivisionThreshold"></div>
+
+                <div class="cell-info-label">Division impulse</div>
+                <div id="selectedCellDivisionImpulse"></div>
+
+                <div class="cell-info-label">RGB</div>
+                <div id="selectedCellRgb"></div>
+
+                <div class="cell-info-label">Speed</div>
+                <div id="selectedCellSpeed"></div>
+            </div>
+
+            <div class="cell-panel-spacer"></div>
+
+            <label for="saveSelectedCellNameInput">Template name</label>
+            <input id="saveSelectedCellNameInput" type="text" maxlength="200" placeholder="Enter template name">
+
+            <div class="cell-panel-spacer"></div>
+
+            <button id="saveSelectedCellBtn" type="button">Save cell to DB</button>
+            <div id="saveSelectedCellSuccess" class="success-toast">Cell saved successfully</div>
+        </div>
+
+        <div id="cellPanelCreate" class="cell-panel-section hidden">
+            <h3>Create cell</h3>
+
+            <div class="selected-cell-preview-wrap">
+                <canvas id="createCellPreviewCanvas" width="220" height="220"></canvas>
+            </div>
+
+            <label for="createCellTemplateNameInput">Template name</label>
+            <input id="createCellTemplateNameInput" type="text" maxlength="200" placeholder="Optional template name">
+
+            <div class="cell-panel-spacer"></div>
+
+            <div class="settings-field">
+                <label for="createDivisionThresholdSlider">Division threshold</label>
+                <div class="settings-input-row">
+                    <input id="createDivisionThresholdSlider" type="range" min="20" max="100" step="0.1">
+                    <input id="createDivisionThresholdInput" type="number" min="20" max="100" step="0.1">
+                </div>
+            </div>
+
+            <div class="settings-field">
+                <label for="createDivisionImpulseSlider">Division impulse strength</label>
+                <div class="settings-input-row">
+                    <input id="createDivisionImpulseSlider" type="range" min="0.5" max="6" step="0.1">
+                    <input id="createDivisionImpulseInput" type="number" min="0.5" max="6" step="0.1">
+                </div>
+            </div>
+
+            <div class="settings-field">
+                <label for="createColorHueSlider">Color hue</label>
+                <div class="settings-input-row">
+                    <input id="createColorHueSlider" type="range" min="0" max="360" step="0.1">
+                    <input id="createColorHueInput" type="number" min="0" max="360" step="0.1">
+                </div>
+            </div>
+
+            <div class="settings-field">
+                <label for="createLightnessSlider">Lightness</label>
+                <div class="settings-input-row">
+                    <input id="createLightnessSlider" type="range" min="35" max="75" step="0.1">
+                    <input id="createLightnessInput" type="number" min="35" max="75" step="0.1">
+                </div>
+            </div>
+
+            <div class="settings-field">
+                <label for="createMaxEnergySlider">Max energy</label>
+                <div class="settings-input-row">
+                    <input id="createMaxEnergySlider" type="range" min="20" max="200" step="0.1">
+                    <input id="createMaxEnergyInput" type="number" min="20" max="200" step="0.1">
+                </div>
+            </div>
+
+            <div class="cell-panel-spacer"></div>
+
+            <button id="saveCreateTemplateBtn" type="button">Save template</button>
+            <div id="saveCreateTemplateSuccess" class="success-toast">Template saved successfully</div>
+
+            <button id="armPlaceCellBtn" type="button">Place on the field</button>
+            <button id="cancelCreateCellBtn" type="button">Cancel</button>
+
+            <div class="cell-panel-spacer"></div>
+            <div id="createCellModeHint">Placement mode is off</div>
+        </div>
+    </aside>
+</div>
+
+<div id="settingsOverlay" class="settings-overlay hidden">
+    <div class="settings-modal">
+        <h2>Simulation settings</h2>
+
+        <div class="settings-field">
+            <label for="initialSaprotrophCountSlider">Initial number of cells</label>
+            <div class="settings-input-row">
+                <input id="initialSaprotrophCountSlider" type="range" min="0" max="300" step="1">
+                <input id="initialSaprotrophCountValue" type="number" min="0" max="300" step="1">
+            </div>
+        </div>
+
+        <div class="settings-field">
+            <label for="foodSpawnRateSlider">Intensity of food generation</label>
+            <div class="settings-input-row">
+                <input id="foodSpawnRateSlider" type="range" min="0" max="100" step="1">
+                <input id="foodSpawnRateValue" type="number" min="0" max="100" step="1">
+            </div>
+        </div>
+
+        <div class="settings-field">
+            <label for="deadCellLifetimeTicksSlider">The lifetime of a dead cell</label>
+            <div class="settings-input-row">
+                <input id="deadCellLifetimeTicksSlider" type="range" min="1" max="500" step="1">
+                <input id="deadCellLifetimeTicksValue" type="number" min="1" max="500" step="1">
+            </div>
+        </div>
+
+        <div class="settings-field">
+            <label for="worldNameInput">World name</label>
+            <div class="settings-input-row">
+                <input id="worldNameInput" type="text" maxlength="200" placeholder="Enter world name">
+                <button id="saveWorldBtn" type="button">Save world</button>
+            </div>
+        </div>
+
+        <div class="settings-field">
+            <label for="savedWorldsList">Saved worlds</label>
+            <select id="savedWorldsList" size="8"></select>
+            <div class="settings-spacer-md"></div>
+            <div class="settings-input-row">
+                <button id="loadSelectedWorldBtn" type="button">Load selected</button>
+                <button id="deleteSelectedWorldBtn" type="button" class="danger-btn">Delete selected</button>
+            </div>
+        </div>
+
+        <div class="settings-middle-actions">
+            <button id="resetSettingsBtn" type="button">Reset</button>
+        </div>
+
+        <div class="settings-bottom-actions">
+            <button id="cancelSettingsBtn" type="button">Cancel</button>
+            <button id="saveSettingsBtn" type="button">Apply</button>
+        </div>
+    </div>
+</div>
+
+<script type="module" src="/app.js"></script>
+</body>
+</html>
