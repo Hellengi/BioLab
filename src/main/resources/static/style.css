@@ -14,19 +14,6 @@ body {
     border-bottom: 1px solid #333;
 }
 
-button {
-    padding: 8px 14px;
-    border: none;
-    background: #2d6cdf;
-    color: white;
-    cursor: pointer;
-    border-radius: 6px;
-}
-
-button:hover {
-    background: #1f57ba;
-}
-
 #stats {
     margin-left: 10px;
 }
@@ -36,89 +23,6 @@ canvas {
     margin: 10px auto;
     background: #1f1f1f;
     border: 1px solid #444;
-}
-
-.page {
-    display: flex;
-    min-height: calc(100vh - 58px);
-}
-
-.sidebar {
-    width: 360px;
-    padding: 14px;
-    background: #171717;
-    border-right: 1px solid #333;
-    box-sizing: border-box;
-    overflow-y: auto;
-}
-
-.canvas-wrap {
-    flex: 1;
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
-    padding: 10px;
-    box-sizing: border-box;
-}
-
-.config-hint {
-    color: #bdbdbd;
-    font-size: 13px;
-    line-height: 1.4;
-}
-
-.config-section {
-    margin-top: 18px;
-}
-
-.config-section h3 {
-    margin: 0 0 10px 0;
-    font-size: 16px;
-}
-
-.config-row {
-    margin-bottom: 14px;
-    padding: 10px;
-    background: #202020;
-    border: 1px solid #303030;
-    border-radius: 8px;
-}
-
-.config-row-header {
-    display: flex;
-    justify-content: space-between;
-    gap: 10px;
-    margin-bottom: 8px;
-    font-size: 13px;
-}
-
-.config-row-header strong {
-    font-weight: 600;
-}
-
-.config-scope {
-    color: #a8a8a8;
-    font-size: 12px;
-}
-
-.config-inputs {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-}
-
-.config-inputs input[type="range"] {
-    flex: 1;
-}
-
-.config-inputs input[type="number"] {
-    width: 90px;
-    padding: 6px 8px;
-    border-radius: 6px;
-    border: 1px solid #444;
-    background: #101010;
-    color: #eee;
-    box-sizing: border-box;
 }
 
 .settings-overlay {
@@ -179,12 +83,6 @@ canvas {
     box-sizing: border-box;
 }
 
-.settings-note {
-    margin-top: 6px;
-    font-size: 12px;
-    color: #bdbdbd;
-}
-
 .settings-middle-actions {
     display: flex;
     justify-content: center;
@@ -198,7 +96,7 @@ canvas {
     gap: 10px;
 }
 
-#worldNameInput {
+#environmentNameInput {
     flex: 1;
     min-width: 0;
     padding: 8px;
@@ -207,7 +105,7 @@ canvas {
     border: 1px solid #444;
 }
 
-#savedWorldsList {
+#environmentSnapshotsList {
     width: 100%;
     min-height: 180px;
     padding: 8px;
@@ -228,7 +126,7 @@ canvas {
     overflow: hidden;
 }
 
-#world {
+#environment {
     flex: 0 0 auto;
     display: block;
     border-right: 1px solid #333;
@@ -301,6 +199,8 @@ canvas {
 }
 
 button {
+    padding: 8px 14px;
+    border-radius: 6px;
     background: #1f5fbf;
     color: #eaf3ff;
     border: 1px solid #2d74de;

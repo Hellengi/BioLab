@@ -1,20 +1,36 @@
-package com.hellengi.biolab.model;
+package com.hellengi.biolab.persistence.entity;
 
-import com.hellengi.biolab.util.GenomeCodeCodec;
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
 import lombok.Getter;
 import lombok.Setter;
 
-@Setter
 @Getter
-public class Genome {
+@Setter
+@Embeddable
+public class GenomeSnapshot {
+    @Column(nullable = false)
     private double divisionThreshold;
+
+    @Column(nullable = false)
     private double divisionImpulseStrength;
+
+    @Column(nullable = false)
     private double colorHue;
+
+    @Column(nullable = false)
     private double saturation;
+
+    @Column(nullable = false)
     private double lightness;
+
+    @Column(nullable = false)
     private double maxEnergy;
 
-    public Genome(
+    public GenomeSnapshot() {
+    }
+
+    public GenomeSnapshot(
             double divisionThreshold,
             double divisionImpulseStrength,
             double colorHue,
@@ -28,20 +44,5 @@ public class Genome {
         this.saturation = saturation;
         this.lightness = lightness;
         this.maxEnergy = maxEnergy;
-    }
-
-    public String getCode() {
-        return GenomeCodeCodec.encode(this);
-    }
-
-    public Genome copy() {
-        return new Genome(
-                divisionThreshold,
-                divisionImpulseStrength,
-                colorHue,
-                saturation,
-                lightness,
-                maxEnergy
-        );
     }
 }

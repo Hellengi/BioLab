@@ -15,7 +15,7 @@
 </div>
 
 <div class="main-layout">
-    <canvas id="world"></canvas>
+    <canvas id="environment"></canvas>
 
     <aside class="cell-sidebar">
         <h2>Cell control</h2>
@@ -26,8 +26,8 @@
 
             <div class="cell-panel-spacer"></div>
 
-            <label for="savedCellTemplatesList">Saved cells</label>
-            <select id="savedCellTemplatesList" size="8"></select>
+            <label for="cellTemplatesList">Cell templates</label>
+            <select id="cellTemplatesList" size="8"></select>
 
             <div class="cell-panel-spacer"></div>
 
@@ -111,6 +111,14 @@
             </div>
 
             <div class="settings-field">
+                <label for="createSaturationSlider">Saturation</label>
+                <div class="settings-input-row">
+                    <input id="createSaturationSlider" type="range" min="30" max="100" step="0.1">
+                    <input id="createSaturationInput" type="number" min="30" max="100" step="0.1">
+                </div>
+            </div>
+
+            <div class="settings-field">
                 <label for="createLightnessSlider">Lightness</label>
                 <div class="settings-input-row">
                     <input id="createLightnessSlider" type="range" min="35" max="75" step="0.1">
@@ -131,7 +139,7 @@
             <button id="saveCreateTemplateBtn" type="button">Save template</button>
             <div id="saveCreateTemplateSuccess" class="success-toast">Template saved successfully</div>
 
-            <button id="armPlaceCellBtn" type="button">Place on the field</button>
+            <button id="placeCellModeBtn" type="button">Place on the field</button>
             <button id="cancelCreateCellBtn" type="button">Cancel</button>
 
             <div class="cell-panel-spacer"></div>
@@ -145,10 +153,10 @@
         <h2>Simulation settings</h2>
 
         <div class="settings-field">
-            <label for="initialSaprotrophCountSlider">Initial number of cells</label>
+            <label for="initialCellCountSlider">Initial number of cells</label>
             <div class="settings-input-row">
-                <input id="initialSaprotrophCountSlider" type="range" min="0" max="300" step="1">
-                <input id="initialSaprotrophCountValue" type="number" min="0" max="300" step="1">
+                <input id="initialCellCountSlider" type="range" min="0" max="300" step="1">
+                <input id="initialCellCountValue" type="number" min="0" max="300" step="1">
             </div>
         </div>
 
@@ -169,16 +177,16 @@
         </div>
 
         <div class="settings-field">
-            <label for="worldNameInput">World name</label>
+            <label for="environmentNameInput">Environment name</label>
             <div class="settings-input-row">
-                <input id="worldNameInput" type="text" maxlength="200" placeholder="Enter world name">
-                <button id="saveWorldBtn" type="button">Save world</button>
+                <input id="environmentNameInput" type="text" maxlength="200" placeholder="Enter environment name">
+                <button id="saveEnvironmentBtn" type="button">Save world</button>
             </div>
         </div>
 
         <div class="settings-field">
-            <label for="savedWorldsList">Saved worlds</label>
-            <select id="savedWorldsList" size="8"></select>
+            <label for="environmentSnapshotsList">Environment snapshots</label>
+            <select id="environmentSnapshotsList" size="8"></select>
             <div class="settings-spacer-md"></div>
             <div class="settings-input-row">
                 <button id="loadSelectedWorldBtn" type="button">Load selected</button>
@@ -197,6 +205,6 @@
     </div>
 </div>
 
-<script type="module" src="/app.js"></script>
+<script type="module" src="/js/app.js"></script>
 </body>
 </html>
