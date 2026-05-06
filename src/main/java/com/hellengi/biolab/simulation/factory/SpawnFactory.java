@@ -1,11 +1,12 @@
 package com.hellengi.biolab.simulation.factory;
 
 import com.hellengi.biolab.api.dto.GenomeDto;
-import com.hellengi.biolab.config.SimulationProperties;
+import com.hellengi.biolab.config.YamlConfig;
 import com.hellengi.biolab.model.Cell;
 import com.hellengi.biolab.model.DeadCell;
 import com.hellengi.biolab.model.Food;
 import com.hellengi.biolab.model.Genome;
+import com.hellengi.biolab.simulation.mapper.GenomeMapper;
 import com.hellengi.biolab.simulation.physics.WorldPhysics;
 import com.hellengi.biolab.util.IdGenerator;
 import lombok.RequiredArgsConstructor;
@@ -15,9 +16,10 @@ import java.util.Random;
 
 @Component
 @RequiredArgsConstructor
-public class EntityFactory {
-    private final SimulationProperties config;
+public class SpawnFactory {
+    private final YamlConfig config;
     private final WorldPhysics worldPhysics;
+    private final GenomeMapper genomeMapper;
     private final Random random = new Random();
 
     public Cell createRandomCell(double centerX, double centerY) {
@@ -42,18 +44,11 @@ public class EntityFactory {
     }
 
     private Genome createInitialGenome() {
-        return new Genome(
-                config.getGenome().getInitial().getDivisionThreshold(),
-                config.getGenome().getInitial().getDivisionImpulse(),
-                config.getGenome().getInitial().getColorHue(),
-                config.getGenome().getInitial().getSaturation(),
-                config.getGenome().getInitial().getLightness(),
-                config.getGenome().getInitial().getMaxEnergy()
-        );
+        return genomeMapper.toDomain(config.getGenome().getInitial());
     }
 
     public Cell createCell(GenomeDto genomeDto, double x, double y) {
-        Genome genome = createGenome(genomeDto);
+        Genome genome = genomeMapper.toDomain(genomeDto);
         Velocity velocity = randomVelocity(genome.getDivisionImpulseStrength());
 
         double initialEnergy = Math.max(
@@ -69,17 +64,6 @@ public class EntityFactory {
                 velocity.vy(),
                 initialEnergy,
                 genome
-        );
-    }
-
-    private Genome createGenome(GenomeDto dto) {
-        return new Genome(
-                dto.divisionThreshold(),
-                dto.divisionImpulseStrength(),
-                dto.colorHue(),
-                dto.saturation(),
-                dto.lightness(),
-                dto.maxEnergy()
         );
     }
 

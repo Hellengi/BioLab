@@ -1,6 +1,6 @@
 package com.hellengi.biolab.model;
 
-import com.hellengi.biolab.util.GenomeCodeCodec;
+import com.hellengi.biolab.util.GenomeCodec;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -31,7 +31,7 @@ public class Genome {
     }
 
     public String getCode() {
-        return GenomeCodeCodec.encode(this);
+        return GenomeCodec.encode(this);
     }
 
     public Genome copy() {

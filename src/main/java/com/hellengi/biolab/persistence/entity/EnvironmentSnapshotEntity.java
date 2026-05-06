@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 @Getter
 @Entity
 @Table(name = "environment_snapshot")
-public class EnvironmentSnapshot {
+public class EnvironmentSnapshotEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -30,10 +30,10 @@ public class EnvironmentSnapshot {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String configJson;
 
-    public EnvironmentSnapshot() {
+    public EnvironmentSnapshotEntity() {
     }
 
-    public EnvironmentSnapshot(String name, LocalDateTime createdAt, String stateJson, String configJson) {
+    public EnvironmentSnapshotEntity(String name, LocalDateTime createdAt, String stateJson, String configJson) {
         this.name = name;
         this.createdAt = createdAt;
         this.stateJson = stateJson;

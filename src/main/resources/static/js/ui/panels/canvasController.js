@@ -1,18 +1,8 @@
-/**
- * CanvasController.js — обработка кликов по canvas.
- */
+import { state, findCellAt } from "../../store/store.js";
+import { getCanvasCoordinates } from "../panels.js";
+import { spawnDraftCell, readDraftForm } from "./creationPanel.js";
+import { selectCell, clearSelection } from "./selectionPanel.js";
 
-import { state, findCellAt } from "../../store/SimulationStore.js";
-import { getCanvasCoordinates } from "../ui.js";
-import { dom } from "../dom.js";
-import { spawnDraftCell, readDraftForm, setPlaceMode } from "./CreationPanel.js";
-import { selectCell, clearSelection } from "./SelectionPanel.js";
-
-/**
- * Главный обработчик клика по canvas.
- * Вызывается из events.js, логика — здесь.
- * @param {MouseEvent} event
- */
 export function onCanvasClick(event) {
     const { x, y } = getCanvasCoordinates(event);
 
@@ -30,10 +20,6 @@ export function onCanvasClick(event) {
 
     clearSelection();
 }
-
-// ---------------------------------------------------------------------------
-// Private
-// ---------------------------------------------------------------------------
 
 function handlePlaceModeClick(x, y) {
     try {

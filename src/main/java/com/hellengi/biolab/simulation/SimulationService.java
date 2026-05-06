@@ -3,59 +3,55 @@ package com.hellengi.biolab.simulation;
 import com.hellengi.biolab.api.dto.SimulationSettingsDto;
 import com.hellengi.biolab.api.dto.SpawnCellRequestDto;
 import com.hellengi.biolab.api.dto.EnvironmentDto;
-import com.hellengi.biolab.simulation.world.SimulationEnvironment;
+import com.hellengi.biolab.simulation.mapper.EnvironmentMapper;
+import com.hellengi.biolab.simulation.settings.RuntimeOverrides;
+import com.hellengi.biolab.simulation.settings.SimulationSettings;
+import com.hellengi.biolab.simulation.world.WorldState;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
 public class SimulationService {
-    private final SimulationRuntimeConfig runtimeConfig;
-    private final SimulationEnvironment world;
+    private final RuntimeOverrides runtimeConfig;
+    private final WorldState world;
     private final EnvironmentMapper environmentMapper;
-    private final SimulationCommands simulationCommands;
-    private final SimulationConfigService simulationConfigService;
-
-    public void start() {
-        simulationCommands.start();
-    }
-
-    public void stop() {
-        simulationCommands.stop();
-    }
+    private final SimulationControl simulationControl;
+    private final SimulationSettings simulationSettings;
 
     public void reset() {
-        simulationCommands.reset();
+        simulationControl.reset();
     }
 
     public EnvironmentDto getState() {
         synchronized (world) {
             return environmentMapper.toDto(
                     world,
-                    runtimeConfig.getDeadCellLifetimeTicks()
+                    runtimeConfig.getDeadCellLifetimeTicks(),
+                    0L
             );
         }
     }
 
     public SimulationSettingsDto getConfig() {
         synchronized (world) {
-            return simulationConfigService.getConfig();
+            return simulationSettings.getConfig();
         }
     }
 
     public SimulationSettingsDto updateConfig(SimulationSettingsDto configDto) {
         synchronized (world) {
-            return simulationConfigService.updateConfig(configDto);
+            return simulationSettings.updateConfig(configDto);
         }
     }
 
     public SimulationSettingsDto resetConfigToDefaults() {
         synchronized (world) {
-            return simulationConfigService.resetToDefaults();
+            return simulationSettings.resetToDefaults();
         }
     }
 
     public void spawnCell(SpawnCellRequestDto requestDto) {
-        simulationCommands.spawnCell(requestDto);
+        simulationControl.spawnCell(requestDto);
     }
 }

@@ -1,9 +1,5 @@
-/**
- * socket.js — WebSocket-транспорт.
- */
-
-import { setWorld, updateStats } from "../../store/SimulationStore.js";
-import { refreshSelection } from "../../ui/panels/SelectionPanel.js";
+import { state, setWorld, updateStats } from "../../store/store.js";
+import { refreshSelection } from "../../ui/panels/selectionPanel.js";
 
 let socket = null;
 
@@ -23,6 +19,7 @@ export function connectSocket() {
 
     socket.onclose = () => {
         console.log("WebSocket disconnected. Reconnecting...");
+        state.tps = 0;
         setTimeout(connectSocket, 1000);
     };
 

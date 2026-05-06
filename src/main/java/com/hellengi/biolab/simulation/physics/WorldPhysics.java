@@ -1,6 +1,6 @@
 package com.hellengi.biolab.simulation.physics;
 
-import com.hellengi.biolab.config.SimulationProperties;
+import com.hellengi.biolab.config.YamlConfig;
 import com.hellengi.biolab.model.Particle;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -8,41 +8,49 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class WorldPhysics {
-    private final SimulationProperties config;
+    private final YamlConfig config;
 
-    public void move(Particle particle) {
-        particle.move();
+    public void move(Particle particle, double radius) {
+        move(particle, radius, 1.0);
+    }
 
-        if (particle.getX() < 0.0) {
-            particle.setX(0.0);
-            particle.setVx(-particle.getVx());
-        } else if (particle.getX() > config.getWidth()) {
-            particle.setX(config.getWidth());
-            particle.setVx(-particle.getVx());
+    public void move(Particle particle, double radius, double stepScale) {
+        particle.setX(particle.getX() + particle.getVx() * stepScale);
+        particle.setY(particle.getY() + particle.getVy() * stepScale);
+
+        keepInside(particle, radius, true);
+    }
+
+    public void keepInside(Particle particle, double radius) {
+        keepInside(particle, radius, false);
+    }
+
+    private void keepInside(Particle particle, double radius, boolean reflect) {
+        if (particle.getX() < radius) {
+            particle.setX(radius);
+            if (reflect) particle.setVx(-particle.getVx());
+        } else if (particle.getX() > config.getWidth() - radius) {
+            particle.setX(config.getWidth() - radius);
+            if (reflect) particle.setVx(-particle.getVx());
         }
 
-        if (particle.getY() < 0.0) {
-            particle.setY(0.0);
-            particle.setVy(-particle.getVy());
-        } else if (particle.getY() > config.getHeight()) {
-            particle.setY(config.getHeight());
-            particle.setVy(-particle.getVy());
+        if (particle.getY() < radius) {
+            particle.setY(radius);
+            if (reflect) particle.setVy(-particle.getVy());
+        } else if (particle.getY() > config.getHeight() - radius) {
+            particle.setY(config.getHeight() - radius);
+            if (reflect) particle.setVy(-particle.getVy());
         }
     }
 
+    public void applyViscosity(Particle particle, double tickScale) {
+        double viscosity = Math.pow(config.getCell().getViscosity(), tickScale);
+        particle.setVx(particle.getVx() * viscosity);
+        particle.setVy(particle.getVy() * viscosity);
+    }
+
     public void applyViscosity(Particle particle) {
-        double viscosityFactor = Math.max(0.0, Math.min(1.0, config.getCell().getViscosity()));
-
-        particle.setVx(particle.getVx() * viscosityFactor);
-        particle.setVy(particle.getVy() * viscosityFactor);
-
-        if (Math.abs(particle.getVx()) < 0.001) {
-            particle.setVx(0.0);
-        }
-
-        if (Math.abs(particle.getVy()) < 0.001) {
-            particle.setVy(0.0);
-        }
+        applyViscosity(particle, 1.0);
     }
 
     public double clampX(double x) {

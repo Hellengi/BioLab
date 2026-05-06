@@ -8,7 +8,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @Embeddable
-public class GenomeSnapshot {
+public class GenomeEmbeddable {
     @Column(nullable = false)
     private double divisionThreshold;
 
@@ -27,10 +27,10 @@ public class GenomeSnapshot {
     @Column(nullable = false)
     private double maxEnergy;
 
-    public GenomeSnapshot() {
+    public GenomeEmbeddable() {
     }
 
-    public GenomeSnapshot(
+    public GenomeEmbeddable(
             double divisionThreshold,
             double divisionImpulseStrength,
             double colorHue,

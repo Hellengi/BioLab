@@ -1,19 +1,15 @@
-/**
- * SettingsPanel.js — диалог настроек симуляции.
- */
-
-import { state, updateStats } from "../../store/SimulationStore.js";
-import { resetConfig, updateConfig } from "../../transport/api/simulation.js";
-import { loadWorlds } from "./SnapshotPanel.js";
+import {applySimulationConfig, state, updateStats} from "../../store/store.js";
+import { resetConfig, updateConfig } from "../../transport/api/simulationApi.js";
+import { loadWorlds } from "./snapshotPanel.js";
 import { dom } from "../dom.js";
-import { bindInputs } from "../ui.js";
+import { bindInputs } from "../panels.js";
 
 export async function openSettings() {
     if (!state.config) return;
 
     state.settingsDraft = {
-        initialCellCount:    state.config.initialCellCount,
-        foodSpawnIntensity:  state.config.foodSpawnIntensity,
+        initialCellCount: state.config.initialCellCount,
+        foodSpawnIntensity: state.config.foodSpawnIntensity,
         deadCellLifetimeTicks: state.config.deadCellLifetimeTicks,
     };
 
@@ -31,9 +27,9 @@ export async function saveSettings() {
 
     const payload = {
         ...state.config,
-        initialCellCount:  state.settingsDraft.initialCellCount,
+        initialCellCount: state.settingsDraft.initialCellCount,
         foodSpawnIntensity: state.settingsDraft.foodSpawnIntensity,
-        deadCellLifetimeTicks:   state.settingsDraft.deadCellLifetimeTicks,
+        deadCellLifetimeTicks: state.settingsDraft.deadCellLifetimeTicks,
     };
 
     state.config = await updateConfig(payload);
@@ -44,17 +40,18 @@ export async function saveSettings() {
 export async function resetSettings() {
     state.config = await resetConfig();
     state.settingsDraft = {
-        initialCellCount:  state.config.initialCellCount,
+        initialCellCount: state.config.initialCellCount,
         foodSpawnIntensity: state.config.foodSpawnIntensity,
-        deadCellLifetimeTicks:   state.config.deadCellLifetimeTicks,
+        deadCellLifetimeTicks: state.config.deadCellLifetimeTicks,
     };
     syncSettingsFormFromDraft();
+    applySimulationConfig();
     updateStats();
 }
 
 export function bindSettingsForm() {
     bindSetting(dom.initialCellCountSlider, dom.initialCellCountValue, 'initialCellCount');
-    bindSetting(dom.foodSpawnRateSlider,    dom.foodSpawnRateValue,    'foodSpawnIntensity',
+    bindSetting(dom.foodSpawnRateSlider, dom.foodSpawnRateValue, 'foodSpawnIntensity',
         value => Math.max(0, Math.min(100, value))
     );
     bindSetting(dom.deadCellLifetimeTicksSlider, dom.deadCellLifetimeTicksValue, "deadCellLifetimeTicks");
@@ -73,7 +70,7 @@ function syncSettingsFormFromDraft() {
 
 function setSliderAndInput(slider, input, value) {
     if (slider) slider.value = String(value);
-    if (input)  input.value  = String(value);
+    if (input) input.value = String(value);
 }
 
 function bindSetting(rangeInput, numberInput, key, normalize = v => v) {

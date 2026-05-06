@@ -1,11 +1,11 @@
 package com.hellengi.biolab.persistence.repository;
 
-import com.hellengi.biolab.persistence.entity.CellTemplate;
+import com.hellengi.biolab.persistence.entity.CellTemplateEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 
-public interface CellTemplateRepository extends JpaRepository<CellTemplate, Long> {
+public interface CellTemplateRepository extends JpaRepository<CellTemplateEntity, Long> {
 
-    List<CellTemplate> findAllByOrderByCreatedAtDesc();
+    List<CellTemplateEntity> findAllByOrderByCreatedAtDesc();
 }

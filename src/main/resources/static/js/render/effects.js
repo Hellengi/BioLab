@@ -1,8 +1,4 @@
-/**
- * effects.js — визуальные эффекты исчезновения мёртвых клеток.
- */
-
-import { state } from "../store/SimulationStore.js";
+import { state } from "../store/store.js";
 
 const DEAD_CELL_DISAPPEAR_EFFECT_DURATION_MS = 500;
 const DEAD_CELL_DISAPPEAR_EFFECT_MAX_BLUR_PX = 12;
@@ -30,9 +26,9 @@ export function drawDeadCellEffects(ctx) {
         const progress = (now - effect.startTime) / DEAD_CELL_DISAPPEAR_EFFECT_DURATION_MS;
         if (progress >= 1) return false;
 
-        const blurPx  = progress * DEAD_CELL_DISAPPEAR_EFFECT_MAX_BLUR_PX;
-        const alpha   = 1 - progress;
-        const radius  = effect.radius * (1 + progress * (DEAD_CELL_DISAPPEAR_EFFECT_GROWTH - 1));
+        const blurPx = progress * DEAD_CELL_DISAPPEAR_EFFECT_MAX_BLUR_PX;
+        const alpha = 1 - progress;
+        const radius = effect.radius * (1 + progress * (DEAD_CELL_DISAPPEAR_EFFECT_GROWTH - 1));
 
         ctx.save();
         ctx.filter = `blur(${blurPx}px)`;

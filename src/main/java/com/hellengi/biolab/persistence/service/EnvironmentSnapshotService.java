@@ -3,13 +3,14 @@ package com.hellengi.biolab.persistence.service;
 import com.hellengi.biolab.api.dto.EnvironmentDto;
 import com.hellengi.biolab.api.dto.EnvironmentSnapshotDto;
 import com.hellengi.biolab.api.dto.SimulationSettingsDto;
-import com.hellengi.biolab.persistence.entity.EnvironmentSnapshot;
+import com.hellengi.biolab.persistence.entity.EnvironmentSnapshotEntity;
+import com.hellengi.biolab.persistence.mapper.EnvironmentSnapshotMapper;
 import com.hellengi.biolab.persistence.repository.EnvironmentSnapshotRepository;
-import com.hellengi.biolab.simulation.SimulationCommands;
-import com.hellengi.biolab.simulation.SimulationConfigService;
-import com.hellengi.biolab.simulation.SimulationRuntimeConfig;
-import com.hellengi.biolab.simulation.EnvironmentMapper;
-import com.hellengi.biolab.simulation.world.SimulationEnvironment;
+import com.hellengi.biolab.simulation.SimulationControl;
+import com.hellengi.biolab.simulation.settings.SimulationSettings;
+import com.hellengi.biolab.simulation.settings.RuntimeOverrides;
+import com.hellengi.biolab.simulation.mapper.EnvironmentMapper;
+import com.hellengi.biolab.simulation.world.WorldState;
 import com.hellengi.biolab.util.NameValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -23,13 +24,14 @@ import java.util.List;
 @RequiredArgsConstructor
 public class EnvironmentSnapshotService {
     private final EnvironmentSnapshotRepository environmentSnapshotRepository;
+    private final EnvironmentSnapshotMapper environmentSnapshotMapper;
     private final JsonMapper jsonMapper;
 
-    private final SimulationEnvironment env;
+    private final WorldState env;
     private final EnvironmentMapper environmentMapper;
-    private final SimulationRuntimeConfig runtimeConfig;
-    private final SimulationCommands simulationCommands;
-    private final SimulationConfigService simulationConfigService;
+    private final RuntimeOverrides runtimeConfig;
+    private final SimulationControl simulationControl;
+    private final SimulationSettings simulationSettings;
 
     @Transactional
     public EnvironmentSnapshotDto save(String name) {
@@ -37,17 +39,21 @@ public class EnvironmentSnapshotService {
         SimulationSettingsDto configDto;
 
         synchronized (env) {
-            envDto = environmentMapper.toDto(env, runtimeConfig.getDeadCellLifetimeTicks());
-            configDto = simulationConfigService.getConfig();
+            envDto = environmentMapper.toDto(env, runtimeConfig.getDeadCellLifetimeTicks(), 0L);
+            configDto = simulationSettings.getConfig();
         }
 
         try {
             String envJson = jsonMapper.writeValueAsString(envDto);
             String configJson = jsonMapper.writeValueAsString(configDto);
-            EnvironmentSnapshot entity = new EnvironmentSnapshot(
+            EnvironmentSnapshotEntity entity = environmentSnapshotMapper.toEntity(
                     NameValidator.normalize(name, "Environment name", 200),
-                    LocalDateTime.now(), envJson, configJson);
-            return toListItemDto(environmentSnapshotRepository.save(entity));
+                    LocalDateTime.now(),
+                    envJson,
+                    configJson
+            );
+
+            return environmentSnapshotMapper.toDto(environmentSnapshotRepository.save(entity));
         } catch (Exception e) {
             throw new RuntimeException("Failed to save environment", e);
         }
@@ -56,18 +62,18 @@ public class EnvironmentSnapshotService {
     @Transactional(readOnly = true)
     public List<EnvironmentSnapshotDto> list() {
         return environmentSnapshotRepository.findAllByOrderByCreatedAtDesc().stream()
-                .map(this::toListItemDto)
+                .map(environmentSnapshotMapper::toDto)
                 .toList();
     }
 
     @Transactional
     public void loadEnvironmentSnapshot(Long id) {
-        EnvironmentSnapshot envSnapshot = environmentSnapshotRepository.findById(id)
+        EnvironmentSnapshotEntity envSnapshot = environmentSnapshotRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Not found: " + id));
         try {
             EnvironmentDto envDto = jsonMapper.readValue(envSnapshot.getStateJson(), EnvironmentDto.class);
             SimulationSettingsDto configDto = jsonMapper.readValue(envSnapshot.getConfigJson(), SimulationSettingsDto.class);
-            simulationCommands.loadSnapshot(envDto, configDto);
+            simulationControl.loadSnapshot(envDto, configDto);
         } catch (Exception e) {
             throw new RuntimeException("Failed to load environment", e);
         }
@@ -80,13 +86,5 @@ public class EnvironmentSnapshotService {
         }
 
         environmentSnapshotRepository.deleteById(id);
-    }
-
-    private EnvironmentSnapshotDto toListItemDto(EnvironmentSnapshot environmentSnapshot) {
-        return new EnvironmentSnapshotDto(
-                environmentSnapshot.getId(),
-                environmentSnapshot.getName(),
-                environmentSnapshot.getCreatedAt()
-        );
     }
 }

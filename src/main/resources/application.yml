@@ -12,6 +12,9 @@ simulation:
   height: 600
   tick-rate-ms: 10
 
+  broadcast:
+    fps: 100
+
   cell:
     initial-count: 20
     energy-min: 20.0
@@ -71,6 +74,20 @@ simulation:
       max-energy:
         min: 20.0
         max: 200.0
+
+  physics:
+    collision-restitution: 1.0
+    max-collision-substeps: 8
+    max-collision-step-distance: 4.0
+
+  time:
+    min-speed-factor: 0.01
+    max-speed-factor: 10.0
+    min-temperature-celsius: -20.0
+    normal-temperature-celsius: 20.0
+    max-temperature-celsius: 60.0
+    scale-slowdown-inside-tick: true
+    scale-speedup-inside-tick: false
 
   render:
     cell-base-radius: 6.0

@@ -1,19 +1,19 @@
-package com.hellengi.biolab.simulation;
+package com.hellengi.biolab.simulation.settings;
 
-import com.hellengi.biolab.api.dto.GenomeDto;
 import com.hellengi.biolab.api.dto.SimulationSettingsDto;
-import com.hellengi.biolab.config.SimulationProperties;
+import com.hellengi.biolab.config.YamlConfig;
+import com.hellengi.biolab.simulation.mapper.GenomeMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
-public class SimulationConfigService {
-    private final SimulationProperties baseConfig;
-    private final SimulationRuntimeConfig runtimeConfig;
+public class SimulationSettings {
+    private final YamlConfig baseConfig;
+    private final RuntimeOverrides runtimeConfig;
+    private final GenomeMapper genomeMapper;
 
     public SimulationSettingsDto getConfig() {
-        SimulationProperties.GenomeProperties gp = baseConfig.getGenome();
         return new SimulationSettingsDto(
                 baseConfig.getWidth(),
                 baseConfig.getHeight(),
@@ -31,24 +31,18 @@ public class SimulationConfigService {
                 baseConfig.getRender().getCellRadiusScale(),
                 baseConfig.getRender().getDirectionVectorLength(),
                 baseConfig.getRender().getFoodBaseRadius(),
-                new GenomeDto(
-                        gp.getInitial().getDivisionThreshold(),
-                        gp.getInitial().getDivisionImpulse(),
-                        gp.getInitial().getColorHue(),
-                        gp.getInitial().getSaturation(),
-                        gp.getInitial().getLightness(),
-                        gp.getInitial().getMaxEnergy(),
-                        null
-                )
+                runtimeConfig.getTimeSlider(),
+                runtimeConfig.isPaused(),
+                runtimeConfig.getSpeedFactor(),
+                runtimeConfig.getTemperatureCelsius(),
+                baseConfig.getTime().getMinSpeedFactor(),
+                baseConfig.getTime().getMaxSpeedFactor(),
+                genomeMapper.toDto(baseConfig.getGenome().getInitial())
         );
     }
 
-    public SimulationSettingsDto updateConfig(SimulationSettingsDto dto) {
-        runtimeConfig.update(
-                dto.initialCellCount(),
-                dto.foodSpawnIntensity(),
-                dto.deadCellLifetimeTicks()
-        );
+    public SimulationSettingsDto updateConfig(SimulationSettingsDto configDto) {
+        runtimeConfig.apply(configDto);
         return getConfig();
     }
 

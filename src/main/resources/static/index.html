@@ -1,46 +1,68 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" data-bs-theme="dark">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BioLab Engine</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/style.css">
 </head>
 <body>
 <div class="toolbar">
-    <button id="startBtn">Start</button>
-    <button id="stopBtn">Stop</button>
-    <button id="resetBtn">Reset</button>
-    <button id="settingsBtn">Settings</button>
+
+    <div class="time-control">
+        <div class="temp-display" title="Температура / скорость симуляции">
+            <span id="temperatureLabel" class="temp-value">20°C</span>
+            <span id="speedLabel" class="speed-value">1.00×</span>
+        </div>
+
+        <input id="timeSlider" type="range" min="0" max="100" step="1" value="50"
+               title="Температура и скорость симуляции">
+
+        <button id="pauseBtn" type="button" class="btn btn-outline-secondary"
+                title="Пауза / Возобновить">Pause</button>
+    </div>
+
+    <button id="resetBtn" type="button" class="btn btn-secondary">Reset</button>
+    <button id="settingsBtn" type="button" class="btn btn-primary">⚙ Settings</button>
+
+    <span id="fpsLabel" class="fps-badge" title="FPS клиента / TPS сервера">FPS/TPS = 0/0</span>
+
     <span id="stats">Loading...</span>
+
+    <button id="sidebarToggleBtn" type="button" class="btn btn-outline-secondary ms-auto"
+            title="Cell control">Control</button>
 </div>
 
 <div class="main-layout">
-    <canvas id="environment"></canvas>
+    <div class="environment-scroll">
+        <canvas id="environment"></canvas>
+    </div>
 
     <aside class="cell-sidebar">
         <h2>Cell control</h2>
 
         <div id="cellPanelEmpty" class="cell-panel-section">
-            <p>No cell selected</p>
-            <button id="startCreateCellBtn" type="button">Create cell</button>
+            <p style="color: var(--c-text-muted); font-size:var(--font-sm);">No cell selected</p>
+            <button id="startCreateCellBtn" type="button" class="btn btn-primary">Create cell</button>
 
             <div class="cell-panel-spacer"></div>
 
             <label for="cellTemplatesList">Cell templates</label>
-            <select id="cellTemplatesList" size="8"></select>
+            <select id="cellTemplatesList" class="form-select" size="8"></select>
 
             <div class="cell-panel-spacer"></div>
 
             <div class="settings-input-row">
-                <button id="loadCellTemplateBtn" type="button">Load cell</button>
-                <button id="deleteCellTemplateBtn" type="button" class="danger-btn">Delete selected</button>
+                <button id="loadCellTemplateBtn" type="button" class="btn btn-secondary w-100">Load cell</button>
+                <button id="deleteCellTemplateBtn" type="button" class="btn btn-outline-danger w-100">Delete selected</button>
             </div>
         </div>
 
         <div id="cellPanelSelected" class="cell-panel-section hidden">
             <h3>Selected cell</h3>
             <div class="selected-cell-preview-wrap">
-                <canvas id="selectedCellPreviewCanvas" width="220" height="220"></canvas>
+                <canvas id="selectedCellPreviewCanvas" width="160" height="160"></canvas>
             </div>
 
             <div class="cell-info-grid">
@@ -66,11 +88,12 @@
             <div class="cell-panel-spacer"></div>
 
             <label for="saveSelectedCellNameInput">Template name</label>
-            <input id="saveSelectedCellNameInput" type="text" maxlength="200" placeholder="Enter template name">
+            <input id="saveSelectedCellNameInput" type="text" class="form-control"
+                   maxlength="200" placeholder="Enter template name">
 
             <div class="cell-panel-spacer"></div>
 
-            <button id="saveSelectedCellBtn" type="button">Save cell to DB</button>
+            <button id="saveSelectedCellBtn" type="button" class="btn btn-primary">Save cell to DB</button>
             <div id="saveSelectedCellSuccess" class="success-toast">Cell saved successfully</div>
         </div>
 
@@ -78,72 +101,73 @@
             <h3>Create cell</h3>
 
             <div class="selected-cell-preview-wrap">
-                <canvas id="createCellPreviewCanvas" width="220" height="220"></canvas>
+                <canvas id="createCellPreviewCanvas" width="160" height="160"></canvas>
             </div>
 
             <label for="createCellTemplateNameInput">Template name</label>
-            <input id="createCellTemplateNameInput" type="text" maxlength="200" placeholder="Optional template name">
+            <input id="createCellTemplateNameInput" type="text" class="form-control"
+                   maxlength="200" placeholder="Optional template name">
 
             <div class="cell-panel-spacer"></div>
 
             <div class="settings-field">
                 <label for="createDivisionThresholdSlider">Division threshold</label>
                 <div class="settings-input-row">
-                    <input id="createDivisionThresholdSlider" type="range" min="20" max="100" step="0.1">
-                    <input id="createDivisionThresholdInput" type="number" min="20" max="100" step="0.1">
+                    <input id="createDivisionThresholdSlider" type="range" class="form-range" min="20" max="100" step="0.1">
+                    <input id="createDivisionThresholdInput" type="number" class="form-control form-control-sm" min="20" max="100" step="0.1">
                 </div>
             </div>
 
             <div class="settings-field">
                 <label for="createDivisionImpulseSlider">Division impulse strength</label>
                 <div class="settings-input-row">
-                    <input id="createDivisionImpulseSlider" type="range" min="0.5" max="6" step="0.1">
-                    <input id="createDivisionImpulseInput" type="number" min="0.5" max="6" step="0.1">
+                    <input id="createDivisionImpulseSlider" type="range" class="form-range" min="0.5" max="6" step="0.1">
+                    <input id="createDivisionImpulseInput" type="number" class="form-control form-control-sm" min="0.5" max="6" step="0.1">
                 </div>
             </div>
 
             <div class="settings-field">
                 <label for="createColorHueSlider">Color hue</label>
                 <div class="settings-input-row">
-                    <input id="createColorHueSlider" type="range" min="0" max="360" step="0.1">
-                    <input id="createColorHueInput" type="number" min="0" max="360" step="0.1">
+                    <input id="createColorHueSlider" type="range" class="form-range" min="0" max="360" step="0.1">
+                    <input id="createColorHueInput" type="number" class="form-control form-control-sm" min="0" max="360" step="0.1">
                 </div>
             </div>
 
             <div class="settings-field">
                 <label for="createSaturationSlider">Saturation</label>
                 <div class="settings-input-row">
-                    <input id="createSaturationSlider" type="range" min="30" max="100" step="0.1">
-                    <input id="createSaturationInput" type="number" min="30" max="100" step="0.1">
+                    <input id="createSaturationSlider" type="range" class="form-range" min="30" max="100" step="0.1">
+                    <input id="createSaturationInput" type="number" class="form-control form-control-sm" min="30" max="100" step="0.1">
                 </div>
             </div>
 
             <div class="settings-field">
                 <label for="createLightnessSlider">Lightness</label>
                 <div class="settings-input-row">
-                    <input id="createLightnessSlider" type="range" min="35" max="75" step="0.1">
-                    <input id="createLightnessInput" type="number" min="35" max="75" step="0.1">
+                    <input id="createLightnessSlider" type="range" class="form-range" min="35" max="75" step="0.1">
+                    <input id="createLightnessInput" type="number" class="form-control form-control-sm" min="35" max="75" step="0.1">
                 </div>
             </div>
 
             <div class="settings-field">
                 <label for="createMaxEnergySlider">Max energy</label>
                 <div class="settings-input-row">
-                    <input id="createMaxEnergySlider" type="range" min="20" max="200" step="0.1">
-                    <input id="createMaxEnergyInput" type="number" min="20" max="200" step="0.1">
+                    <input id="createMaxEnergySlider" type="range" class="form-range" min="20" max="200" step="0.1">
+                    <input id="createMaxEnergyInput" type="number" class="form-control form-control-sm" min="20" max="200" step="0.1">
                 </div>
             </div>
 
             <div class="cell-panel-spacer"></div>
 
-            <button id="saveCreateTemplateBtn" type="button">Save template</button>
+            <button id="saveCreateTemplateBtn" type="button" class="btn btn-secondary">Save template</button>
             <div id="saveCreateTemplateSuccess" class="success-toast">Template saved successfully</div>
 
-            <button id="placeCellModeBtn" type="button">Place on the field</button>
-            <button id="cancelCreateCellBtn" type="button">Cancel</button>
+            <button id="placeCellModeBtn" type="button" class="btn btn-primary">Place on the field</button>
+            <button id="cancelCreateCellBtn" type="button" class="btn btn-outline-danger">Cancel</button>
 
             <div class="cell-panel-spacer"></div>
-            <div id="createCellModeHint">Placement mode is off</div>
+            <div id="createCellModeHint" style="font-size:var(--font-sm); color: var(--c-text-muted);">Placement mode is off</div>
         </div>
     </aside>
 </div>
@@ -155,52 +179,52 @@
         <div class="settings-field">
             <label for="initialCellCountSlider">Initial number of cells</label>
             <div class="settings-input-row">
-                <input id="initialCellCountSlider" type="range" min="0" max="300" step="1">
-                <input id="initialCellCountValue" type="number" min="0" max="300" step="1">
+                <input id="initialCellCountSlider" type="range" class="form-range" min="0" max="300" step="1">
+                <input id="initialCellCountValue" type="number" class="form-control form-control-sm" min="0" max="300" step="1">
             </div>
         </div>
 
         <div class="settings-field">
             <label for="foodSpawnRateSlider">Intensity of food generation</label>
             <div class="settings-input-row">
-                <input id="foodSpawnRateSlider" type="range" min="0" max="100" step="1">
-                <input id="foodSpawnRateValue" type="number" min="0" max="100" step="1">
+                <input id="foodSpawnRateSlider" type="range" class="form-range" min="0" max="100" step="1">
+                <input id="foodSpawnRateValue" type="number" class="form-control form-control-sm" min="0" max="100" step="1">
             </div>
         </div>
 
         <div class="settings-field">
             <label for="deadCellLifetimeTicksSlider">The lifetime of a dead cell</label>
             <div class="settings-input-row">
-                <input id="deadCellLifetimeTicksSlider" type="range" min="1" max="500" step="1">
-                <input id="deadCellLifetimeTicksValue" type="number" min="1" max="500" step="1">
+                <input id="deadCellLifetimeTicksSlider" type="range" class="form-range" min="1" max="500" step="1">
+                <input id="deadCellLifetimeTicksValue" type="number" class="form-control form-control-sm" min="1" max="500" step="1">
             </div>
         </div>
 
         <div class="settings-field">
             <label for="environmentNameInput">Environment name</label>
             <div class="settings-input-row">
-                <input id="environmentNameInput" type="text" maxlength="200" placeholder="Enter environment name">
-                <button id="saveEnvironmentBtn" type="button">Save world</button>
+                <input id="environmentNameInput" type="text" class="form-control" maxlength="200" placeholder="Enter environment name">
+                <button id="saveEnvironmentBtn" type="button" class="btn btn-secondary">Save world</button>
             </div>
         </div>
 
         <div class="settings-field">
             <label for="environmentSnapshotsList">Environment snapshots</label>
-            <select id="environmentSnapshotsList" size="8"></select>
+            <select id="environmentSnapshotsList" class="form-select" size="8"></select>
             <div class="settings-spacer-md"></div>
             <div class="settings-input-row">
-                <button id="loadSelectedWorldBtn" type="button">Load selected</button>
-                <button id="deleteSelectedWorldBtn" type="button" class="danger-btn">Delete selected</button>
+                <button id="loadSelectedWorldBtn" type="button" class="btn btn-secondary">Load selected</button>
+                <button id="deleteSelectedWorldBtn" type="button" class="btn btn-outline-danger">Delete selected</button>
             </div>
         </div>
 
         <div class="settings-middle-actions">
-            <button id="resetSettingsBtn" type="button">Reset</button>
+            <button id="resetSettingsBtn" type="button" class="btn btn-secondary">Reset to defaults</button>
         </div>
 
         <div class="settings-bottom-actions">
-            <button id="cancelSettingsBtn" type="button">Cancel</button>
-            <button id="saveSettingsBtn" type="button">Apply</button>
+            <button id="cancelSettingsBtn" type="button" class="btn btn-outline-danger">Cancel</button>
+            <button id="saveSettingsBtn" type="button" class="btn btn-primary">Apply</button>
         </div>
     </div>
 </div>

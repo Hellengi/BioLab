@@ -9,7 +9,7 @@ import tools.jackson.databind.json.JsonMapper;
 @Component
 @RequiredArgsConstructor
 public class EnvironmentBroadcaster {
-    private final SimulationWebSocketHandler webSocketHandler;
+    private final EnvironmentSocketHandler webSocketHandler;
     private final JsonMapper objectMapper;
 
     public void broadcast(EnvironmentDto dto) {

@@ -1,12 +1,8 @@
-/**
- * TemplatesPanel.js — список сохранённых шаблонов клеток.
- */
-
 import { dom } from "../dom.js";
-import { state } from "../../store/SimulationStore.js";
-import { deleteTemplate, getTemplate, getTemplates, saveTemplate } from "../../transport/api/cells.js";
-import { showSidePanel, showToast, SidePanel } from "../ui.js";
-import { readDraftForm, syncDraftForm } from "./CreationPanel.js";
+import { state } from "../../store/store.js";
+import { deleteTemplate, getTemplate, getTemplates, saveTemplate } from "../../transport/api/cellsApi.js";
+import { showSidePanel, showToast, SidePanel } from "../panels.js";
+import { readDraftForm, syncDraftForm } from "./creationPanel.js";
 
 export async function loadTemplates() {
     const templates = await getTemplates();

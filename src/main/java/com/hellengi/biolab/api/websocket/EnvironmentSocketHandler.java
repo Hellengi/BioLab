@@ -13,7 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 @NullMarked
-public class SimulationWebSocketHandler extends TextWebSocketHandler {
+public class EnvironmentSocketHandler extends TextWebSocketHandler {
     private final Set<WebSocketSession> sessions = ConcurrentHashMap.newKeySet();
 
     @Override
@@ -27,10 +27,7 @@ public class SimulationWebSocketHandler extends TextWebSocketHandler {
     }
 
     @Override
-    protected void handleTextMessage(WebSocketSession session, TextMessage message) {
-        // На текущем этапе клиент не отправляет команды через WebSocket.
-        // Все управляющие действия идут через REST API.
-    }
+    protected void handleTextMessage(WebSocketSession session, TextMessage message) {}
 
     public void broadcastToAll(TextMessage message) {
         Iterator<WebSocketSession> iterator = sessions.iterator();

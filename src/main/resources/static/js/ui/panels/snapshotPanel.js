@@ -1,12 +1,8 @@
-/**
- * SavesPanel.js — сохранение и загрузка миров.
- */
-
 import { dom } from "../dom.js";
-import { state, applySimulationConfig, resetClientState, updateStats } from "../../store/SimulationStore.js";
-import { deleteWorld, getConfig, getWorlds, loadWorld, saveWorld } from "../../transport/api/simulation.js";
+import { state, applySimulationConfig, resetClientState, updateStats } from "../../store/store.js";
+import { deleteWorld, getConfig, getWorlds, loadWorld, saveWorld } from "../../transport/api/simulationApi.js";
 import { render } from "../../render/canvas.js";
-import { closeSettings } from "./SettingsPanel.js";
+import { closeSettings } from "./settingsPanel.js";
 
 export async function loadWorlds() {
     const worlds = await getWorlds();

@@ -1,15 +1,12 @@
-/**
- * app.js — точка входа приложения.
- */
-
-import { state, resetClientState, loadSimulationConfig, applySimulationConfig }
-    from "./store/SimulationStore.js";
+import {state, resetClientState, loadSimulationConfig, applySimulationConfig}
+    from "./store/store.js";
 import { dom }          from "./ui/dom.js";
 import { render }       from "./render/canvas.js";
 import { connectSocket } from "./transport/ws/socket.js";
 import { bindEvents }   from "./ui/events.js";
-import { showSidePanel, SidePanel } from "./ui/ui.js";
-import { loadTemplates } from "./ui/panels/TemplatesPanel.js";
+import { showSidePanel, SidePanel } from "./ui/panels.js";
+import { loadTemplates } from "./ui/panels/templatesPanel.js";
+import {recordWorldFrame} from "./render/fpsMeter.js";
 
 async function initializePage() {
     resetClientState();
@@ -39,6 +36,7 @@ async function initializePage() {
 function animationLoop() {
     if (state.world && state.config) {
         render(dom.ctx, state);
+        recordWorldFrame(state.world);
     }
     requestAnimationFrame(animationLoop);
 }

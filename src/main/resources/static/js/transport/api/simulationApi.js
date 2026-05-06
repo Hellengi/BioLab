@@ -1,4 +1,4 @@
-import { getJson, postJson, putJson, del, request } from "./_http.js";
+import { getJson, putJson, del, request } from "./_http.js";
 
 export function getConfig() {
     return getJson("/api/simulation/config");
@@ -28,14 +28,6 @@ export function loadWorld(id) {
 
 export function deleteWorld(id) {
     return del(`/api/environments/${id}`);
-}
-
-export function startSimulation() {
-    return request("/api/simulation/start", { method: "POST" });
-}
-
-export function stopSimulation() {
-    return request("/api/simulation/stop", { method: "POST" });
 }
 
 export function resetSimulation() {

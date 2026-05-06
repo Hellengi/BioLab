@@ -1,13 +1,13 @@
 package com.hellengi.biolab.api.presentation;
 
-import com.hellengi.biolab.config.SimulationProperties;
+import com.hellengi.biolab.config.YamlConfig;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-public class RenderMapper {
-    private final SimulationProperties config;
+public class RenderMetrics {
+    private final YamlConfig config;
 
     public double calculateCellRadius(double energy, double divisionThreshold) {
         double safeThreshold = Math.max(0.1, divisionThreshold);

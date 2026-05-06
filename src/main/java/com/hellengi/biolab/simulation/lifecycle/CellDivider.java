@@ -1,10 +1,10 @@
 package com.hellengi.biolab.simulation.lifecycle;
 
-import com.hellengi.biolab.config.SimulationProperties;
+import com.hellengi.biolab.config.YamlConfig;
 import com.hellengi.biolab.model.Cell;
 import com.hellengi.biolab.model.Genome;
-import com.hellengi.biolab.api.presentation.RenderMapper;
-import com.hellengi.biolab.simulation.mutation.GenomeMutationService;
+import com.hellengi.biolab.api.presentation.RenderMetrics;
+import com.hellengi.biolab.simulation.mutation.GenomeMutator;
 import com.hellengi.biolab.simulation.physics.WorldPhysics;
 import com.hellengi.biolab.util.IdGenerator;
 import lombok.RequiredArgsConstructor;
@@ -15,17 +15,17 @@ import java.util.Random;
 
 @Service
 @RequiredArgsConstructor
-public class CellDivisionService {
-    private final SimulationProperties baseConfig;
-    private final GenomeMutationService genomeMutationService;
+public class CellDivider {
+    private final YamlConfig baseConfig;
+    private final GenomeMutator genomeMutator;
     private final WorldPhysics worldPhysics;
-    private final RenderMapper renderMapper;
+    private final RenderMetrics renderMetrics;
 
     private final Random random = new Random();
 
     public List<Cell> divide(Cell parent) {
-        Genome firstGenome = genomeMutationService.copyGenomeWithPossibleMutation(parent.getGenome());
-        Genome secondGenome = genomeMutationService.copyGenomeWithPossibleMutation(parent.getGenome());
+        Genome firstGenome = genomeMutator.copyGenomeWithPossibleMutation(parent.getGenome());
+        Genome secondGenome = genomeMutator.copyGenomeWithPossibleMutation(parent.getGenome());
 
         double firstDivisionImpulse = firstGenome.getDivisionImpulseStrength();
         double secondDivisionImpulse = secondGenome.getDivisionImpulseStrength();
@@ -52,11 +52,11 @@ public class CellDivisionService {
         double directionX = Math.cos(angle);
         double directionY = Math.sin(angle);
 
-        double firstChildRadius = renderMapper.calculateCellRadius(
+        double firstChildRadius = renderMetrics.calculateCellRadius(
                 firstChildEnergy,
                 firstGenome.getDivisionThreshold()
         );
-        double secondChildRadius = renderMapper.calculateCellRadius(
+        double secondChildRadius = renderMetrics.calculateCellRadius(
                 secondChildEnergy,
                 secondGenome.getDivisionThreshold()
         );

@@ -1,8 +1,4 @@
-/**
- * preview.js — рендер превью в панели клетки.
- */
-
-import { state } from "../store/SimulationStore.js";
+import { state } from "../store/store.js";
 import { drawArrow, preparePreviewCanvas } from "../core/utils.js";
 import { dom } from "../ui/dom.js";
 

@@ -1,39 +1,39 @@
 package com.hellengi.biolab.simulation.world;
 
-import com.hellengi.biolab.config.SimulationProperties;
-import com.hellengi.biolab.simulation.SimulationRuntimeConfig;
-import com.hellengi.biolab.simulation.factory.EntityFactory;
+import com.hellengi.biolab.config.YamlConfig;
+import com.hellengi.biolab.simulation.settings.RuntimeOverrides;
+import com.hellengi.biolab.simulation.factory.SpawnFactory;
 import com.hellengi.biolab.util.SliderScale;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
-import java.util.Random;
-
 @Component
 @RequiredArgsConstructor
 public class FoodSpawner {
-    private final SimulationProperties baseConfig;
-    private final SimulationRuntimeConfig runtimeConfig;
-    private final EntityFactory entityFactory;
+    private final YamlConfig baseConfig;
+    private final RuntimeOverrides runtimeConfig;
+    private final SpawnFactory spawnFactory;
 
-    private final Random random = new Random();
+    private double foodSpawnProgress = 0.0;
 
-    public void spawnPeriodicFood(SimulationEnvironment world) {
+    public void spawnPeriodicFood(WorldState world, double tickScale) {
         double spawnsPerTick = currentFoodSpawnsPerTick();
 
-        if (spawnsPerTick <= 0.0) {
+        if (spawnsPerTick <= 0.0 || tickScale <= 0.0) {
             return;
         }
 
-        int guaranteedSpawns = (int) Math.floor(spawnsPerTick);
-        double fractionalPart = spawnsPerTick - guaranteedSpawns;
+        foodSpawnProgress += spawnsPerTick * tickScale;
 
-        for (int i = 0; i < guaranteedSpawns; i++) {
-            world.getFoods().add(entityFactory.createRandomFood());
+        int spawnsToCreate = (int) Math.floor(foodSpawnProgress);
+        if (spawnsToCreate <= 0) {
+            return;
         }
 
-        if (random.nextDouble() < fractionalPart) {
-            world.getFoods().add(entityFactory.createRandomFood());
+        foodSpawnProgress -= spawnsToCreate;
+
+        for (int i = 0; i < spawnsToCreate; i++) {
+            world.getFoods().add(spawnFactory.createRandomFood());
         }
     }
 

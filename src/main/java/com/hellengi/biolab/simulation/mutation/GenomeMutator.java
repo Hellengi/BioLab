@@ -1,8 +1,8 @@
 package com.hellengi.biolab.simulation.mutation;
 
-import com.hellengi.biolab.config.SimulationProperties;
+import com.hellengi.biolab.config.YamlConfig;
 import com.hellengi.biolab.model.Genome;
-import com.hellengi.biolab.util.GenomeCodeCodec;
+import com.hellengi.biolab.util.GenomeCodec;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,10 +15,10 @@ import java.util.Random;
 
 @Component
 @RequiredArgsConstructor
-public class GenomeMutationService {
-    private static final Logger log = LoggerFactory.getLogger(GenomeMutationService.class);
+public class GenomeMutator {
+    private static final Logger log = LoggerFactory.getLogger(GenomeMutator.class);
 
-    private final SimulationProperties config;
+    private final YamlConfig config;
     private final Random random = new Random();
 
     public Genome copyGenomeWithPossibleMutation(Genome parentGenome) {
@@ -157,8 +157,8 @@ public class GenomeMutationService {
     }
 
     private void logGenomeMutation(Genome oldGenome, Genome newGenome) {
-        String oldCode = GenomeCodeCodec.encode(oldGenome);
-        String newCode = GenomeCodeCodec.encode(newGenome);
+        String oldCode = GenomeCodec.encode(oldGenome);
+        String newCode = GenomeCodec.encode(newGenome);
 
         List<String> changes = new ArrayList<>();
         addGenomeChange(changes, "divisionThreshold", oldGenome.getDivisionThreshold(), newGenome.getDivisionThreshold());

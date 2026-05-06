@@ -1,24 +1,24 @@
 package com.hellengi.biolab.simulation.world;
 
-import com.hellengi.biolab.config.SimulationProperties;
-import com.hellengi.biolab.simulation.factory.EntityFactory;
+import com.hellengi.biolab.config.YamlConfig;
+import com.hellengi.biolab.simulation.factory.SpawnFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-public class EnvironmentInitializer {
-    private final SimulationProperties baseConfig;
-    private final EntityFactory entityFactory;
+public class WorldInitializer {
+    private final YamlConfig baseConfig;
+    private final SpawnFactory spawnFactory;
 
-    public void initialize(SimulationEnvironment world, int initialCellCount) {
+    public void initialize(WorldState world, int initialCellCount) {
         world.setRunning(false);
         world.setTick(0L);
         world.clear();
 
         for (int i = 0; i < initialCellCount; i++) {
             world.getCells().add(
-                    entityFactory.createRandomCell(
+                    spawnFactory.createRandomCell(
                             baseConfig.getSpawn().getCenterX(),
                             baseConfig.getSpawn().getCenterY()
                     )
@@ -26,9 +26,9 @@ public class EnvironmentInitializer {
         }
 
         for (int i = 0; i < baseConfig.getFood().getInitialCount(); i++) {
-            world.getFoods().add(entityFactory.createRandomFood());
+            world.getFoods().add(spawnFactory.createRandomFood());
         }
 
-        world.setLastSimulationStepTimeMs(System.currentTimeMillis());
+        world.setLastSimulationStepTimeNs(System.nanoTime());
     }
 }

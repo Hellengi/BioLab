@@ -19,6 +19,13 @@ public record SimulationSettingsDto(
         double directionVectorLength,
         double foodBaseRadius,
 
+        double timeSlider,
+        boolean paused,
+        double speedFactor,
+        double temperatureCelsius,
+        double minSpeedFactor,
+        double maxSpeedFactor,
+
         GenomeDto initialGenome
 ) {
 }

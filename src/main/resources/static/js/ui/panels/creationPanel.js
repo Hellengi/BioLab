@@ -1,16 +1,8 @@
-/**
- * CreationPanel.js — панель создания новой клетки.
- */
-
-import { state, loadSimulationConfig } from "../../store/SimulationStore.js";
+import { state, loadSimulationConfig } from "../../store/store.js";
 import { dom } from "../dom.js";
-import { spawnCell } from "../../transport/api/cells.js";
+import { spawnCell } from "../../transport/api/cellsApi.js";
 import { drawCreateCellPreview } from "../../render/preview.js";
-import { showSidePanel, SidePanel } from "../ui.js";
-
-// ---------------------------------------------------------------------------
-// Описание полей формы (slider ↔ number input)
-// ---------------------------------------------------------------------------
+import { showSidePanel, SidePanel } from "../panels.js";
 
 export const createCellFields = [
     { key: "divisionThreshold", range: dom.createDivisionThresholdSlider, input: dom.createDivisionThresholdInput },
@@ -21,11 +13,6 @@ export const createCellFields = [
     { key: "maxEnergy", range: dom.createMaxEnergySlider, input: dom.createMaxEnergyInput },
 ];
 
-// ---------------------------------------------------------------------------
-// Lifecycle handlers (вызываются из events.js)
-// ---------------------------------------------------------------------------
-
-/** Обработчик кнопки "Create cell" */
 export async function onStartCreateCell() {
     if (!state.config) {
         await loadSimulationConfig();
@@ -37,7 +24,6 @@ export async function onStartCreateCell() {
     showSidePanel(SidePanel.CREATE);
 }
 
-/** Обработчик кнопки "Cancel" в панели создания */
 export function onCancelCreateCell() {
     state.cellDraft = null;
     setPlaceMode(false);
@@ -45,23 +31,16 @@ export function onCancelCreateCell() {
     showSidePanel(state.selectedCellId ? SidePanel.SELECTED : SidePanel.EMPTY);
 }
 
-/** Обработчик кнопки "Place on the field" — включает режим размещения */
 export function enableCellPlacement() {
-    state.cellDraft = readDraftForm(); // бросает, если форма невалидна
+    state.cellDraft = readDraftForm();
     drawCreateCellPreview();
     setPlaceMode(true);
 }
 
-/** Обработчик изменения любого поля формы */
 export function onCreateFormChange() {
     updateDraft();
 }
 
-// ---------------------------------------------------------------------------
-// Draft helpers
-// ---------------------------------------------------------------------------
-
-/** Создаёт черновик с дефолтными значениями из конфига симуляции */
 export function createDraft() {
     if (!state.config?.initialGenome) {
         throw new Error("Simulation config is not loaded");
@@ -82,7 +61,6 @@ export function createDraft() {
     };
 }
 
-/** Синхронизирует поля формы из state.cellDraft */
 export function syncDraftForm() {
     if (!state.cellDraft?.genome) return;
 
@@ -95,7 +73,6 @@ export function syncDraftForm() {
     drawCreateCellPreview();
 }
 
-/** Читает значения из формы в объект draft (бросает на невалидных данных) */
 export function readDraftForm() {
     const draft = {
         id: null,
@@ -115,17 +92,11 @@ export function readDraftForm() {
     return draft;
 }
 
-/** Читает форму и обновляет state.cellDraft + перерисовывает превью */
 export function updateDraft() {
     state.cellDraft = readDraftForm();
     drawCreateCellPreview();
 }
 
-// ---------------------------------------------------------------------------
-// Place mode
-// ---------------------------------------------------------------------------
-
-/** Включает/выключает режим размещения клетки */
 export function setPlaceMode(value) {
     state.placeMode = value;
 
@@ -138,7 +109,6 @@ export function setPlaceMode(value) {
     dom.canvas?.classList.toggle("cell-create-mode-active", value);
 }
 
-/** Размещает черновик клетки на указанных координатах */
 export async function spawnDraftCell(x, y) {
     if (!state.cellDraft) return;
     await spawnCell(x, y, state.cellDraft);

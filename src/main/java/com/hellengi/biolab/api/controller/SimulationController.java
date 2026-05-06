@@ -15,18 +15,6 @@ import java.util.Map;
 public class SimulationController {
     private final SimulationService simulationService;
 
-    @PostMapping("/start")
-    public ResponseEntity<Map<String, String>> start() {
-        simulationService.start();
-        return ResponseEntity.ok(Map.of("status", "started"));
-    }
-
-    @PostMapping("/stop")
-    public ResponseEntity<Map<String, String>> stop() {
-        simulationService.stop();
-        return ResponseEntity.ok(Map.of("status", "stopped"));
-    }
-
     @PostMapping("/reset")
     public ResponseEntity<Map<String, String>> reset() {
         simulationService.reset();

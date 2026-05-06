@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 @Setter
 @Entity
 @Table(name = "cell_template")
-public class CellTemplate {
+public class CellTemplateEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -22,15 +22,15 @@ public class CellTemplate {
     private LocalDateTime createdAt;
 
     @Embedded
-    private GenomeSnapshot genome;
+    private GenomeEmbeddable genome;
 
-    public CellTemplate() {
+    public CellTemplateEntity() {
     }
 
-    public CellTemplate(
+    public CellTemplateEntity(
             String name,
             LocalDateTime createdAt,
-            GenomeSnapshot genome
+            GenomeEmbeddable genome
     ) {
         this.name = name;
         this.createdAt = createdAt;

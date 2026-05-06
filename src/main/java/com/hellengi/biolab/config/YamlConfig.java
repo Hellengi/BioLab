@@ -7,7 +7,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @Setter
 @Getter
 @ConfigurationProperties(prefix = "simulation")
-public class SimulationProperties {
+public class YamlConfig {
     private int width, height;
     private long tickRateMs;
 
@@ -16,6 +16,9 @@ public class SimulationProperties {
     private SpawnProperties spawn = new SpawnProperties();
     private GenomeProperties genome = new GenomeProperties();
     private RenderProperties render = new RenderProperties();
+    private PhysicsProperties physics = new PhysicsProperties();
+    private TimeProperties time = new TimeProperties();
+    private BroadcastProperties broadcast = new BroadcastProperties();
 
     @Getter @Setter
     public static class CellProperties {
@@ -78,5 +81,28 @@ public class SimulationProperties {
     @Getter @Setter
     public static class Range {
         private double min, max;
+    }
+
+    @Getter @Setter
+    public static class PhysicsProperties {
+        private double collisionRestitution = 1.0;
+        private int maxCollisionSubsteps = 8;
+        private double maxCollisionStepDistance = 4.0;
+    }
+
+    @Getter @Setter
+    public static class TimeProperties {
+        private double minSpeedFactor = 0.01;
+        private double maxSpeedFactor = 10.0;
+        private double minTemperatureCelsius = -20.0;
+        private double normalTemperatureCelsius = 20.0;
+        private double maxTemperatureCelsius = 60.0;
+        private boolean scaleSlowdownInsideTick = true;
+        private boolean scaleSpeedupInsideTick = false;
+    }
+
+    @Getter @Setter
+    public static class BroadcastProperties {
+        private int fps = 100;
     }
 }

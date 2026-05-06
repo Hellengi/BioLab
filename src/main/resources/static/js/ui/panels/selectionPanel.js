@@ -1,10 +1,6 @@
-/**
- * SelectionPanel.js — управление выбором клетки.
- */
-
-import { state } from "../../store/SimulationStore.js";
+import { state } from "../../store/store.js";
 import { dom } from "../dom.js";
-import { showSidePanel, SidePanel } from "../ui.js";
+import { showSidePanel, SidePanel } from "../panels.js";
 import { formatTwoDecimals, getCellRgbString, setText } from "../../core/utils.js";
 import { drawSelectedCellPreview } from "../../render/preview.js";
 

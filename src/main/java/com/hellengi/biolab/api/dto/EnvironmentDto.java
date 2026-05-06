@@ -4,6 +4,7 @@ import java.util.List;
 
 public record EnvironmentDto(
         long tick,
+        long tps,
         int width,
         int height,
         boolean running,

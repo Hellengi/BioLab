@@ -13,14 +13,14 @@ import java.util.List;
 @Setter
 @Getter
 @Component
-public class SimulationEnvironment {
+public class WorldState {
     private final List<Cell> cells = new ArrayList<>();
     private final List<DeadCell> deadCells = new ArrayList<>();
     private final List<Food> foods = new ArrayList<>();
 
     private boolean running = false;
     private long tick = 0L;
-    private long lastSimulationStepTimeMs = System.currentTimeMillis();
+    private long lastSimulationStepTimeNs = System.nanoTime();
 
     public void incrementTick() {
         this.tick++;
