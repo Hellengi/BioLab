@@ -1,12 +1,11 @@
-import {state, resetClientState, loadSimulationConfig, applySimulationConfig}
-    from "./store/store.js";
-import { dom }          from "./ui/dom.js";
-import { render }       from "./render/canvas.js";
+import { state, resetClientState, loadSimulationConfig, applySimulationConfig } from "./store/store.js";
+import { dom } from "./ui/dom.js";
+import { render } from "./render/canvas.js";
 import { connectSocket } from "./transport/ws/socket.js";
-import { bindEvents }   from "./ui/events.js";
-import { showSidePanel, SidePanel } from "./ui/panels.js";
-import { loadTemplates } from "./ui/panels/templatesPanel.js";
-import {recordWorldFrame} from "./render/fpsMeter.js";
+import { bindEvents } from "./ui/events.js";
+import { recordWorldFrame } from "./render/fpsMeter.js";
+import { loadSettingsIntoPanel } from "./ui/panels/settingsPanel.js";
+import { initCreatePanel } from "./ui/panels/creationPanel.js";
 
 async function initializePage() {
     resetClientState();
@@ -15,20 +14,19 @@ async function initializePage() {
     try {
         await loadSimulationConfig();
         applySimulationConfig();
+        loadSettingsIntoPanel();
     } catch (error) {
         console.error("Config loading error", error);
-        dom.stats.textContent = "Ошибка загрузки конфигурации";
+        dom.stats.textContent = "Config loading error";
         return;
     }
 
     try {
-        await loadTemplates();
+        await initCreatePanel();
     } catch (error) {
-        console.error("Templates loading error", error);
-        dom.stats.textContent = "Конфигурация загружена, но не удалось загрузить шаблоны клеток";
+        console.error("Create panel init error", error);
     }
 
-    showSidePanel(SidePanel.EMPTY);
     connectSocket();
     requestAnimationFrame(animationLoop);
 }
@@ -43,5 +41,5 @@ function animationLoop() {
 
 initializePage().catch((error) => {
     console.error("Unexpected initialization error", error);
-    dom.stats.textContent = "Ошибка инициализации приложения";
+    dom.stats.textContent = "Application initialization error";
 });

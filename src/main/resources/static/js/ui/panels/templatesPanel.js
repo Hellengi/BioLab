@@ -1,10 +1,11 @@
 import { dom } from "../dom.js";
 import { state } from "../../store/store.js";
 import { deleteTemplate, getTemplate, getTemplates, saveTemplate } from "../../transport/api/cellsApi.js";
-import { showSidePanel, showToast, SidePanel } from "../panels.js";
+import { openModal, closeModal } from "../panels.js";
 import { readDraftForm, syncDraftForm } from "./creationPanel.js";
+import { switchTab } from "./tabsPanel.js";
 
-export async function loadTemplates() {
+async function refreshTemplateList() {
     const templates = await getTemplates();
     if (!dom.cellTemplatesList) return;
 
@@ -17,44 +18,57 @@ export async function loadTemplates() {
     }
 }
 
-export async function saveSelectedTemplate() {
+export function openSaveCellModal(nameInput, modal) {
+    if (nameInput) nameInput.value = "";
+    openModal(modal);
+}
+
+export async function confirmSaveSelectedCell() {
     if (!state.selectedCellTemplate) return;
 
     const name = dom.saveSelectedCellNameInput?.value.trim();
-    if (!name) { alert("Enter cell template name"); return; }
+    if (!name) { alert("Enter template name"); return; }
 
     await saveTemplate(name, state.selectedCellTemplate);
-    await loadTemplates();
-    showToast(dom.saveSelectedCellSuccess);
+    closeModal(dom.saveSelectedCellModal);
 }
 
-export async function loadSelectedTemplate() {
+export async function confirmSaveDraftCell() {
+    let draft;
+    try {
+        draft = readDraftForm();
+    } catch (err) {
+        alert("Check the values in the cell creation form");
+        return;
+    }
+
+    const name = dom.saveCellNameInput?.value.trim();
+    if (!name) { alert("Enter template name"); return; }
+
+    await saveTemplate(name, draft);
+    closeModal(dom.saveCellModal);
+}
+
+export async function openLoadCellModal() {
+    await refreshTemplateList();
+    openModal(dom.loadCellModal);
+}
+
+export async function confirmLoadCell() {
     const selectedId = dom.cellTemplatesList?.value;
     if (!selectedId) { alert("Select a cell template"); return; }
 
     state.cellDraft = await getTemplate(selectedId);
-    if (dom.createCellTemplateNameInput) {
-        dom.createCellTemplateNameInput.value = state.cellDraft.name ?? "";
-    }
     syncDraftForm();
-    showSidePanel(SidePanel.CREATE);
+    closeModal(dom.loadCellModal);
+    switchTab("create");
 }
 
 export async function deleteSelectedTemplate() {
     const selectedId = dom.cellTemplatesList?.value;
-    if (!selectedId) { alert("Select a cell template to delete"); return; }
-    if (!confirm("Delete the selected cell template?")) return;
+    if (!selectedId) { alert("Select a template to delete"); return; }
+    if (!confirm("Delete the selected template?")) return;
 
     await deleteTemplate(selectedId);
-    await loadTemplates();
-}
-
-export async function saveDraftTemplate() {
-    const name = dom.createCellTemplateNameInput?.value.trim();
-    if (!name) { alert("Enter cell template name"); return; }
-
-    const draft = readDraftForm();
-    await saveTemplate(name, draft);
-    await loadTemplates();
-    showToast(dom.saveCreateTemplateSuccess);
+    await refreshTemplateList();
 }

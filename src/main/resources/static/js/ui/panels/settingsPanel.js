@@ -1,71 +1,28 @@
-import {applySimulationConfig, state, updateStats} from "../../store/store.js";
+import { state, updateStats, applySimulationConfig } from "../../store/store.js";
 import { resetConfig, updateConfig } from "../../transport/api/simulationApi.js";
-import { loadWorlds } from "./snapshotPanel.js";
 import { dom } from "../dom.js";
 import { bindInputs } from "../panels.js";
 
-export async function openSettings() {
+export async function loadSettingsIntoPanel() {
     if (!state.config) return;
-
-    state.settingsDraft = {
-        initialCellCount: state.config.initialCellCount,
-        foodSpawnIntensity: state.config.foodSpawnIntensity,
-        deadCellLifetimeTicks: state.config.deadCellLifetimeTicks,
-    };
-
-    syncSettingsFormFromDraft();
-    await loadWorlds();
-    dom.settingsOverlay.classList.remove("hidden");
-}
-
-export function closeSettings() {
-    dom.settingsOverlay.classList.add("hidden");
-}
-
-export async function saveSettings() {
-    if (!state.config || !state.settingsDraft) return;
-
-    const payload = {
-        ...state.config,
-        initialCellCount: state.settingsDraft.initialCellCount,
-        foodSpawnIntensity: state.settingsDraft.foodSpawnIntensity,
-        deadCellLifetimeTicks: state.settingsDraft.deadCellLifetimeTicks,
-    };
-
-    state.config = await updateConfig(payload);
-    closeSettings();
-    updateStats();
+    setSliderAndInput(dom.initialCellCountSlider, dom.initialCellCountValue, state.config.initialCellCount);
+    setSliderAndInput(dom.foodSpawnRateSlider, dom.foodSpawnRateValue, state.config.foodSpawnIntensity);
+    setSliderAndInput(dom.deadCellLifetimeTicksSlider, dom.deadCellLifetimeTicksValue, state.config.deadCellLifetimeTicks);
 }
 
 export async function resetSettings() {
     state.config = await resetConfig();
-    state.settingsDraft = {
-        initialCellCount: state.config.initialCellCount,
-        foodSpawnIntensity: state.config.foodSpawnIntensity,
-        deadCellLifetimeTicks: state.config.deadCellLifetimeTicks,
-    };
-    syncSettingsFormFromDraft();
+    loadSettingsIntoPanel();
     applySimulationConfig();
     updateStats();
 }
 
 export function bindSettingsForm() {
-    bindSetting(dom.initialCellCountSlider, dom.initialCellCountValue, 'initialCellCount');
-    bindSetting(dom.foodSpawnRateSlider, dom.foodSpawnRateValue, 'foodSpawnIntensity',
+    bindLiveSetting(dom.initialCellCountSlider, dom.initialCellCountValue, "initialCellCount");
+    bindLiveSetting(dom.foodSpawnRateSlider, dom.foodSpawnRateValue, "foodSpawnIntensity",
         value => Math.max(0, Math.min(100, value))
     );
-    bindSetting(dom.deadCellLifetimeTicksSlider, dom.deadCellLifetimeTicksValue, "deadCellLifetimeTicks");
-}
-
-function syncSettingsFormFromDraft() {
-    if (!state.settingsDraft) return;
-
-    setSliderAndInput(dom.initialCellCountSlider, dom.initialCellCountValue,
-        state.settingsDraft.initialCellCount);
-    setSliderAndInput(dom.foodSpawnRateSlider, dom.foodSpawnRateValue,
-        state.settingsDraft.foodSpawnIntensity);
-    setSliderAndInput(dom.deadCellLifetimeTicksSlider, dom.deadCellLifetimeTicksValue,
-        state.settingsDraft.deadCellLifetimeTicks);
+    bindLiveSetting(dom.deadCellLifetimeTicksSlider, dom.deadCellLifetimeTicksValue, "deadCellLifetimeTicks");
 }
 
 function setSliderAndInput(slider, input, value) {
@@ -73,11 +30,19 @@ function setSliderAndInput(slider, input, value) {
     if (input) input.value = String(value);
 }
 
-function bindSetting(rangeInput, numberInput, key, normalize = v => v) {
-    bindInputs(rangeInput, numberInput, () => {
+function bindLiveSetting(rangeInput, numberInput, key, normalize = v => v) {
+    bindInputs(rangeInput, numberInput, async () => {
+        if (!state.config) return;
         const value = normalize(Number(numberInput?.value));
-        state.settingsDraft[key] = value;
         if (rangeInput) rangeInput.value = String(value);
         if (numberInput) numberInput.value = String(value);
+
+        const payload = { ...state.config, [key]: value };
+        try {
+            state.config = await updateConfig(payload);
+            updateStats();
+        } catch (err) {
+            console.error("Failed to update config", err);
+        }
     });
 }

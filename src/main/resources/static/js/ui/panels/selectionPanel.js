@@ -1,23 +1,29 @@
 import { state } from "../../store/store.js";
 import { dom } from "../dom.js";
-import { showSidePanel, SidePanel } from "../panels.js";
 import { formatTwoDecimals, getCellRgbString, setText } from "../../core/utils.js";
 import { drawSelectedCellPreview } from "../../render/preview.js";
+import { getActiveTab, setSelectedTabEnabled, switchTab } from "./tabsPanel.js";
 
 export function selectCell(cell) {
     if (!cell) throw new Error("Environment cell is required");
-
     state.selectedCellId = cell.id;
     updateSelectedCellPanel(cell);
-    showSidePanel(SidePanel.SELECTED);
+    showCellContent(true);
+    setSelectedTabEnabled(true);
+    switchTab("selected");
 }
 
 export function clearSelection() {
     state.selectedCellId = null;
     state.selectedCellTemplate = null;
-    if (dom.saveSelectedCellNameInput) dom.saveSelectedCellNameInput.value = "";
     clearSelectedCellInfo();
-    showSidePanel(state.cellDraft ? SidePanel.CREATE : SidePanel.EMPTY);
+    showCellContent(false);
+
+    if (getActiveTab() === "selected") {
+        switchTab("control");
+    }
+
+    setSelectedTabEnabled(false);
 }
 
 export function refreshSelection() {
@@ -35,7 +41,6 @@ function updateSelectedCellPanel(cell) {
     state.selectedCellTemplate = mapWorldCellToTemplate(cell);
 
     const speed = Math.hypot(cell.vx, cell.vy);
-
     const genome = state.selectedCellTemplate.genome;
 
     setText(dom.selectedCellCode, genome.code);
@@ -64,6 +69,11 @@ function mapWorldCellToTemplate(cell) {
             code: cell.genome.code,
         }
     };
+}
+
+function showCellContent(hasCell) {
+    dom.selectedCellContent?.classList.toggle("hidden", !hasCell);
+    dom.saveSelectedCellBtn?.classList.toggle("hidden", !hasCell);
 }
 
 export function clearSelectedCellInfo() {

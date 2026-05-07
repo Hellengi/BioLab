@@ -2,7 +2,6 @@ import { state, loadSimulationConfig } from "../../store/store.js";
 import { dom } from "../dom.js";
 import { spawnCell } from "../../transport/api/cellsApi.js";
 import { drawCreateCellPreview } from "../../render/preview.js";
-import { showSidePanel, SidePanel } from "../panels.js";
 
 export const createCellFields = [
     { key: "divisionThreshold", range: dom.createDivisionThresholdSlider, input: dom.createDivisionThresholdInput },
@@ -13,28 +12,23 @@ export const createCellFields = [
     { key: "maxEnergy", range: dom.createMaxEnergySlider, input: dom.createMaxEnergyInput },
 ];
 
-export async function onStartCreateCell() {
+export async function initCreatePanel() {
     if (!state.config) {
         await loadSimulationConfig();
     }
     state.cellDraft = createDraft();
-    if (dom.createCellTemplateNameInput) dom.createCellTemplateNameInput.value = "";
     syncDraftForm();
     setPlaceMode(false);
-    showSidePanel(SidePanel.CREATE);
 }
 
-export function onCancelCreateCell() {
-    state.cellDraft = null;
-    setPlaceMode(false);
-    drawCreateCellPreview();
-    showSidePanel(state.selectedCellId ? SidePanel.SELECTED : SidePanel.EMPTY);
-}
-
-export function enableCellPlacement() {
-    state.cellDraft = readDraftForm();
-    drawCreateCellPreview();
-    setPlaceMode(true);
+export function toggleCellPlacement() {
+    if (state.placeMode) {
+        setPlaceMode(false);
+    } else {
+        state.cellDraft = readDraftForm();
+        drawCreateCellPreview();
+        setPlaceMode(true);
+    }
 }
 
 export function onCreateFormChange() {
@@ -74,18 +68,13 @@ export function syncDraftForm() {
 }
 
 export function readDraftForm() {
-    const draft = {
-        id: null,
-        name: null,
-        genome: {}
-    };
+    const draft = { id: null, name: null, genome: {} };
 
     for (const { key, input } of createCellFields) {
         const value = Number(input?.value);
         if (!Number.isFinite(value)) {
             throw new Error(`Invalid value for ${key}`);
         }
-
         draft.genome[key] = value;
     }
 
@@ -100,10 +89,23 @@ export function updateDraft() {
 export function setPlaceMode(value) {
     state.placeMode = value;
 
-    if (dom.createCellModeHint) {
-        dom.createCellModeHint.textContent = value
+    const hint = dom.createCellModeHint;
+    if (hint) {
+        hint.textContent = value
             ? "Placement mode is ON — click on the field"
             : "Placement mode is off";
+        hint.className = value
+            ? "placement-hint placement-hint--on"
+            : "placement-hint placement-hint--off";
+
+        const dot = document.createElement("span");
+        dot.className = "placement-dot";
+        hint.prepend(dot);
+    }
+
+    if (dom.placeCellModeBtn) {
+        dom.placeCellModeBtn.textContent = value ? "Stop placing" : "Place on the field";
+        dom.placeCellModeBtn.classList.toggle("active", value);
     }
 
     dom.canvas?.classList.toggle("cell-create-mode-active", value);

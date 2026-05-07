@@ -2,8 +2,8 @@ import { state, sliderState } from "./state.js";
 import { getConfig, resetSimulation, updateConfig } from "../transport/api/simulationApi.js";
 import { render } from "../render/canvas.js";
 import { drawCreateCellPreview, drawSelectedCellPreview } from "../render/preview.js";
-import { showSidePanel, SidePanel } from "../ui/panels.js";
 import { dom } from "../ui/dom.js";
+import { setPlaceMode } from "../ui/panels/creationPanel.js";
 
 export async function loadSimulationConfig() {
     state.config = await getConfig();
@@ -65,19 +65,13 @@ export function resetClientState() {
     state.selectedCellId = null;
     state.selectedCellTemplate = null;
     state.cellDraft = null;
-    state.placeMode = false;
     state.pendingTimeSlider = null;
     state.fps = 0;
     state.tps = 0;
 
-    if (dom.saveSelectedCellNameInput) dom.saveSelectedCellNameInput.value = "";
-    if (dom.createCellTemplateNameInput) dom.createCellTemplateNameInput.value = "";
-
+    setPlaceMode(false);
     drawSelectedCellPreview(null, null);
     drawCreateCellPreview();
-    dom.canvas?.classList.remove("cell-create-mode-active");
-    if (dom.createCellModeHint) dom.createCellModeHint.textContent = "Placement mode is off";
-    showSidePanel(SidePanel.EMPTY);
 }
 
 export async function togglePause() {

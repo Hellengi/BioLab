@@ -26,7 +26,7 @@ function handlePlaceModeClick(x, y) {
         state.cellDraft = readDraftForm();
     } catch (err) {
         console.error("Create cell form error", err);
-        alert("Check the values in the cell creation form\n");
+        alert("Check the values in the cell creation form");
         return;
     }
 

@@ -34,9 +34,6 @@ export const dom = {
     resetBtn: requireEl("resetBtn"),
     sidebarToggleBtn: optionalEl("sidebarToggleBtn"),
 
-    settingsBtn: requireEl("settingsBtn"),
-    settingsOverlay: requireEl("settingsOverlay"),
-
     initialCellCountSlider: optionalEl("initialCellCountSlider"),
     initialCellCountValue: optionalEl("initialCellCountValue"),
 
@@ -47,18 +44,8 @@ export const dom = {
     deadCellLifetimeTicksValue: optionalEl("deadCellLifetimeTicksValue"),
 
     resetSettingsBtn: optionalEl("resetSettingsBtn"),
-    cancelSettingsBtn: optionalEl("cancelSettingsBtn"),
-    saveSettingsBtn: optionalEl("saveSettingsBtn"),
 
-    environmentNameInput: optionalEl("environmentNameInput"),
-    saveEnvironmentBtn: optionalEl("saveEnvironmentBtn"),
-    environmentSnapshotsList: optionalEl("environmentSnapshotsList"),
-    loadSelectedWorldBtn: optionalEl("loadSelectedWorldBtn"),
-    deleteSelectedWorldBtn: optionalEl("deleteSelectedWorldBtn"),
-
-    cellPanelEmpty: optionalEl("cellPanelEmpty"),
-    cellPanelSelected: optionalEl("cellPanelSelected"),
-    cellPanelCreate: optionalEl("cellPanelCreate"),
+    selectedCellContent: optionalEl("selectedCellContent"),
 
     selectedCellCode: optionalEl("selectedCellCode"),
     selectedCellEnergy: optionalEl("selectedCellEnergy"),
@@ -67,22 +54,10 @@ export const dom = {
     selectedCellRgb: optionalEl("selectedCellRgb"),
     selectedCellSpeed: optionalEl("selectedCellSpeed"),
 
-    saveSelectedCellNameInput: optionalEl("saveSelectedCellNameInput"),
     saveSelectedCellBtn: optionalEl("saveSelectedCellBtn"),
-    saveSelectedCellSuccess: optionalEl("saveSelectedCellSuccess"),
 
-    cellTemplatesList: optionalEl("cellTemplatesList"),
-    loadCellTemplateBtn: optionalEl("loadCellTemplateBtn"),
-    deleteCellTemplateBtn: optionalEl("deleteCellTemplateBtn"),
-
-    startCreateCellBtn: optionalEl("startCreateCellBtn"),
-    cancelCreateCellBtn: optionalEl("cancelCreateCellBtn"),
     placeCellModeBtn: optionalEl("placeCellModeBtn"),
     createCellModeHint: optionalEl("createCellModeHint"),
-
-    createCellTemplateNameInput: optionalEl("createCellTemplateNameInput"),
-    saveCreateTemplateBtn: optionalEl("saveCreateTemplateBtn"),
-    saveCreateTemplateSuccess: optionalEl("saveCreateTemplateSuccess"),
 
     createDivisionThresholdSlider: optionalEl("createDivisionThresholdSlider"),
     createDivisionThresholdInput: optionalEl("createDivisionThresholdInput"),
@@ -101,4 +76,38 @@ export const dom = {
 
     createMaxEnergySlider: optionalEl("createMaxEnergySlider"),
     createMaxEnergyInput: optionalEl("createMaxEnergyInput"),
+
+    exportWorldBtn: optionalEl("exportWorldBtn"),
+    importWorldBtn: optionalEl("importWorldBtn"),
+
+    saveWorldModal: optionalEl("saveWorldModal"),
+    saveWorldNameInput: optionalEl("saveWorldNameInput"),
+    saveWorldCancelBtn: optionalEl("saveWorldCancelBtn"),
+    saveWorldConfirmBtn: optionalEl("saveWorldConfirmBtn"),
+
+    loadWorldModal: optionalEl("loadWorldModal"),
+    worldSnapshotsList: optionalEl("worldSnapshotsList"),
+    loadWorldCancelBtn: optionalEl("loadWorldCancelBtn"),
+    loadWorldDeleteBtn: optionalEl("loadWorldDeleteBtn"),
+    loadWorldConfirmBtn: optionalEl("loadWorldConfirmBtn"),
+
+    saveSelectedCellModal: optionalEl("saveSelectedCellModal"),
+    saveSelectedCellNameInput: optionalEl("saveSelectedCellNameInput"),
+    saveSelectedCellCancelBtn: optionalEl("saveSelectedCellCancelBtn"),
+    saveSelectedCellConfirmBtn: optionalEl("saveSelectedCellConfirmBtn"),
+    selectedCellTab: optionalEl("selectedCellTab"),
+
+    exportCellBtn: optionalEl("exportCellBtn"),
+    importCellBtn: optionalEl("importCellBtn"),
+
+    saveCellModal: optionalEl("saveCellModal"),
+    saveCellNameInput: optionalEl("saveCellNameInput"),
+    saveCellCancelBtn: optionalEl("saveCellCancelBtn"),
+    saveCellConfirmBtn: optionalEl("saveCellConfirmBtn"),
+
+    loadCellModal: optionalEl("loadCellModal"),
+    cellTemplatesList: optionalEl("cellTemplatesList"),
+    loadCellCancelBtn: optionalEl("loadCellCancelBtn"),
+    loadCellDeleteBtn: optionalEl("loadCellDeleteBtn"),
+    loadCellConfirmBtn: optionalEl("loadCellConfirmBtn"),
 };

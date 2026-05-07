@@ -2,32 +2,42 @@ import { dom } from "../dom.js";
 import { state, applySimulationConfig, resetClientState, updateStats } from "../../store/store.js";
 import { deleteWorld, getConfig, getWorlds, loadWorld, saveWorld } from "../../transport/api/simulationApi.js";
 import { render } from "../../render/canvas.js";
-import { closeSettings } from "./settingsPanel.js";
+import { openModal, closeModal } from "../panels.js";
 
-export async function loadWorlds() {
+async function refreshWorldList() {
     const worlds = await getWorlds();
-    if (!dom.environmentSnapshotsList) return;
+    if (!dom.worldSnapshotsList) return;
 
-    dom.environmentSnapshotsList.innerHTML = "";
+    dom.worldSnapshotsList.innerHTML = "";
     for (const world of worlds) {
         const option = document.createElement("option");
         option.value = String(world.id);
         option.textContent = `${world.name} (${formatDate(world.createdAt)})`;
-        dom.environmentSnapshotsList.appendChild(option);
+        dom.worldSnapshotsList.appendChild(option);
     }
 }
 
-export async function saveCurrentWorld() {
-    const name = dom.environmentNameInput?.value.trim();
-    if (!name) { alert("Enter environment name"); return; }
-
-    await saveWorld(name);
-    await loadWorlds();
+export function openSaveWorldModal() {
+    if (dom.saveWorldNameInput) dom.saveWorldNameInput.value = "";
+    openModal(dom.saveWorldModal);
 }
 
-export async function loadSelectedWorld() {
-    const selectedId = dom.environmentSnapshotsList?.value;
-    if (!selectedId) { alert("Select a saved environment"); return; }
+export async function openLoadWorldModal() {
+    await refreshWorldList();
+    openModal(dom.loadWorldModal);
+}
+
+export async function confirmSaveWorld() {
+    const name = dom.saveWorldNameInput?.value.trim();
+    if (!name) { alert("Enter world name"); return; }
+
+    await saveWorld(name);
+    closeModal(dom.saveWorldModal);
+}
+
+export async function confirmLoadWorld() {
+    const selectedId = dom.worldSnapshotsList?.value;
+    if (!selectedId) { alert("Select a saved world"); return; }
 
     await loadWorld(selectedId);
     state.config = await getConfig();
@@ -35,18 +45,18 @@ export async function loadSelectedWorld() {
     resetClientState();
     render(dom.ctx, state);
     updateStats();
-    closeSettings();
+    closeModal(dom.loadWorldModal);
 }
 
 export async function deleteSelectedWorld() {
-    const selectedId = dom.environmentSnapshotsList?.value;
-    if (!selectedId) { alert("Select an environment to delete"); return; }
-    if (!confirm("Delete the selected environment?")) return;
+    const selectedId = dom.worldSnapshotsList?.value;
+    if (!selectedId) { alert("Select a world to delete"); return; }
+    if (!confirm("Delete the selected world?")) return;
 
     await deleteWorld(selectedId);
-    await loadWorlds();
+    await refreshWorldList();
 }
 
-export function formatDate(value) {
+function formatDate(value) {
     return new Date(value).toLocaleString();
 }

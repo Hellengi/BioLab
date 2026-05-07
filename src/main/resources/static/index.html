@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru" data-bs-theme="dark">
+<html lang="en" data-bs-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,27 +9,19 @@
 </head>
 <body>
 <div class="toolbar">
-
     <div class="time-control">
-        <div class="temp-display" title="Температура / скорость симуляции">
+        <div class="temp-display" title="Temperature / simulation speed">
             <span id="temperatureLabel" class="temp-value">20°C</span>
             <span id="speedLabel" class="speed-value">1.00×</span>
         </div>
-
         <input id="timeSlider" type="range" min="0" max="100" step="1" value="50"
-               title="Температура и скорость симуляции">
-
+               title="Temperature and simulation speed">
         <button id="pauseBtn" type="button" class="btn btn-outline-secondary"
-                title="Пауза / Возобновить">Pause</button>
+                title="Pause / Resume">Pause</button>
     </div>
-
     <button id="resetBtn" type="button" class="btn btn-secondary">Reset</button>
-    <button id="settingsBtn" type="button" class="btn btn-primary">⚙ Settings</button>
-
-    <span id="fpsLabel" class="fps-badge" title="FPS клиента / TPS сервера">FPS/TPS = 0/0</span>
-
+    <span id="fpsLabel" class="fps-badge" title="Client FPS / Server TPS">FPS/TPS = 0/0</span>
     <span id="stats">Loading...</span>
-
     <button id="sidebarToggleBtn" type="button" class="btn btn-outline-secondary ms-auto"
             title="Cell control">Control</button>
 </div>
@@ -39,192 +31,346 @@
         <canvas id="environment"></canvas>
     </div>
 
-    <aside class="cell-sidebar">
-        <h2>Cell control</h2>
+    <div class="sidebar-wrapper">
+        <nav class="sidebar-tabs">
+            <button class="sidebar-tab active" data-tab="control" title="General Control">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+            </button>
+            <button class="sidebar-tab" data-tab="settings" title="Simulation Settings">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+            <button class="sidebar-tab sidebar-tab--disabled" data-tab="selected" id="selectedCellTab" title="Selected Cell" disabled>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            </button>
+            <button class="sidebar-tab" data-tab="create" title="Create Cell">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+            </button>
+            <button class="sidebar-tab" data-tab="species" title="Species List">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+            </button>
+            <button class="sidebar-tab" data-tab="logs" title="Event Log">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            </button>
+        </nav>
 
-        <div id="cellPanelEmpty" class="cell-panel-section">
-            <p style="color: var(--c-text-muted); font-size:var(--font-sm);">No cell selected</p>
-            <button id="startCreateCellBtn" type="button" class="btn btn-primary">Create cell</button>
+        <aside class="cell-sidebar">
 
-            <div class="cell-panel-spacer"></div>
+            <div id="tabControl" class="tab-panel active">
+                <h2>General Control</h2>
 
-            <label for="cellTemplatesList">Cell templates</label>
-            <select id="cellTemplatesList" class="form-select" size="8"></select>
+                <div class="panel-section">
+                    <div class="panel-section-label">Cursor mode</div>
+                    <div class="cursor-mode-group">
+                        <button class="cursor-mode-btn active" data-mode="pan" title="Pan field">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20"/></svg>
+                            <span>Pan</span>
+                        </button>
+                        <button class="cursor-mode-btn" data-mode="drag-cell" title="Drag cell">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>
+                            <span>Drag cell</span>
+                        </button>
+                        <button class="cursor-mode-btn" data-mode="inspect" title="Inspect">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                            <span>Inspect</span>
+                        </button>
+                        <button class="cursor-mode-btn" data-mode="delete" title="Delete cell">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                            <span>Delete</span>
+                        </button>
+                    </div>
+                </div>
 
-            <div class="cell-panel-spacer"></div>
+                <div class="accordion-group">
+                    <details class="accordion-item">
+                        <summary class="accordion-header">Display layers</summary>
+                        <div class="accordion-body">
+                            <div class="placeholder-block">
+                                <div class="placeholder-icon">🧪</div>
+                                <div class="placeholder-text">Layer toggles coming soon</div>
+                                <div class="placeholder-sub">Gas concentration, temperature field, energy gradient and more</div>
+                            </div>
+                        </div>
+                    </details>
 
-            <div class="settings-input-row">
-                <button id="loadCellTemplateBtn" type="button" class="btn btn-secondary w-100">Load cell</button>
-                <button id="deleteCellTemplateBtn" type="button" class="btn btn-outline-danger w-100">Delete selected</button>
-            </div>
-        </div>
+                    <details class="accordion-item">
+                        <summary class="accordion-header">Charts</summary>
+                        <div class="accordion-body">
+                            <div class="placeholder-block">
+                                <div class="placeholder-icon">📈</div>
+                                <div class="placeholder-text">Charts coming soon</div>
+                                <div class="placeholder-sub">Population dynamics, energy flow, mutation rate over time</div>
+                            </div>
+                        </div>
+                    </details>
 
-        <div id="cellPanelSelected" class="cell-panel-section hidden">
-            <h3>Selected cell</h3>
-            <div class="selected-cell-preview-wrap">
-                <canvas id="selectedCellPreviewCanvas" width="160" height="160"></canvas>
-            </div>
-
-            <div class="cell-info-grid">
-                <div class="cell-info-label">Code</div>
-                <div id="selectedCellCode"></div>
-
-                <div class="cell-info-label">Energy</div>
-                <div id="selectedCellEnergy"></div>
-
-                <div class="cell-info-label">Division threshold</div>
-                <div id="selectedCellDivisionThreshold"></div>
-
-                <div class="cell-info-label">Division impulse</div>
-                <div id="selectedCellDivisionImpulse"></div>
-
-                <div class="cell-info-label">RGB</div>
-                <div id="selectedCellRgb"></div>
-
-                <div class="cell-info-label">Speed</div>
-                <div id="selectedCellSpeed"></div>
-            </div>
-
-            <div class="cell-panel-spacer"></div>
-
-            <label for="saveSelectedCellNameInput">Template name</label>
-            <input id="saveSelectedCellNameInput" type="text" class="form-control"
-                   maxlength="200" placeholder="Enter template name">
-
-            <div class="cell-panel-spacer"></div>
-
-            <button id="saveSelectedCellBtn" type="button" class="btn btn-primary">Save cell to DB</button>
-            <div id="saveSelectedCellSuccess" class="success-toast">Cell saved successfully</div>
-        </div>
-
-        <div id="cellPanelCreate" class="cell-panel-section hidden">
-            <h3>Create cell</h3>
-
-            <div class="selected-cell-preview-wrap">
-                <canvas id="createCellPreviewCanvas" width="160" height="160"></canvas>
-            </div>
-
-            <label for="createCellTemplateNameInput">Template name</label>
-            <input id="createCellTemplateNameInput" type="text" class="form-control"
-                   maxlength="200" placeholder="Optional template name">
-
-            <div class="cell-panel-spacer"></div>
-
-            <div class="settings-field">
-                <label for="createDivisionThresholdSlider">Division threshold</label>
-                <div class="settings-input-row">
-                    <input id="createDivisionThresholdSlider" type="range" class="form-range" min="20" max="100" step="0.1">
-                    <input id="createDivisionThresholdInput" type="number" class="form-control form-control-sm" min="20" max="100" step="0.1">
+                    <details class="accordion-item">
+                        <summary class="accordion-header">Language</summary>
+                        <div class="accordion-body">
+                            <div class="locale-list">
+                                <label class="locale-option active">
+                                    <input type="radio" name="locale" value="en" checked>
+                                    <span class="locale-flag">🇬🇧</span>
+                                    <span>English</span>
+                                </label>
+                                <label class="locale-option disabled" title="Coming soon">
+                                    <input type="radio" name="locale" value="ru" disabled>
+                                    <span class="locale-flag">🇷🇺</span>
+                                    <span>Русский</span>
+                                    <span class="locale-soon">soon</span>
+                                </label>
+                            </div>
+                        </div>
+                    </details>
                 </div>
             </div>
 
-            <div class="settings-field">
-                <label for="createDivisionImpulseSlider">Division impulse strength</label>
-                <div class="settings-input-row">
-                    <input id="createDivisionImpulseSlider" type="range" class="form-range" min="0.5" max="6" step="0.1">
-                    <input id="createDivisionImpulseInput" type="number" class="form-control form-control-sm" min="0.5" max="6" step="0.1">
+            <div id="tabSettings" class="tab-panel hidden">
+                <div class="panel-header-row">
+                    <h2>Simulation Settings</h2>
+                    <div class="panel-header-actions">
+                        <button id="exportWorldBtn" class="icon-btn" title="Save world">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        </button>
+                        <button id="importWorldBtn" class="icon-btn" title="Load world">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="settings-field">
+                    <label for="initialCellCountSlider">Initial number of cells</label>
+                    <div class="settings-input-row">
+                        <input id="initialCellCountSlider" type="range" class="form-range" min="0" max="300" step="1">
+                        <input id="initialCellCountValue" type="number" class="form-control form-control-sm" min="0" max="300" step="1">
+                    </div>
+                </div>
+
+                <div class="settings-field">
+                    <label for="foodSpawnRateSlider">Intensity of food generation</label>
+                    <div class="settings-input-row">
+                        <input id="foodSpawnRateSlider" type="range" class="form-range" min="0" max="100" step="1">
+                        <input id="foodSpawnRateValue" type="number" class="form-control form-control-sm" min="0" max="100" step="1">
+                    </div>
+                </div>
+
+                <div class="settings-field">
+                    <label for="deadCellLifetimeTicksSlider">Lifetime of a dead cell</label>
+                    <div class="settings-input-row">
+                        <input id="deadCellLifetimeTicksSlider" type="range" class="form-range" min="1" max="500" step="1">
+                        <input id="deadCellLifetimeTicksValue" type="number" class="form-control form-control-sm" min="1" max="500" step="1">
+                    </div>
+                </div>
+
+                <button id="resetSettingsBtn" type="button" class="btn btn-secondary w-100">Reset to defaults</button>
+            </div>
+
+            <div id="tabSelected" class="tab-panel hidden">
+                <div class="panel-header-row">
+                    <h2>Selected Cell</h2>
+                    <button id="saveSelectedCellBtn" class="icon-btn" title="Save cell template">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    </button>
+                </div>
+
+                <div id="selectedCellContent" class="hidden">
+                    <div class="sticky-preview">
+                        <div class="selected-cell-preview-wrap">
+                            <canvas id="selectedCellPreviewCanvas" width="160" height="160"></canvas>
+                        </div>
+                    </div>
+                    <div class="cell-info-grid">
+                        <div class="cell-info-label">Code</div>
+                        <div id="selectedCellCode"></div>
+                        <div class="cell-info-label">Energy</div>
+                        <div id="selectedCellEnergy"></div>
+                        <div class="cell-info-label">Division threshold</div>
+                        <div id="selectedCellDivisionThreshold"></div>
+                        <div class="cell-info-label">Division impulse</div>
+                        <div id="selectedCellDivisionImpulse"></div>
+                        <div class="cell-info-label">RGB</div>
+                        <div id="selectedCellRgb"></div>
+                        <div class="cell-info-label">Speed</div>
+                        <div id="selectedCellSpeed"></div>
+                    </div>
                 </div>
             </div>
 
-            <div class="settings-field">
-                <label for="createColorHueSlider">Color hue</label>
-                <div class="settings-input-row">
-                    <input id="createColorHueSlider" type="range" class="form-range" min="0" max="360" step="0.1">
-                    <input id="createColorHueInput" type="number" class="form-control form-control-sm" min="0" max="360" step="0.1">
+            <div id="tabCreate" class="tab-panel hidden">
+                <div class="panel-header-row">
+                    <h2>Create Cell</h2>
+                    <div class="panel-header-actions">
+                        <button id="exportCellBtn" class="icon-btn" title="Save cell template">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        </button>
+                        <button id="importCellBtn" class="icon-btn" title="Load cell template">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="sticky-preview">
+                    <div class="selected-cell-preview-wrap">
+                        <canvas id="createCellPreviewCanvas" width="160" height="160"></canvas>
+                    </div>
+                </div>
+
+                <div class="settings-field">
+                    <label for="createDivisionThresholdSlider">Division threshold</label>
+                    <div class="settings-input-row">
+                        <input id="createDivisionThresholdSlider" type="range" class="form-range" min="20" max="100" step="0.1">
+                        <input id="createDivisionThresholdInput" type="number" class="form-control form-control-sm" min="20" max="100" step="0.1">
+                    </div>
+                </div>
+
+                <div class="settings-field">
+                    <label for="createDivisionImpulseSlider">Division impulse strength</label>
+                    <div class="settings-input-row">
+                        <input id="createDivisionImpulseSlider" type="range" class="form-range" min="0.5" max="6" step="0.1">
+                        <input id="createDivisionImpulseInput" type="number" class="form-control form-control-sm" min="0.5" max="6" step="0.1">
+                    </div>
+                </div>
+
+                <div class="settings-field">
+                    <label for="createColorHueSlider">Color hue</label>
+                    <div class="settings-input-row">
+                        <input id="createColorHueSlider" type="range" class="form-range" min="0" max="360" step="0.1">
+                        <input id="createColorHueInput" type="number" class="form-control form-control-sm" min="0" max="360" step="0.1">
+                    </div>
+                </div>
+
+                <div class="settings-field">
+                    <label for="createSaturationSlider">Saturation</label>
+                    <div class="settings-input-row">
+                        <input id="createSaturationSlider" type="range" class="form-range" min="30" max="100" step="0.1">
+                        <input id="createSaturationInput" type="number" class="form-control form-control-sm" min="30" max="100" step="0.1">
+                    </div>
+                </div>
+
+                <div class="settings-field">
+                    <label for="createLightnessSlider">Lightness</label>
+                    <div class="settings-input-row">
+                        <input id="createLightnessSlider" type="range" class="form-range" min="35" max="75" step="0.1">
+                        <input id="createLightnessInput" type="number" class="form-control form-control-sm" min="35" max="75" step="0.1">
+                    </div>
+                </div>
+
+                <div class="settings-field">
+                    <label for="createMaxEnergySlider">Max energy</label>
+                    <div class="settings-input-row">
+                        <input id="createMaxEnergySlider" type="range" class="form-range" min="20" max="200" step="0.1">
+                        <input id="createMaxEnergyInput" type="number" class="form-control form-control-sm" min="20" max="200" step="0.1">
+                    </div>
+                </div>
+
+                <button id="placeCellModeBtn" type="button" class="btn btn-primary w-100">Place on the field</button>
+                <div id="createCellModeHint" class="placement-hint placement-hint--off">
+                    <span class="placement-dot"></span>
+                    Placement mode is off
                 </div>
             </div>
 
-            <div class="settings-field">
-                <label for="createSaturationSlider">Saturation</label>
-                <div class="settings-input-row">
-                    <input id="createSaturationSlider" type="range" class="form-range" min="30" max="100" step="0.1">
-                    <input id="createSaturationInput" type="number" class="form-control form-control-sm" min="30" max="100" step="0.1">
+            <div id="tabSpecies" class="tab-panel hidden">
+                <h2>Species</h2>
+                <div class="placeholder-block placeholder-block--large">
+                    <div class="placeholder-icon">🔬</div>
+                    <div class="placeholder-text">Species list coming soon</div>
+                    <div class="placeholder-sub">Groups of cells with similar genomes, showing species count, characteristics, and miniature previews. Sortable by population size.</div>
                 </div>
             </div>
 
-            <div class="settings-field">
-                <label for="createLightnessSlider">Lightness</label>
-                <div class="settings-input-row">
-                    <input id="createLightnessSlider" type="range" class="form-range" min="35" max="75" step="0.1">
-                    <input id="createLightnessInput" type="number" class="form-control form-control-sm" min="35" max="75" step="0.1">
+            <div id="tabLogs" class="tab-panel hidden">
+                <h2>Event Log</h2>
+                <div class="log-info-entry">
+                    <div class="log-entry-icon">ℹ️</div>
+                    <div>
+                        <div class="log-entry-title">Event log — coming soon</div>
+                        <div class="log-entry-body">This tab will display a real-time stream of simulation events, including: new mutations detected, species extinctions, population milestones, food scarcity alerts, energy spikes, and cell division bursts. Events will be filterable by type and severity.</div>
+                    </div>
                 </div>
             </div>
 
-            <div class="settings-field">
-                <label for="createMaxEnergySlider">Max energy</label>
-                <div class="settings-input-row">
-                    <input id="createMaxEnergySlider" type="range" class="form-range" min="20" max="200" step="0.1">
-                    <input id="createMaxEnergyInput" type="number" class="form-control form-control-sm" min="20" max="200" step="0.1">
-                </div>
-            </div>
-
-            <div class="cell-panel-spacer"></div>
-
-            <button id="saveCreateTemplateBtn" type="button" class="btn btn-secondary">Save template</button>
-            <div id="saveCreateTemplateSuccess" class="success-toast">Template saved successfully</div>
-
-            <button id="placeCellModeBtn" type="button" class="btn btn-primary">Place on the field</button>
-            <button id="cancelCreateCellBtn" type="button" class="btn btn-outline-danger">Cancel</button>
-
-            <div class="cell-panel-spacer"></div>
-            <div id="createCellModeHint" style="font-size:var(--font-sm); color: var(--c-text-muted);">Placement mode is off</div>
-        </div>
-    </aside>
+        </aside>
+    </div>
 </div>
 
-<div id="settingsOverlay" class="settings-overlay hidden">
-    <div class="settings-modal">
-        <h2>Simulation settings</h2>
-
-        <div class="settings-field">
-            <label for="initialCellCountSlider">Initial number of cells</label>
-            <div class="settings-input-row">
-                <input id="initialCellCountSlider" type="range" class="form-range" min="0" max="300" step="1">
-                <input id="initialCellCountValue" type="number" class="form-control form-control-sm" min="0" max="300" step="1">
-            </div>
+<div id="saveWorldModal" class="modal-overlay hidden">
+    <div class="modal-box">
+        <div class="modal-header">
+            <span class="modal-title">Save World</span>
         </div>
-
-        <div class="settings-field">
-            <label for="foodSpawnRateSlider">Intensity of food generation</label>
-            <div class="settings-input-row">
-                <input id="foodSpawnRateSlider" type="range" class="form-range" min="0" max="100" step="1">
-                <input id="foodSpawnRateValue" type="number" class="form-control form-control-sm" min="0" max="100" step="1">
-            </div>
+        <div class="modal-body">
+            <label for="saveWorldNameInput">World name</label>
+            <input id="saveWorldNameInput" type="text" class="form-control" maxlength="200" placeholder="Enter world name" autofocus>
         </div>
-
-        <div class="settings-field">
-            <label for="deadCellLifetimeTicksSlider">The lifetime of a dead cell</label>
-            <div class="settings-input-row">
-                <input id="deadCellLifetimeTicksSlider" type="range" class="form-range" min="1" max="500" step="1">
-                <input id="deadCellLifetimeTicksValue" type="number" class="form-control form-control-sm" min="1" max="500" step="1">
-            </div>
+        <div class="modal-footer">
+            <button id="saveWorldCancelBtn" class="btn btn-outline-secondary">Cancel</button>
+            <button id="saveWorldConfirmBtn" class="btn btn-primary">Save</button>
         </div>
+    </div>
+</div>
 
-        <div class="settings-field">
-            <label for="environmentNameInput">Environment name</label>
-            <div class="settings-input-row">
-                <input id="environmentNameInput" type="text" class="form-control" maxlength="200" placeholder="Enter environment name">
-                <button id="saveEnvironmentBtn" type="button" class="btn btn-secondary">Save world</button>
-            </div>
+<div id="loadWorldModal" class="modal-overlay hidden">
+    <div class="modal-box">
+        <div class="modal-header">
+            <span class="modal-title">Load World</span>
         </div>
-
-        <div class="settings-field">
-            <label for="environmentSnapshotsList">Environment snapshots</label>
-            <select id="environmentSnapshotsList" class="form-select" size="8"></select>
-            <div class="settings-spacer-md"></div>
-            <div class="settings-input-row">
-                <button id="loadSelectedWorldBtn" type="button" class="btn btn-secondary">Load selected</button>
-                <button id="deleteSelectedWorldBtn" type="button" class="btn btn-outline-danger">Delete selected</button>
-            </div>
+        <div class="modal-body">
+            <label for="worldSnapshotsList">Saved worlds</label>
+            <select id="worldSnapshotsList" class="form-select modal-list" size="8"></select>
         </div>
-
-        <div class="settings-middle-actions">
-            <button id="resetSettingsBtn" type="button" class="btn btn-secondary">Reset to defaults</button>
+        <div class="modal-footer">
+            <button id="loadWorldCancelBtn" class="btn btn-outline-secondary me-auto">Cancel</button>
+            <button id="loadWorldDeleteBtn" class="btn btn-outline-danger">Delete</button>
+            <button id="loadWorldConfirmBtn" class="btn btn-primary">Load</button>
         </div>
+    </div>
+</div>
 
-        <div class="settings-bottom-actions">
-            <button id="cancelSettingsBtn" type="button" class="btn btn-outline-danger">Cancel</button>
-            <button id="saveSettingsBtn" type="button" class="btn btn-primary">Apply</button>
+<div id="saveSelectedCellModal" class="modal-overlay hidden">
+    <div class="modal-box">
+        <div class="modal-header">
+            <span class="modal-title">Save Cell Template</span>
+        </div>
+        <div class="modal-body">
+            <label for="saveSelectedCellNameInput">Template name</label>
+            <input id="saveSelectedCellNameInput" type="text" class="form-control" maxlength="200" placeholder="Enter template name" autofocus>
+        </div>
+        <div class="modal-footer">
+            <button id="saveSelectedCellCancelBtn" class="btn btn-outline-secondary">Cancel</button>
+            <button id="saveSelectedCellConfirmBtn" class="btn btn-primary">Save</button>
+        </div>
+    </div>
+</div>
+
+<div id="saveCellModal" class="modal-overlay hidden">
+    <div class="modal-box">
+        <div class="modal-header">
+            <span class="modal-title">Save Cell Template</span>
+        </div>
+        <div class="modal-body">
+            <label for="saveCellNameInput">Template name</label>
+            <input id="saveCellNameInput" type="text" class="form-control" maxlength="200" placeholder="Enter template name" autofocus>
+        </div>
+        <div class="modal-footer">
+            <button id="saveCellCancelBtn" class="btn btn-outline-secondary">Cancel</button>
+            <button id="saveCellConfirmBtn" class="btn btn-primary">Save</button>
+        </div>
+    </div>
+</div>
+
+<div id="loadCellModal" class="modal-overlay hidden">
+    <div class="modal-box">
+        <div class="modal-header">
+            <span class="modal-title">Load Cell Template</span>
+        </div>
+        <div class="modal-body">
+            <label for="cellTemplatesList">Saved templates</label>
+            <select id="cellTemplatesList" class="form-select modal-list" size="8"></select>
+        </div>
+        <div class="modal-footer">
+            <button id="loadCellCancelBtn" class="btn btn-outline-secondary me-auto">Cancel</button>
+            <button id="loadCellDeleteBtn" class="btn btn-outline-danger">Delete</button>
+            <button id="loadCellConfirmBtn" class="btn btn-primary">Load</button>
         </div>
     </div>
 </div>
