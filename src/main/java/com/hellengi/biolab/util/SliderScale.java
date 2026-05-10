@@ -16,6 +16,14 @@ public final class SliderScale {
         return Math.pow(Math.max(1.0, maxMultiplier), normalized);
     }
 
+    public static double logarithmic(int slider, double min, double max) {
+        int clamped = clamp(slider);
+        if (clamped == 0) return min;
+        double logMin = Math.log(min);
+        double logMax = Math.log(max);
+        return Math.exp(logMin + (clamped / 100.0) * (logMax - logMin));
+    }
+
     private static int clamp(int slider) {
         return Math.max(0, Math.min(100, slider));
     }

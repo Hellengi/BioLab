@@ -1,5 +1,5 @@
 import {dom} from "../dom.js";
-import {drawCreateCellPreview} from "../../render/preview.js";
+import {ensureCreateCellPreviewReady} from "./creationPanel.js";
 
 const TAB_PANELS = {
     control: "tabControl",
@@ -42,7 +42,9 @@ export function switchTab(tabKey) {
     });
 
     if (tabKey === "create") {
-        requestAnimationFrame(() => drawCreateCellPreview());
+        ensureCreateCellPreviewReady().catch(err => {
+            console.error("Create cell preview init error", err);
+        });
     }
 }
 

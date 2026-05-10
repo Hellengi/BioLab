@@ -20,29 +20,38 @@ public final class GenomeCodec {
     public static String encode(Genome genome) {
         return encode(
                 genome.getDivisionThreshold(),
-                genome.getDivisionImpulseStrength(),
+                genome.getDivisionImpulse(),
+                genome.getDivisionAngle(),
                 genome.getColorHue(),
                 genome.getSaturation(),
                 genome.getLightness(),
-                genome.getMaxEnergy()
+                genome.getMaxEnergy(),
+                genome.getDryMass(),
+                genome.getElasticity()
         );
     }
 
     public static String encode(
             double divisionThreshold,
-            double divisionImpulseStrength,
+            double divisionImpulse,
+            double divisionAngle,
             double colorHue,
             double saturation,
             double lightness,
-            double maxEnergy
+            double maxEnergy,
+            double dryMass,
+            double elasticity
     ) {
         return PREFIX
                 + pack(divisionThreshold)
-                + pack(divisionImpulseStrength)
+                + pack(divisionImpulse)
+                + pack(divisionAngle)
                 + pack(colorHue)
                 + pack(saturation)
                 + pack(lightness)
-                + pack(maxEnergy);
+                + pack(maxEnergy)
+                + pack(dryMass)
+                + pack(elasticity);
     }
 
     public static Genome decode(String code) {
@@ -54,7 +63,7 @@ public final class GenomeCodec {
 
         String payload = matcher.group("payload");
 
-        if (payload.length() != GENE_WIDTH * 6) {
+        if (payload.length() != GENE_WIDTH * 8) {
             throw new IllegalArgumentException("Invalid genome payload length: " + code);
         }
 
@@ -64,7 +73,10 @@ public final class GenomeCodec {
                 unpack(payload, 2),
                 unpack(payload, 3),
                 unpack(payload, 4),
-                unpack(payload, 5)
+                unpack(payload, 5),
+                unpack(payload, 6),
+                unpack(payload, 7),
+                unpack(payload, 8)
         );
     }
 

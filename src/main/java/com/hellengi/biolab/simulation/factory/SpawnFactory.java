@@ -1,13 +1,15 @@
 package com.hellengi.biolab.simulation.factory;
 
 import com.hellengi.biolab.api.dto.GenomeDto;
+import com.hellengi.biolab.api.dto.SpawnCellRequestDto;
 import com.hellengi.biolab.config.YamlConfig;
 import com.hellengi.biolab.model.Cell;
 import com.hellengi.biolab.model.DeadCell;
 import com.hellengi.biolab.model.Food;
 import com.hellengi.biolab.model.Genome;
 import com.hellengi.biolab.simulation.mapper.GenomeMapper;
-import com.hellengi.biolab.simulation.physics.WorldPhysics;
+import com.hellengi.biolab.simulation.physics.CellMetrics;
+import com.hellengi.biolab.simulation.physics.CellPhysics;
 import com.hellengi.biolab.util.IdGenerator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -18,21 +20,23 @@ import java.util.Random;
 @RequiredArgsConstructor
 public class SpawnFactory {
     private final YamlConfig config;
-    private final WorldPhysics worldPhysics;
+    private final CellPhysics cellPhysics;
     private final GenomeMapper genomeMapper;
+    private final CellMetrics cellMetrics;
     private final Random random = new Random();
 
     public Cell createRandomCell(double centerX, double centerY) {
         Genome genome = createInitialGenome();
-        Velocity velocity = randomVelocity(genome.getDivisionImpulseStrength());
+        double initialDirection = config.getMotion().getCellDirection().getInitial();
+        double initialSpeed = config.getMotion().getCellSpeed().getInitial();
+        Velocity velocity = velocityFromDirection(initialDirection, initialSpeed);
 
-        double initialEnergy = config.getCell().getEnergyMin()
-                + random.nextDouble() * config.getCell().getEnergyRange();
+        double initialEnergy = config.getCell().getStartEnergy();
 
-        double x = centerX + randomOffset(config.getSpawn().getOffsetRange());
-        double y = centerY + randomOffset(config.getSpawn().getOffsetRange());
+        double x = config.worldCenterX() + randomOffset(config.getCell().getOffsetRange());
+        double y = config.worldCenterY() + randomOffset(config.getCell().getOffsetRange());
 
-        return new Cell(
+        Cell cell = new Cell(
                 IdGenerator.nextId(),
                 x,
                 y,
@@ -41,38 +45,52 @@ public class SpawnFactory {
                 Math.min(initialEnergy, genome.getMaxEnergy()),
                 genome
         );
+        cell.setDirectionAngle(initialDirection);
+        return cell;
     }
 
     private Genome createInitialGenome() {
-        return genomeMapper.toDomain(config.getGenome().getInitial());
+        return genomeMapper.toDomain(config.getGenome());
     }
 
-    public Cell createCell(GenomeDto genomeDto, double x, double y) {
+    public Cell createCell(SpawnCellRequestDto requestDto) {
+        GenomeDto genomeDto = requestDto.genome();
+        double x = requestDto.x();
+        double y = requestDto.y();
         Genome genome = genomeMapper.toDomain(genomeDto);
-        Velocity velocity = randomVelocity(genome.getDivisionImpulseStrength());
 
-        double initialEnergy = Math.max(
-                config.getCell().getMinEnergy(),
-                genome.getMaxEnergy() / 2.0
+        double initialEnergy = Math.min(
+                config.getCell().getStartEnergy(),
+                genome.getMaxEnergy()
         );
 
-        return new Cell(
+        double safeX = cellPhysics.clampInsideCircleX(x, y, 0.0);
+        double safeY = cellPhysics.clampInsideCircleY(x, y, 0.0);
+
+        double angleRad = Math.toRadians(requestDto.initialDirection() - 90.0);
+        double initialSpeed = Math.max(0.0, requestDto.initialSpeed());
+        double vx = Math.cos(angleRad) * initialSpeed;
+        double vy = Math.sin(angleRad) * initialSpeed;
+
+        Cell cell = new Cell(
                 IdGenerator.nextId(),
-                worldPhysics.clampX(x),
-                worldPhysics.clampY(y),
-                velocity.vx(),
-                velocity.vy(),
+                cellPhysics.clampX(safeX),
+                cellPhysics.clampY(safeY),
+                vx,
+                vy,
                 initialEnergy,
                 genome
         );
+        cell.setDirectionAngle(requestDto.initialDirection());
+        return cell;
     }
 
-    private Velocity randomVelocity(double speed) {
-        double angle = random.nextDouble() * Math.PI * 2.0;
+    private Velocity velocityFromDirection(double directionAngle, double speed) {
+        double angleRad = Math.toRadians(directionAngle - 90.0);
 
         return new Velocity(
-                Math.cos(angle) * speed,
-                Math.sin(angle) * speed
+                Math.cos(angleRad) * speed,
+                Math.sin(angleRad) * speed
         );
     }
 
@@ -80,10 +98,13 @@ public class SpawnFactory {
     }
 
     public Food createRandomFood() {
-        double x = random.nextDouble() * config.getWidth();
-        double y = random.nextDouble() * config.getHeight();
-        double energy = config.getFood().getEnergyMin()
-                + random.nextDouble() * config.getFood().getEnergyRange();
+        double angle = random.nextDouble() * Math.PI * 2.0;
+        double distance = Math.sqrt(random.nextDouble()) * config.worldRadius();
+
+        double x = config.worldCenterX() + Math.cos(angle) * distance;
+        double y = config.worldCenterY() + Math.sin(angle) * distance;
+        double energy = config.getFood().getMinEnergy()
+                + random.nextDouble() * (config.getFood().getMaxEnergy() - config.getFood().getMinEnergy());
 
         return new Food(IdGenerator.nextId(), x, y, energy);
     }
@@ -93,7 +114,7 @@ public class SpawnFactory {
                 IdGenerator.nextId(),
                 x,
                 y,
-                Math.max(config.getFood().getEnergyMin(), energy)
+                Math.max(config.getFood().getMinEnergy(), energy)
         );
     }
 
@@ -104,7 +125,8 @@ public class SpawnFactory {
                 cell.getY(),
                 cell.getVx(),
                 cell.getVy(),
-                cell.getEnergy()
+                cell.getEnergy(),
+                cellMetrics.currentMass(cell)
         );
     }
 

@@ -3,9 +3,9 @@ package com.hellengi.biolab.simulation.lifecycle;
 import com.hellengi.biolab.config.YamlConfig;
 import com.hellengi.biolab.model.Cell;
 import com.hellengi.biolab.model.Genome;
-import com.hellengi.biolab.api.presentation.RenderMetrics;
+import com.hellengi.biolab.simulation.physics.CellMetrics;
 import com.hellengi.biolab.simulation.mutation.GenomeMutator;
-import com.hellengi.biolab.simulation.physics.WorldPhysics;
+import com.hellengi.biolab.simulation.physics.CellPhysics;
 import com.hellengi.biolab.util.IdGenerator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -18,22 +18,20 @@ import java.util.Random;
 public class CellDivider {
     private final YamlConfig baseConfig;
     private final GenomeMutator genomeMutator;
-    private final WorldPhysics worldPhysics;
-    private final RenderMetrics renderMetrics;
-
-    private final Random random = new Random();
+    private final CellPhysics cellPhysics;
+    private final CellMetrics cellMetrics;
 
     public List<Cell> divide(Cell parent) {
         Genome firstGenome = genomeMutator.copyGenomeWithPossibleMutation(parent.getGenome());
         Genome secondGenome = genomeMutator.copyGenomeWithPossibleMutation(parent.getGenome());
 
-        double firstDivisionImpulse = firstGenome.getDivisionImpulseStrength();
-        double secondDivisionImpulse = secondGenome.getDivisionImpulseStrength();
+        double firstDivisionImpulse = firstGenome.getDivisionImpulse();
+        double secondDivisionImpulse = secondGenome.getDivisionImpulse();
 
         double firstImpulseEnergyCost =
-                firstDivisionImpulse * baseConfig.getSpawn().getDivisionImpulseCost();
+                firstDivisionImpulse * baseConfig.getCell().getEnergyToDivisionImpulseFactor();
         double secondImpulseEnergyCost =
-                secondDivisionImpulse * baseConfig.getSpawn().getDivisionImpulseCost();
+                secondDivisionImpulse * baseConfig.getCell().getEnergyToDivisionImpulseFactor();
 
         double remainingEnergy =
                 parent.getEnergy() - firstImpulseEnergyCost - secondImpulseEnergyCost;
@@ -43,20 +41,17 @@ public class CellDivider {
         double firstChildEnergy = Math.min(baseChildEnergy, firstGenome.getMaxEnergy());
         double secondChildEnergy = Math.min(baseChildEnergy, secondGenome.getMaxEnergy());
 
-        if (firstChildEnergy < baseConfig.getSpawn().getMinChildEnergy()
-                || secondChildEnergy < baseConfig.getSpawn().getMinChildEnergy()) {
-            return List.of();
-        }
+        double divisionAxisAngle = Math.toRadians(parent.getDirectionAngle())
+                + Math.toRadians(parent.getGenome().getDivisionAngle());
 
-        double angle = random.nextDouble() * Math.PI * 2.0;
-        double directionX = Math.cos(angle);
-        double directionY = Math.sin(angle);
+        double directionX = Math.cos(divisionAxisAngle);
+        double directionY = Math.sin(divisionAxisAngle);
 
-        double firstChildRadius = renderMetrics.calculateCellRadius(
+        double firstChildRadius = cellMetrics.radius(
                 firstChildEnergy,
                 firstGenome.getDivisionThreshold()
         );
-        double secondChildRadius = renderMetrics.calculateCellRadius(
+        double secondChildRadius = cellMetrics.radius(
                 secondChildEnergy,
                 secondGenome.getDivisionThreshold()
         );
@@ -78,23 +73,25 @@ public class CellDivider {
 
         Cell firstChild = new Cell(
                 IdGenerator.nextId(),
-                worldPhysics.clampX(firstChildX),
-                worldPhysics.clampY(firstChildY),
+                cellPhysics.clampX(firstChildX),
+                cellPhysics.clampY(firstChildY),
                 firstChildVx,
                 firstChildVy,
                 firstChildEnergy,
                 firstGenome
         );
+        firstChild.setDirectionAngle(parent.getDirectionAngle());
 
         Cell secondChild = new Cell(
                 IdGenerator.nextId(),
-                worldPhysics.clampX(secondChildX),
-                worldPhysics.clampY(secondChildY),
+                cellPhysics.clampX(secondChildX),
+                cellPhysics.clampY(secondChildY),
                 secondChildVx,
                 secondChildVy,
                 secondChildEnergy,
                 secondGenome
         );
+        secondChild.setDirectionAngle(parent.getDirectionAngle());
 
         return List.of(firstChild, secondChild);
     }

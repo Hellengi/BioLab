@@ -1,7 +1,7 @@
 package com.hellengi.biolab.simulation;
 
 import com.hellengi.biolab.api.dto.EnvironmentDto;
-import com.hellengi.biolab.api.presentation.RenderMetrics;
+import com.hellengi.biolab.simulation.physics.CellMetrics;
 import com.hellengi.biolab.api.websocket.EnvironmentBroadcaster;
 import com.hellengi.biolab.config.YamlConfig;
 import com.hellengi.biolab.model.Cell;
@@ -9,9 +9,10 @@ import com.hellengi.biolab.model.DeadCell;
 import com.hellengi.biolab.model.Food;
 import com.hellengi.biolab.simulation.factory.SpawnFactory;
 import com.hellengi.biolab.simulation.lifecycle.CellDivider;
+import com.hellengi.biolab.simulation.lighting.LightingSystem;
 import com.hellengi.biolab.simulation.mapper.EnvironmentMapper;
 import com.hellengi.biolab.simulation.physics.CellCollision;
-import com.hellengi.biolab.simulation.physics.WorldPhysics;
+import com.hellengi.biolab.simulation.physics.CellPhysics;
 import com.hellengi.biolab.simulation.settings.RuntimeOverrides;
 import com.hellengi.biolab.simulation.world.FoodSpawner;
 import com.hellengi.biolab.simulation.world.WorldState;
@@ -41,11 +42,12 @@ public class SimulationLoop {
     private final EnvironmentMapper environmentMapper;
     private final EnvironmentBroadcaster environmentBroadcaster;
     private final CellCollision cellCollision;
-    private final RenderMetrics renderMetrics;
-    private final WorldPhysics worldPhysics;
+    private final CellMetrics cellMetrics;
+    private final CellPhysics cellPhysics;
     private final CellDivider cellDivider;
     private final SpawnFactory spawnFactory;
     private final FoodSpawner foodSpawner;
+    private final LightingSystem lightingSystem;
 
     @Scheduled(fixedRate = SCHEDULER_POLL_INTERVAL_MS)
     public void simulationTick() {
@@ -59,10 +61,13 @@ public class SimulationLoop {
             }
 
             if (isBroadcastDue()) {
+                lightingSystem.syncSourceCount();
                 snapshot = environmentMapper.toDto(
                         world,
                         runtimeConfig.getDeadCellLifetimeTicks(),
-                        measuredTps
+                        measuredTps,
+                        lightingSystem.getSources(),
+                        runtimeConfig.getGlobalLight()
                 );
             }
         }
@@ -104,6 +109,7 @@ public class SimulationLoop {
     private void performSimulationStep(double tickScale) {
         world.incrementTick();
         recordProcessedTick();
+        lightingSystem.tick(tickScale);
         resolveMotionAndCollisions(tickScale);
         updateCells(tickScale);
         updateDeadCells(tickScale);
@@ -155,7 +161,7 @@ public class SimulationLoop {
     private boolean isBroadcastDue() {
         long now = System.currentTimeMillis();
 
-        int fps = Math.max(1, baseConfig.getBroadcast().getFps());
+        int fps = Math.max(1, baseConfig.getBroadcastFps());
         long interval = Math.max(1L, Math.round(1000.0 / fps));
 
         if (now - lastBroadcastTimeMs < interval) {
@@ -189,8 +195,8 @@ public class SimulationLoop {
             maxSpeed = Math.max(maxSpeed, speed(deadCell.getVx(), deadCell.getVy()) * tickScale);
         }
 
-        double maxStepDistance = Math.max(1.0, baseConfig.getPhysics().getMaxCollisionStepDistance());
-        int maxSubsteps = Math.max(1, baseConfig.getPhysics().getMaxCollisionSubsteps());
+        double maxStepDistance = Math.max(1.0, baseConfig.getCollision().getMaxStepDistance());
+        int maxSubsteps = Math.max(1, baseConfig.getCollision().getMaxSubsteps());
 
         int requiredSubsteps = (int) Math.ceil(maxSpeed / maxStepDistance);
         return Math.max(1, Math.min(maxSubsteps, requiredSubsteps));
@@ -203,24 +209,24 @@ public class SimulationLoop {
     private void keepAllParticlesInside() {
         for (Cell cell : world.getCells()) {
             if (!cell.isMarkedForRemoval()) {
-                worldPhysics.keepInside(cell, cellRadius(cell));
+                cellCollision.keepInside(cell, cellRadius(cell));
             }
         }
 
         for (DeadCell deadCell : world.getDeadCells()) {
-            worldPhysics.keepInside(deadCell, deadCellRadius(deadCell));
+            cellCollision.keepInside(deadCell, deadCellRadius(deadCell));
         }
     }
 
     private void moveAllParticles(double stepScale) {
         for (Cell cell : world.getCells()) {
             if (!cell.isMarkedForRemoval()) {
-                worldPhysics.move(cell, cellRadius(cell), stepScale);
+                cellPhysics.move(cell, cellRadius(cell), stepScale);
             }
         }
 
         for (DeadCell deadCell : world.getDeadCells()) {
-            worldPhysics.move(deadCell, deadCellRadius(deadCell), stepScale);
+            cellPhysics.move(deadCell, deadCellRadius(deadCell), stepScale);
         }
     }
 
@@ -231,15 +237,17 @@ public class SimulationLoop {
         for (Cell cell : world.getCells()) {
             if (cell.isMarkedForRemoval()) continue;
 
-            worldPhysics.applyViscosity(cell, tickScale);
+            cellPhysics.applyViscosity(cell, cellRadius(cell), tickScale);
+            cellPhysics.applyGravity(cell, cellRadius(cell), tickScale);
+            updateDirectionFromVelocity(cell);
 
             cell.setEnergy(
-                    cell.getEnergy() - baseConfig.getCell().getEnergyDecay() * tickScale
+                    cell.getEnergy() - baseConfig.getCell().getEnergyDecayPerTick() * tickScale
             );
 
             consumeFoodIfPossible(cell);
 
-            if (cell.getEnergy() <= baseConfig.getCell().getMinEnergy()) {
+            if (cell.getEnergy() <= baseConfig.getCell().getDeathEnergy()) {
                 cell.setMarkedForRemoval(true);
                 newDeadCells.add(spawnFactory.createDeadCellFromCell(cell));
                 continue;
@@ -294,7 +302,8 @@ public class SimulationLoop {
         while (iterator.hasNext()) {
             DeadCell deadCell = iterator.next();
 
-            worldPhysics.applyViscosity(deadCell, tickScale);
+            cellPhysics.applyViscosity(deadCell, deadCellRadius(deadCell), tickScale);
+            cellPhysics.applyGravity(deadCell, tickScale);
             deadCell.addLifetimeTicks(tickScale);
 
             if (deadCell.getLifetimeTicks() >= runtimeConfig.getDeadCellLifetimeTicks()) {
@@ -312,13 +321,27 @@ public class SimulationLoop {
         world.getFoods().addAll(foodsFromDeadCells);
     }
 
+    private void updateDirectionFromVelocity(Cell cell) {
+        double vx = cell.getVx();
+        double vy = cell.getVy();
+
+        if (Math.abs(vx) < 0.000001 && Math.abs(vy) < 0.000001) {
+            return;
+        }
+
+        double angle = Math.toDegrees(Math.atan2(vy, vx)) + 90.0;
+        angle = ((angle % 360.0) + 360.0) % 360.0;
+
+        cell.setDirectionAngle(angle);
+    }
+
     private double cellRadius(Cell cell) {
-        return renderMetrics.calculateCellRadius(
+        return cellMetrics.radius(
                 cell.getEnergy(), cell.getGenome().getDivisionThreshold());
     }
 
     private double deadCellRadius(DeadCell deadCell) {
-        return renderMetrics.calculateDeadCellRadius(deadCell.getEnergy());
+        return cellMetrics.deadCellRadius(deadCell.getEnergy());
     }
 
     private void cleanupFoods() {

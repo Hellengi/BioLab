@@ -5,11 +5,11 @@ import java.util.List;
 public record EnvironmentDto(
         long tick,
         long tps,
-        int width,
-        int height,
+        int tubeDiameter,
         boolean running,
         List<CellDto> cells,
         List<CellDto> deadCells,
-        List<FoodDto> foods
+        List<FoodDto> foods,
+        LightingDto lighting
 ) {
 }

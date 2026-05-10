@@ -3,6 +3,7 @@ package com.hellengi.biolab.simulation;
 import com.hellengi.biolab.api.dto.*;
 import com.hellengi.biolab.model.Cell;
 import com.hellengi.biolab.simulation.factory.SpawnFactory;
+import com.hellengi.biolab.simulation.lighting.LightingSystem;
 import com.hellengi.biolab.simulation.mapper.CellMapper;
 import com.hellengi.biolab.simulation.mapper.FoodMapper;
 import com.hellengi.biolab.simulation.settings.RuntimeOverrides;
@@ -21,6 +22,7 @@ public class SimulationControl {
     private final SpawnFactory spawnFactory;
     private final CellMapper cellMapper;
     private final FoodMapper foodMapper;
+    private final LightingSystem lightingSystem;
 
     @PostConstruct
     private void init() {
@@ -29,6 +31,7 @@ public class SimulationControl {
 
     public void reset() {
         synchronized (env) {
+            lightingSystem.reset();
             worldInitializer.initialize(
                     env,
                     runtimeConfig.getInitialCellCount()
@@ -42,19 +45,14 @@ public class SimulationControl {
         }
 
         synchronized (env) {
-            Cell cell = spawnFactory.createCell(
-                    requestDto.genome(),
-                    requestDto.x(),
-                    requestDto.y()
-            );
-
+            Cell cell = spawnFactory.createCell(requestDto);
             env.getCells().add(cell);
         }
     }
 
     public void loadSnapshot(EnvironmentDto envDto, SimulationSettingsDto configDto) {
         synchronized (env) {
-            runtimeConfig.apply(configDto);
+            runtimeConfig.applySnapshot(configDto);
             runtimeConfig.pause();
             env.setRunning(false);
 
@@ -70,6 +68,7 @@ public class SimulationControl {
             for (FoodDto dto : envDto.foods()) {
                 env.getFoods().add(foodMapper.toFood(dto));
             }
+            lightingSystem.loadSnapshot(envDto.lighting());
             env.setLastSimulationStepTimeNs(System.nanoTime());
         }
     }

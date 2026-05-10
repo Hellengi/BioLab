@@ -19,13 +19,13 @@ public class WorldInitializer {
         for (int i = 0; i < initialCellCount; i++) {
             world.getCells().add(
                     spawnFactory.createRandomCell(
-                            baseConfig.getSpawn().getCenterX(),
-                            baseConfig.getSpawn().getCenterY()
+                            baseConfig.worldCenterX(),
+                            baseConfig.worldCenterY()
                     )
             );
         }
 
-        for (int i = 0; i < baseConfig.getFood().getInitialCount(); i++) {
+        for (int i = 0; i < baseConfig.getFood().getStart(); i++) {
             world.getFoods().add(spawnFactory.createRandomFood());
         }
 

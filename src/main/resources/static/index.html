@@ -10,9 +10,9 @@
 <body>
 <div class="toolbar">
     <div class="time-control">
-        <div class="temp-display" title="Temperature / simulation speed">
-            <span id="temperatureLabel" class="temp-value">20°C</span>
-            <span id="speedLabel" class="speed-value">1.00×</span>
+        <div id="tempDisplay" class="temp-display" title="Temperature / simulation speed">
+            <span id="temperatureLabel" class="temp-value">20В°C</span>
+            <span id="speedLabel" class="speed-value">1.00Г—</span>
         </div>
         <input id="timeSlider" type="range" min="0" max="100" step="1" value="50"
                title="Temperature and simulation speed">
@@ -28,25 +28,46 @@
 
 <div class="main-layout">
     <div class="environment-scroll">
-        <canvas id="environment"></canvas>
+        <div class="environment-wrap">
+            <canvas id="environment"></canvas>
+        </div>
     </div>
 
     <div class="sidebar-wrapper">
         <nav class="sidebar-tabs">
             <button class="sidebar-tab active" data-tab="control" title="General Control">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M4 4l7.07 17 2.51-7.39L21 11.07z"/>
+                </svg>
             </button>
             <button class="sidebar-tab" data-tab="settings" title="Simulation Settings">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                </svg>
             </button>
             <button class="sidebar-tab sidebar-tab--disabled" data-tab="selected" id="selectedCellTab" title="Selected Cell" disabled>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"/>
+                    <path d="m21 21-4.35-4.35"/>
+                </svg>
             </button>
             <button class="sidebar-tab" data-tab="create" title="Create Cell">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="8"/>
+                    <line x1="12" y1="8" x2="12" y2="16"/>
+                    <line x1="8" y1="12" x2="16" y2="12"/>
+                </svg>
             </button>
             <button class="sidebar-tab" data-tab="species" title="Species List">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="7" cy="8" r="3"/>
+                    <circle cx="17" cy="8" r="3"/>
+                    <circle cx="12" cy="17" r="3"/>
+                    <path d="M9.5 10.5 11 14"/>
+                    <path d="M14.5 10.5 13 14"/>
+                    <path d="M10 8h4"/>
+                </svg>
             </button>
             <button class="sidebar-tab" data-tab="logs" title="Event Log">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
@@ -56,7 +77,9 @@
         <aside class="cell-sidebar">
 
             <div id="tabControl" class="tab-panel active">
-                <h2>General Control</h2>
+                <div class="panel-header-row">
+                    <h2>General Control</h2>
+                </div>
 
                 <div class="panel-section">
                     <div class="panel-section-label">Cursor mode</div>
@@ -80,12 +103,25 @@
                     </div>
                 </div>
 
+                <div class="panel-section">
+                    <div class="panel-section-label">Cursor readout</div>
+                    <div class="cursor-readout-block">
+                        <div class="cursor-readout-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+                        </div>
+                        <div class="cursor-readout-body">
+                            <div class="cursor-readout-label">Illumination at cursor</div>
+                            <div id="lightProbeDisplay" class="cursor-readout-value">—</div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="accordion-group">
                     <details class="accordion-item">
                         <summary class="accordion-header">Display layers</summary>
                         <div class="accordion-body">
                             <div class="placeholder-block">
-                                <div class="placeholder-icon">🧪</div>
+                                <div class="placeholder-icon">рџ§Є</div>
                                 <div class="placeholder-text">Layer toggles coming soon</div>
                                 <div class="placeholder-sub">Gas concentration, temperature field, energy gradient and more</div>
                             </div>
@@ -96,7 +132,7 @@
                         <summary class="accordion-header">Charts</summary>
                         <div class="accordion-body">
                             <div class="placeholder-block">
-                                <div class="placeholder-icon">📈</div>
+                                <div class="placeholder-icon">рџ“€</div>
                                 <div class="placeholder-text">Charts coming soon</div>
                                 <div class="placeholder-sub">Population dynamics, energy flow, mutation rate over time</div>
                             </div>
@@ -109,13 +145,13 @@
                             <div class="locale-list">
                                 <label class="locale-option active">
                                     <input type="radio" name="locale" value="en" checked>
-                                    <span class="locale-flag">🇬🇧</span>
+                                    <span class="locale-flag">рџ‡¬рџ‡§</span>
                                     <span>English</span>
                                 </label>
                                 <label class="locale-option disabled" title="Coming soon">
                                     <input type="radio" name="locale" value="ru" disabled>
-                                    <span class="locale-flag">🇷🇺</span>
-                                    <span>Русский</span>
+                                    <span class="locale-flag">рџ‡·рџ‡є</span>
+                                    <span>Р СѓСЃСЃРєРёР№</span>
                                     <span class="locale-soon">soon</span>
                                 </label>
                             </div>
@@ -140,24 +176,142 @@
                 <div class="settings-field">
                     <label for="initialCellCountSlider">Initial number of cells</label>
                     <div class="settings-input-row">
-                        <input id="initialCellCountSlider" type="range" class="form-range" min="0" max="300" step="1">
-                        <input id="initialCellCountValue" type="number" class="form-control form-control-sm" min="0" max="300" step="1">
+                        <input id="initialCellCountSlider" type="range" class="form-range">
+                        <input id="initialCellCountValue" type="number" class="form-control form-control-sm">
                     </div>
                 </div>
 
                 <div class="settings-field">
                     <label for="foodSpawnRateSlider">Intensity of food generation</label>
                     <div class="settings-input-row">
-                        <input id="foodSpawnRateSlider" type="range" class="form-range" min="0" max="100" step="1">
-                        <input id="foodSpawnRateValue" type="number" class="form-control form-control-sm" min="0" max="100" step="1">
+                        <input id="foodSpawnRateSlider" type="range" class="form-range">
+                        <input id="foodSpawnRateValue" type="number" class="form-control form-control-sm">
                     </div>
                 </div>
 
                 <div class="settings-field">
-                    <label for="deadCellLifetimeTicksSlider">Lifetime of a dead cell</label>
+                    <label for="viscositySlider">Viscosity</label>
                     <div class="settings-input-row">
-                        <input id="deadCellLifetimeTicksSlider" type="range" class="form-range" min="1" max="500" step="1">
-                        <input id="deadCellLifetimeTicksValue" type="number" class="form-control form-control-sm" min="1" max="500" step="1">
+                        <input id="viscositySlider" type="range" class="form-range">
+                        <input id="viscosityValue" type="number" class="form-control form-control-sm">
+                    </div>
+                </div>
+
+                <div class="settings-field">
+                    <label for="gravitySlider">Gravity</label>
+                    <div class="settings-input-row">
+                        <input id="gravitySlider" type="range" class="form-range">
+                        <input id="gravityValue" type="number" class="form-control form-control-sm">
+                    </div>
+                </div>
+
+                <div class="settings-field">
+                    <label for="radiationSlider">Radiation</label>
+                    <div class="settings-input-row">
+                        <input id="radiationSlider" type="range" class="form-range">
+                        <input id="radiationValue" type="number" class="form-control form-control-sm">
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <div class="settings-section-header">
+                        <span class="settings-section-label">Lighting</span>
+                    </div>
+                    <div class="settings-section-body">
+
+                        <div class="settings-field">
+                            <label for="globalLightSlider">Ambient light</label>
+                            <div class="settings-input-row">
+                                <input id="globalLightSlider" type="range" class="form-range">
+                                <input id="globalLightValue" type="number" class="form-control form-control-sm">
+                            </div>
+                        </div>
+
+                        <div class="settings-field">
+                            <label for="turbiditySlider">Turbidity</label>
+                            <div class="settings-input-row">
+                                <input id="turbiditySlider" type="range" class="form-range">
+                                <input id="turbidityValue" type="number" class="form-control form-control-sm">
+                            </div>
+                        </div>
+
+                        <hr style="border-color: var(--c-border-soft); margin: 2px 0;">
+
+                        <div class="settings-field checkbox-field">
+                            <label for="globalLightCycleEnabled">
+                                <input id="globalLightCycleEnabled" type="checkbox">
+                                Day / night cycle
+                            </label>
+                        </div>
+
+                        <div id="lightCycleFields" class="light-cycle-fields hidden">
+                            <div class="settings-field">
+                                <label for="globalLightCycleMinSlider">Night light level</label>
+                                <div class="settings-input-row">
+                                    <input id="globalLightCycleMinSlider" type="range" class="form-range">
+                                    <input id="globalLightCycleMinValue" type="number" class="form-control form-control-sm">
+                                </div>
+                            </div>
+
+                            <div class="settings-field">
+                                <label for="globalLightCyclePeriodSlider">Cycle period, sec</label>
+                                <div class="settings-input-row">
+                                    <input id="globalLightCyclePeriodSlider" type="range" class="form-range">
+                                    <input id="globalLightCyclePeriodValue" type="number" class="form-control form-control-sm">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="settings-field checkbox-field">
+                            <label for="localLightSourcesEnabled">
+                                <input id="localLightSourcesEnabled" type="checkbox">
+                                Local light sources
+                            </label>
+                        </div>
+
+                        <div id="localLightSourceFields" class="light-cycle-fields hidden">
+                            <div class="settings-field">
+                                <label for="lightSourceCountSlider">
+                                    Light source count:
+                                    <span id="lightSourceCountLabel">1</span>
+                                </label>
+                                <input id="lightSourceCountSlider" type="range" class="form-range discrete-slider">
+                                <div id="lightSourceCountTicks" class="discrete-ticks"></div>
+                            </div>
+
+                            <div class="settings-field">
+                                <label for="lightSourceStartAngleSlider">
+                                    First source angle:
+                                    <span id="lightSourceStartAngleLabel">270В°</span>
+                                </label>
+                                <input id="lightSourceStartAngleSlider" type="range" class="form-range discrete-slider">
+                                <div id="lightSourceStartAngleTicks" class="discrete-ticks"></div>
+                            </div>
+
+                            <div class="settings-field">
+                                <label for="lightSourceBrightnessSlider">Source brightness</label>
+                                <div class="settings-input-row">
+                                    <input id="lightSourceBrightnessSlider" type="range" class="form-range">
+                                    <input id="lightSourceBrightnessValue" type="number" class="form-control form-control-sm">
+                                </div>
+                            </div>
+
+                            <div class="settings-field">
+                                <label for="lightSourceOrbitRadiusSlider">Orbit radius</label>
+                                <div class="settings-input-row">
+                                    <input id="lightSourceOrbitRadiusSlider" type="range" class="form-range">
+                                    <input id="lightSourceOrbitRadiusValue" type="number" class="form-control form-control-sm">
+                                </div>
+                            </div>
+
+                            <div class="settings-field">
+                                <label for="lightSourceOrbitSpeedSlider">Orbit speed</label>
+                                <div class="settings-input-row">
+                                    <input id="lightSourceOrbitSpeedSlider" type="range" class="form-range">
+                                    <input id="lightSourceOrbitSpeedValue" type="number" class="form-control form-control-sm">
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -167,31 +321,108 @@
             <div id="tabSelected" class="tab-panel hidden">
                 <div class="panel-header-row">
                     <h2>Selected Cell</h2>
-                    <button id="saveSelectedCellBtn" class="icon-btn" title="Save cell template">
+                    <button id="saveSelectedCellBtn" class="icon-btn hidden" title="Save cell template">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                     </button>
                 </div>
 
                 <div id="selectedCellContent" class="hidden">
+
                     <div class="sticky-preview">
                         <div class="selected-cell-preview-wrap">
                             <canvas id="selectedCellPreviewCanvas" width="160" height="160"></canvas>
                         </div>
                     </div>
-                    <div class="cell-info-grid">
-                        <div class="cell-info-label">Code</div>
-                        <div id="selectedCellCode"></div>
-                        <div class="cell-info-label">Energy</div>
-                        <div id="selectedCellEnergy"></div>
-                        <div class="cell-info-label">Division threshold</div>
-                        <div id="selectedCellDivisionThreshold"></div>
-                        <div class="cell-info-label">Division impulse</div>
-                        <div id="selectedCellDivisionImpulse"></div>
-                        <div class="cell-info-label">RGB</div>
-                        <div id="selectedCellRgb"></div>
-                        <div class="cell-info-label">Speed</div>
-                        <div id="selectedCellSpeed"></div>
+
+                    <div class="settings-section">
+                        <div class="settings-section-header">
+                            <span class="settings-section-label">Overview</span>
+                        </div>
+                        <div class="cell-info-grid">
+
+                            <div class="cell-info-label">Code</div>
+                            <div id="selectedCellCode"></div>
+
+                            <div class="cell-info-label">Energy</div>
+                            <div id="selectedCellEnergy"></div>
+
+                            <div class="cell-info-label">Mass</div>
+                            <div id="selectedCellMass"></div>
+
+                            <div class="cell-info-label">Radius</div>
+                            <div id="selectedCellRadius"></div>
+
+                            <div class="cell-info-label">Density</div>
+                            <div id="selectedCellDensity"></div>
+
+                            <div class="cell-info-label">Elasticity</div>
+                            <div id="selectedCellElasticity"></div>
+
+                        </div>
                     </div>
+
+                    <div class="settings-section">
+                        <div class="settings-section-header">
+                            <span class="settings-section-label">Motion</span>
+                        </div>
+                        <div class="cell-info-grid">
+
+                            <div class="cell-info-label">Speed</div>
+                            <div id="selectedCellSpeed"></div>
+
+                            <div id="selectedCellGravBuoyLabel" class="cell-info-label">Grav/buoy force</div>
+                            <div id="selectedCellGravBuoyForce"></div>
+
+                            <div class="cell-info-label">Drag force</div>
+                            <div id="selectedCellDragForce"></div>
+
+                            <div id="selectedCellImpulseRow" class="cell-info-impulse-row hidden">
+                                <div class="cell-info-label">Collision impulse</div>
+                                <div id="selectedCellCollisionImpulse"></div>
+                            </div>
+
+                            <div class="force-view-toggle-row">
+                                <label class="force-view-toggle-label">
+                                    <input type="checkbox" id="forceViewToggle" class="force-view-checkbox">
+                                    <span>Show forces on preview</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <div class="settings-section-header">
+                            <span class="settings-section-label">Environment</span>
+                        </div>
+                        <div class="cell-info-grid">
+
+                            <div class="cell-info-label">Illumination</div>
+                            <div id="selectedCellIllumination"></div>
+
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <div class="settings-section-header">
+                            <span class="settings-section-label">Genome</span>
+                        </div>
+                        <div class="cell-info-grid">
+
+                            <div class="cell-info-label">Division energy</div>
+                            <div id="selectedCellDivisionThreshold"></div>
+
+                            <div class="cell-info-label">Division impulse</div>
+                            <div id="selectedCellDivisionImpulse"></div>
+
+                            <div class="cell-info-label">Division angle</div>
+                            <div id="selectedCellDivisionAngle"></div>
+
+                            <div class="cell-info-label">RGB</div>
+                            <div id="selectedCellRgb"></div>
+
+                        </div>
+                    </div>
+
                 </div>
             </div>
 
@@ -215,50 +446,90 @@
                 </div>
 
                 <div class="settings-field">
-                    <label for="createDivisionThresholdSlider">Division threshold</label>
+                    <label for="createDryMassSlider">Dry mass</label>
                     <div class="settings-input-row">
-                        <input id="createDivisionThresholdSlider" type="range" class="form-range" min="20" max="100" step="0.1">
-                        <input id="createDivisionThresholdInput" type="number" class="form-control form-control-sm" min="20" max="100" step="0.1">
+                        <input id="createDryMassSlider" type="range" class="form-range">
+                        <input id="createDryMassInput" type="number" class="form-control form-control-sm">
                     </div>
                 </div>
 
                 <div class="settings-field">
-                    <label for="createDivisionImpulseSlider">Division impulse strength</label>
+                    <label for="createElasticitySlider">Elasticity</label>
                     <div class="settings-input-row">
-                        <input id="createDivisionImpulseSlider" type="range" class="form-range" min="0.5" max="6" step="0.1">
-                        <input id="createDivisionImpulseInput" type="number" class="form-control form-control-sm" min="0.5" max="6" step="0.1">
-                    </div>
-                </div>
-
-                <div class="settings-field">
-                    <label for="createColorHueSlider">Color hue</label>
-                    <div class="settings-input-row">
-                        <input id="createColorHueSlider" type="range" class="form-range" min="0" max="360" step="0.1">
-                        <input id="createColorHueInput" type="number" class="form-control form-control-sm" min="0" max="360" step="0.1">
-                    </div>
-                </div>
-
-                <div class="settings-field">
-                    <label for="createSaturationSlider">Saturation</label>
-                    <div class="settings-input-row">
-                        <input id="createSaturationSlider" type="range" class="form-range" min="30" max="100" step="0.1">
-                        <input id="createSaturationInput" type="number" class="form-control form-control-sm" min="30" max="100" step="0.1">
-                    </div>
-                </div>
-
-                <div class="settings-field">
-                    <label for="createLightnessSlider">Lightness</label>
-                    <div class="settings-input-row">
-                        <input id="createLightnessSlider" type="range" class="form-range" min="35" max="75" step="0.1">
-                        <input id="createLightnessInput" type="number" class="form-control form-control-sm" min="35" max="75" step="0.1">
+                        <input id="createElasticitySlider" type="range" class="form-range">
+                        <input id="createElasticityInput" type="number" class="form-control form-control-sm">
                     </div>
                 </div>
 
                 <div class="settings-field">
                     <label for="createMaxEnergySlider">Max energy</label>
                     <div class="settings-input-row">
-                        <input id="createMaxEnergySlider" type="range" class="form-range" min="20" max="200" step="0.1">
-                        <input id="createMaxEnergyInput" type="number" class="form-control form-control-sm" min="20" max="200" step="0.1">
+                        <input id="createMaxEnergySlider" type="range" class="form-range">
+                        <input id="createMaxEnergyInput" type="number" class="form-control form-control-sm">
+                    </div>
+                </div>
+
+                <div class="settings-field">
+                    <label for="createDivisionThresholdSlider">Division threshold</label>
+                    <div class="settings-input-row">
+                        <input id="createDivisionThresholdSlider" type="range" class="form-range">
+                        <input id="createDivisionThresholdInput" type="number" class="form-control form-control-sm">
+                    </div>
+                </div>
+
+                <div class="settings-field">
+                    <label for="createDivisionImpulseSlider">Division impulse</label>
+                    <div class="settings-input-row">
+                        <input id="createDivisionImpulseSlider" type="range" class="form-range">
+                        <input id="createDivisionImpulseInput" type="number" class="form-control form-control-sm">
+                    </div>
+                </div>
+
+                <div class="settings-field">
+                    <label for="createDivisionAngleSlider">Division angle</label>
+                    <div class="settings-input-row">
+                        <input id="createDivisionAngleSlider" type="range" class="form-range">
+                        <input id="createDivisionAngleInput" type="number" class="form-control form-control-sm">
+                    </div>
+                </div>
+
+                <div class="settings-field">
+                    <label for="createInitialSpeedSlider">Initial speed</label>
+                    <div class="settings-input-row">
+                        <input id="createInitialSpeedSlider" type="range" class="form-range">
+                        <input id="createInitialSpeedInput" type="number" class="form-control form-control-sm">
+                    </div>
+                </div>
+
+                <div class="settings-field">
+                    <label for="createInitialDirectionSlider">Initial direction</label>
+                    <div class="settings-input-row">
+                        <input id="createInitialDirectionSlider" type="range" class="form-range">
+                        <input id="createInitialDirectionInput" type="number" class="form-control form-control-sm">
+                    </div>
+                </div>
+
+                <div class="settings-field">
+                    <label for="createColorHueSlider">Color hue</label>
+                    <div class="settings-input-row">
+                        <input id="createColorHueSlider" type="range" class="form-range">
+                        <input id="createColorHueInput" type="number" class="form-control form-control-sm">
+                    </div>
+                </div>
+
+                <div class="settings-field">
+                    <label for="createSaturationSlider">Saturation</label>
+                    <div class="settings-input-row">
+                        <input id="createSaturationSlider" type="range" class="form-range">
+                        <input id="createSaturationInput" type="number" class="form-control form-control-sm">
+                    </div>
+                </div>
+
+                <div class="settings-field">
+                    <label for="createLightnessSlider">Lightness</label>
+                    <div class="settings-input-row">
+                        <input id="createLightnessSlider" type="range" class="form-range">
+                        <input id="createLightnessInput" type="number" class="form-control form-control-sm">
                     </div>
                 </div>
 
@@ -270,7 +541,9 @@
             </div>
 
             <div id="tabSpecies" class="tab-panel hidden">
-                <h2>Species</h2>
+                <div class="panel-header-row">
+                    <h2>Species</h2>
+                </div>
                 <div class="placeholder-block placeholder-block--large">
                     <div class="placeholder-icon">🔬</div>
                     <div class="placeholder-text">Species list coming soon</div>
@@ -279,9 +552,11 @@
             </div>
 
             <div id="tabLogs" class="tab-panel hidden">
-                <h2>Event Log</h2>
+                <div class="panel-header-row">
+                    <h2>Event Log</h2>
+                </div>
                 <div class="log-info-entry">
-                    <div class="log-entry-icon">ℹ️</div>
+                    <div class="log-entry-icon">ℹ</div>
                     <div>
                         <div class="log-entry-title">Event log — coming soon</div>
                         <div class="log-entry-body">This tab will display a real-time stream of simulation events, including: new mutations detected, species extinctions, population milestones, food scarcity alerts, energy spikes, and cell division bursts. Events will be filterable by type and severity.</div>

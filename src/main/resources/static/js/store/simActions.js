@@ -1,9 +1,10 @@
 import { state, sliderState } from "./state.js";
 import { getConfig, resetSimulation, updateConfig } from "../transport/api/simulationApi.js";
 import { render } from "../render/canvas.js";
-import { drawCreateCellPreview, drawSelectedCellPreview } from "../render/preview.js";
+import { drawCreateCellPreview } from "../render/preview.js";
 import { dom } from "../ui/dom.js";
-import { setPlaceMode } from "../ui/panels/creationPanel.js";
+import {resetCreatePanelFromConfig, setPlaceMode} from "../ui/panels/creationPanel.js";
+import { clearSelection } from "../ui/panels/selectionPanel.js";
 
 export async function loadSimulationConfig() {
     state.config = await getConfig();
@@ -12,16 +13,16 @@ export async function loadSimulationConfig() {
 export function applySimulationConfig() {
     if (!state.config) return;
 
-    if (dom.canvas.width !== state.config.width) {
-        dom.canvas.width = state.config.width;
+    if (dom.canvas.width !== state.config.tubeDiameter) {
+        dom.canvas.width = state.config.tubeDiameter;
     }
 
-    if (dom.canvas.height !== state.config.height) {
-        dom.canvas.height = state.config.height;
+    if (dom.canvas.height !== state.config.tubeDiameter) {
+        dom.canvas.height = state.config.tubeDiameter;
     }
 
     if (!sliderState.isDragging) {
-        dom.timeSlider.value = String(state.config.timeSlider ?? 50);
+        dom.timeSlider.value = String(state.config.timeSlider?.value ?? 50);
     }
 
     applyDisplayFromConfig(state.config.temperatureCelsius, state.config.speedFactor);
@@ -42,7 +43,7 @@ export function updateStats() {
             `Cells: ${state.world.cells.length} | ` +
             `Dead: ${state.world.deadCells.length} | ` +
             `Food: ${state.world.foods.length} | ` +
-            `${state.config.width}×${state.config.height}`;
+            `Diameter: ${state.config.tubeDiameter}`;
     }
 
     if (dom.fpsLabel) {
@@ -55,6 +56,7 @@ export async function handleSimulationReset() {
     resetClientState();
     await loadSimulationConfig();
     applySimulationConfig();
+    resetCreatePanelFromConfig();
     render(dom.ctx, state);
     updateStats();
 }
@@ -62,15 +64,13 @@ export async function handleSimulationReset() {
 export function resetClientState() {
     state.prevDeadCellsById = new Map();
     state.deadCellDisappearEffects = [];
-    state.selectedCellId = null;
-    state.selectedCellTemplate = null;
     state.cellDraft = null;
     state.pendingTimeSlider = null;
     state.fps = 0;
     state.tps = 0;
 
     setPlaceMode(false);
-    drawSelectedCellPreview(null, null);
+    clearSelection();
     drawCreateCellPreview();
 }
 

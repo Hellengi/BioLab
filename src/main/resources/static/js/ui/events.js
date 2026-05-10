@@ -5,21 +5,25 @@ import {
     startSliderDrag,
     endSliderDrag,
     updateTimeLocal,
+    resetTimeToNormal,
+    setCursorLight,
+    state,
 } from "../store/store.js";
-import { bindSettingsForm, resetSettings, loadSettingsIntoPanel } from "./panels/settingsPanel.js";
+import { bindSettingsForm, resetSettings } from "./panels/settingsPanel.js";
 import { openSaveWorldModal, openLoadWorldModal, confirmSaveWorld, confirmLoadWorld, deleteSelectedWorld } from "./panels/snapshotPanel.js";
 import {
-    openSaveCellModal,
     confirmSaveSelectedCell,
     confirmSaveDraftCell,
     openLoadCellModal,
     confirmLoadCell,
     deleteSelectedTemplate,
 } from "./panels/templatesPanel.js";
-import { toggleCellPlacement, onCreateFormChange, createCellFields, initCreatePanel } from "./panels/creationPanel.js";
+import { toggleCellPlacement, onCreateFormChange, createCellFields, createMotionFields, setPlaceMode } from "./panels/creationPanel.js";
 import { onCanvasClick } from "./panels/canvasController.js";
 import { bindInputs, closeModal } from "./panels.js";
 import { initTabs } from "./panels/tabsPanel.js";
+import { updateCursorReadout } from "./panels/cursorReadoutPanel.js";
+import { drawSelectedCellPreview, setForceViewEnabled } from "../render/preview.js";
 
 export function bindEvents() {
     initTabs();
@@ -29,12 +33,14 @@ export function bindEvents() {
     bindCreatePanelEvents();
     bindCreateFormEvents();
     bindCanvasEvents();
+    bindKeyboardEvents();
     bindSidebarToggle();
     bindSettingsForm();
 }
 
 function bindToolbarEvents() {
     dom.timeSlider.addEventListener("pointerdown", () => startSliderDrag());
+    dom.tempDisplay.addEventListener("click", () => resetTimeToNormal());
     dom.timeSlider.addEventListener("input", () => updateTimeLocal(dom.timeSlider.value));
     dom.timeSlider.addEventListener("pointerup", () => endSliderDrag(dom.timeSlider.value));
     dom.timeSlider.addEventListener("touchend", () => endSliderDrag(dom.timeSlider.value), { passive: true });
@@ -84,6 +90,15 @@ function bindSelectedCellEvents() {
 
     bindAsyncClick(dom.saveSelectedCellConfirmBtn, confirmSaveSelectedCell,
         "Save selected cell error", "Failed to save cell template");
+
+    dom.forceViewToggle?.addEventListener("change", () => {
+        setForceViewEnabled(dom.forceViewToggle.checked);
+
+        const selectedCell = state.cellById?.get(state.selectedCellId);
+        if (selectedCell && state.selectedCellTemplate) {
+            drawSelectedCellPreview(selectedCell, state.selectedCellTemplate);
+        }
+    });
 }
 
 function bindCreatePanelEvents() {
@@ -127,10 +142,77 @@ function bindCreateFormEvents() {
     for (const { range, input } of createCellFields) {
         bindInputs(range, input, onCreateFormChange);
     }
+
+    for (const { range, input } of createMotionFields) {
+        bindInputs(range, input, onCreateFormChange);
+    }
 }
 
 function bindCanvasEvents() {
     dom.canvas.addEventListener("click", onCanvasClick);
+    dom.canvas.addEventListener("mousemove", onCanvasMouseMove);
+    dom.canvas.addEventListener("mouseleave", onCanvasMouseLeave);
+}
+
+function onCanvasMouseMove(event) {
+    const lighting = state.world?.lighting;
+    if (!lighting) return;
+
+    const rect = dom.canvas.getBoundingClientRect();
+    const cx = event.clientX - rect.left;
+    const cy = event.clientY - rect.top;
+
+    const light = sampleLightAt(cx, cy, lighting);
+    setCursorLight(light);
+    updateCursorReadout();
+}
+
+function onCanvasMouseLeave() {
+    setCursorLight(null);
+    updateCursorReadout();
+}
+
+function sampleLightAt(cx, cy, lighting) {
+    const { lightMap, gridStep, gridWidth, gridHeight, globalLight } = lighting;
+
+    if (!lightMap?.length || gridStep <= 0 || gridWidth <= 0 || gridHeight <= 0) {
+        return globalLight ?? null;
+    }
+
+    const col = Math.floor(cx / gridStep);
+    const row = Math.floor(cy / gridStep);
+    const clampedCol = Math.max(0, Math.min(gridWidth - 1, col));
+    const clampedRow = Math.max(0, Math.min(gridHeight - 1, row));
+
+    return lightMap[clampedRow * gridWidth + clampedCol] ?? globalLight;
+}
+
+function bindKeyboardEvents() {
+    document.addEventListener("keydown", event => {
+        if (event.repeat || isTypingTarget(event.target)) {
+            return;
+        }
+
+        if (event.key === "Escape") {
+            if (state.placeMode) {
+                setPlaceMode(false);
+            }
+            return;
+        }
+
+        if (event.code === "Space") {
+            event.preventDefault();
+            void togglePause();
+        }
+    });
+}
+
+function isTypingTarget(target) {
+    if (!(target instanceof HTMLElement)) {
+        return false;
+    }
+
+    return target.matches("input, textarea, select") || target.isContentEditable;
 }
 
 function bindSidebarToggle() {

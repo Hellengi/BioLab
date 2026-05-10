@@ -7,6 +7,7 @@ import lombok.Getter;
 @Getter
 public class Cell extends Particle {
     private Genome genome;
+    private double directionAngle = 0.0;
     private boolean markedForRemoval = false;
 
     public Cell(long id, double x, double y,

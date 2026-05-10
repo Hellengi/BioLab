@@ -8,26 +8,35 @@ import lombok.Setter;
 @Getter
 public class Genome {
     private double divisionThreshold;
-    private double divisionImpulseStrength;
+    private double divisionImpulse;
+    private double divisionAngle;
     private double colorHue;
     private double saturation;
     private double lightness;
     private double maxEnergy;
+    private double dryMass;
+    private double elasticity;
 
     public Genome(
             double divisionThreshold,
-            double divisionImpulseStrength,
+            double divisionImpulse,
+            double divisionAngle,
             double colorHue,
             double saturation,
             double lightness,
-            double maxEnergy
+            double maxEnergy,
+            double dryMass,
+            double elasticity
     ) {
         this.divisionThreshold = divisionThreshold;
-        this.divisionImpulseStrength = divisionImpulseStrength;
+        this.divisionImpulse = divisionImpulse;
+        this.divisionAngle = divisionAngle;
         this.colorHue = colorHue;
         this.saturation = saturation;
         this.lightness = lightness;
         this.maxEnergy = maxEnergy;
+        this.dryMass = dryMass;
+        this.elasticity = elasticity;
     }
 
     public String getCode() {
@@ -37,11 +46,14 @@ public class Genome {
     public Genome copy() {
         return new Genome(
                 divisionThreshold,
-                divisionImpulseStrength,
+                divisionImpulse,
+                divisionAngle,
                 colorHue,
                 saturation,
                 lightness,
-                maxEnergy
+                maxEnergy,
+                dryMass,
+                elasticity
         );
     }
 }

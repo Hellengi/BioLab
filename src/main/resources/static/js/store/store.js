@@ -5,6 +5,7 @@ export {
     findCellAt,
     setWorld,
     rebuildCellIndex,
+    setCursorLight,
 } from "./state.js";
 
 export {
@@ -23,4 +24,5 @@ export {
     startSliderDrag,
     updateTimeLocal,
     endSliderDrag,
+    resetTimeToNormal,
 } from "./sliderControl.js";

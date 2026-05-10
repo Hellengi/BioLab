@@ -7,15 +7,17 @@ import lombok.Getter;
 @Getter
 public class DeadCell extends Particle {
     private double lifetimeTicks;
+    private double mass;
 
     public DeadCell(long id, double x, double y,
-                    double vx, double vy, double energy) {
-        this(id, x, y, vx, vy, energy, 0L);
+                    double vx, double vy, double energy, double mass) {
+        this(id, x, y, vx, vy, energy, mass, 0L);
     }
 
     public DeadCell(long id, double x, double y,
-                    double vx, double vy, double energy, double lifetimeTicks) {
+                    double vx, double vy, double energy, double mass, double lifetimeTicks) {
         super(id, x, y, vx, vy, energy);
+        this.mass = mass;
         this.lifetimeTicks = lifetimeTicks;
     }
 

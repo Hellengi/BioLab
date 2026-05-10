@@ -14,7 +14,13 @@ export const state = {
 
     fps: 0,
     tps: 0,
+
+    cursorLight: null,
 };
+
+export function setCursorLight(value) {
+    state.cursorLight = value;
+}
 
 export const sliderState = {
     isDragging: false,

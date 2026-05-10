@@ -120,7 +120,10 @@ async function _flushQueuedTimeSend() {
     try {
         state.config = await updateConfig({
             ...state.config,
-            timeSlider: value,
+            timeSlider: {
+                ...state.config.timeSlider,
+                value,
+            },
         });
 
         applyDisplayFromConfig(state.config.temperatureCelsius, state.config.speedFactor);
@@ -137,4 +140,16 @@ async function _flushQueuedTimeSend() {
             _scheduleNextTimeSend();
         }
     }
+}
+
+export function resetTimeToNormal() {
+    _cancelSnapAnimation();
+    _cancelQueuedTimeSend();
+
+    sliderState.isDragging = false;
+
+    dom.timeSlider.value = "50";
+    state.pendingTimeSlider = 50;
+
+    _queueTimeSend(50, true);
 }

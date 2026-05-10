@@ -44,7 +44,7 @@ public class FoodSpawner {
     private double currentFoodGenerationFrequencyMultiplier() {
         return SliderScale.exponential(
                 runtimeConfig.getFoodSpawnIntensity(),
-                baseConfig.getFood().getSpawnMaxMultiplier()
+                baseConfig.getFood().getMaxSpawnMultiplier()
         );
     }
 }

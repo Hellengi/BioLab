@@ -21,5 +21,11 @@ export function deleteTemplate(id) {
 }
 
 export function spawnCell(x, y, cell) {
-    return postJson("/api/cells/spawn", {x, y, genome: cell.genome});
+    return postJson("/api/cells/spawn", {
+        x,
+        y,
+        genome: cell.genome,
+        initialSpeed: cell.initialSpeed ?? 0,
+        initialDirection: cell.initialDirection ?? 0,
+    });
 }

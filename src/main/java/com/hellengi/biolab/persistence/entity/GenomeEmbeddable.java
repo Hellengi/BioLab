@@ -13,7 +13,10 @@ public class GenomeEmbeddable {
     private double divisionThreshold;
 
     @Column(nullable = false)
-    private double divisionImpulseStrength;
+    private double divisionImpulse;
+
+    @Column(nullable = false)
+    private double divisionAngle;
 
     @Column(nullable = false)
     private double colorHue;
@@ -27,22 +30,34 @@ public class GenomeEmbeddable {
     @Column(nullable = false)
     private double maxEnergy;
 
+    @Column(nullable = false)
+    private double dryMass;
+
+    @Column(nullable = false)
+    private double elasticity;
+
     public GenomeEmbeddable() {
     }
 
     public GenomeEmbeddable(
             double divisionThreshold,
-            double divisionImpulseStrength,
+            double divisionImpulse,
+            double divisionAngle,
             double colorHue,
             double saturation,
             double lightness,
-            double maxEnergy
+            double maxEnergy,
+            double dryMass,
+            double elasticity
     ) {
         this.divisionThreshold = divisionThreshold;
-        this.divisionImpulseStrength = divisionImpulseStrength;
+        this.divisionImpulse = divisionImpulse;
+        this.divisionAngle = divisionAngle;
         this.colorHue = colorHue;
         this.saturation = saturation;
         this.lightness = lightness;
         this.maxEnergy = maxEnergy;
+        this.dryMass = dryMass;
+        this.elasticity = elasticity;
     }
 }

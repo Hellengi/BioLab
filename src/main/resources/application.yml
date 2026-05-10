@@ -8,77 +8,9 @@ spring:
     open-in-view: false
 
 simulation:
-  width: 1200
-  height: 600
   tick-rate-ms: 10
-
-  broadcast:
-    fps: 100
-
-  cell:
-    initial-count: 20
-    energy-min: 20.0
-    energy-range: 20.0
-    min-energy: 0.0
-    energy-decay: 0.15
-    viscosity: 0.995
-    dead-lifetime-ticks: 80
-
-  food:
-    initial-count: 300
-    spawn-intensity: 50
-    spawn-max-multiplier: 20.0
-    energy-min: 10.0
-    energy-range: 10.0
-    consumption-radius: 12.0
-
-  spawn:
-    center-x: 600.0
-    center-y: 300.0
-    offset-range: 20.0
-    division-impulse-cost: 1.0
-    min-child-energy: 1.0
-
-  genome:
-    radiation-chance: 0.08
-    initial:
-      division-threshold: 50.0
-      division-impulse: 2.0
-      color-hue: 195.0
-      saturation: 100.0
-      lightness: 62.0
-      max-energy: 60.0
-    mutation:
-      division-threshold: 2.0
-      division-impulse: 0.25
-      color-hue: 12.0
-      saturation: 8.0
-      lightness: 6.0
-      max-energy: 4.0
-    limits:
-      division-threshold:
-        min: 20.0
-        max: 100.0
-      division-impulse:
-        min: 0.5
-        max: 6.0
-      color-hue:
-        min: 0.0
-        max: 360.0
-      saturation:
-        min: 30.0
-        max: 100.0
-      lightness:
-        min: 35.0
-        max: 75.0
-      max-energy:
-        min: 20.0
-        max: 200.0
-
-  physics:
-    collision-restitution: 1.0
-    max-collision-substeps: 8
-    max-collision-step-distance: 4.0
+  broadcast-fps: 100
+  diameter: 800
 
   time:
     min-speed-factor: 0.01
@@ -89,8 +21,191 @@ simulation:
     scale-slowdown-inside-tick: true
     scale-speedup-inside-tick: false
 
-  render:
-    cell-base-radius: 6.0
-    cell-radius-scale: 4.0
-    direction-vector-length: 12.0
-    food-base-radius: 2.0
+  environment:
+    max-viscosity: 4.0
+    max-gravity: 0.5
+    base-mutation-chance: 0
+    max-mutation-chance: 0.25
+    medium-density: 1.0
+    buoyancy-strength: 1.0
+
+  light:
+    max-turbidity-attenuation: 0.018
+    global-cycle-enabled: false
+    local-sources-enabled: false
+    orbit-speed-max-radians-per-tick: 0.01
+    falloff-factor: 400.0
+    grid-step: 8
+
+  collision:
+    cell-restitution: 1.0
+    dead-cell-restitution: 0.05
+    max-substeps: 8
+    max-step-distance: 4.0
+    position-slop: 0.01
+    correction-percent: 0.8
+
+  cell:
+    base-radius: 6.0
+    start-energy: 40.0
+    energy-to-mass-factor: 1.0
+    energy-to-radius-factor: 4.0
+    energy-to-division-impulse-factor: 4.0
+    energy-decay-per-tick: 0.05
+    death-energy: 0.0
+    dead-lifetime-ticks: 80
+    start:
+      initial: 20
+      min: 0
+      max: 100
+      step: 1
+    offset-range: 20.0
+
+  food:
+    base-radius: 2.0
+    consumption-radius: 12.0
+    max-spawn-multiplier: 20.0
+    min-energy: 10.0
+    max-energy: 20.0
+    start: 300
+
+  controls:
+    time:
+      initial: 50
+      min: 0
+      max: 100
+      step: 1
+    food-spawn-intensity:
+      initial: 50
+      min: 0
+      max: 100
+      step: 1
+    viscosity:
+      initial: 40
+      min: 0
+      max: 100
+      step: 1
+    gravity:
+      initial: 0
+      min: 0
+      max: 100
+      step: 1
+    radiation:
+      initial: 20
+      min: 0
+      max: 100
+      step: 1
+    global-light:
+      initial: 75
+      min: 0
+      max: 100
+      step: 1
+    turbidity:
+      initial: 0
+      min: 0
+      max: 100
+      step: 1
+    global-light-cycle-min:
+      initial: 0
+      min: 0
+      max: 100
+      step: 1
+    global-light-cycle-period:
+      initial: 15
+      min: 1
+      max: 300
+      step: 1
+    light-source-count:
+      initial: 1
+      min: 1
+      max: 6
+      step: 1
+    light-source-start-angle:
+      initial: 0
+      min: 0
+      max: 315
+      step: 45
+    light-source-brightness:
+      initial: 80
+      min: 0
+      max: 100
+      step: 1
+    light-source-orbit-radius:
+      initial: 50
+      min: 0
+      max: 100
+      step: 1
+    light-source-orbit-speed:
+      initial: 0
+      min: -100
+      max: 100
+      step: 1
+
+  genome:
+    division-threshold:
+      initial: 50.0
+      min: 20.0
+      max: 100.0
+      step: 0.1
+    division-impulse:
+      initial: 2.0
+      min: 0.5
+      max: 6.0
+      step: 0.01
+    division-angle:
+      initial: 0.0
+      min: 0.0
+      max: 179.0
+      step: 1.0
+    color-hue:
+      initial: 195.0
+      min: 0.0
+      max: 359.0
+      step: 1.0
+    saturation:
+      initial: 100.0
+      min: 0.0
+      max: 100.0
+      step: 1.0
+    lightness:
+      initial: 62.0
+      min: 0.0
+      max: 100.0
+      step: 1.0
+    max-energy:
+      initial: 60.0
+      min: 20.0
+      max: 200.0
+      step: 0.1
+    dry-mass:
+      initial: 300.0
+      min: 50.0
+      max: 800.0
+      step: 1.0
+    elasticity:
+      initial: 0.25
+      min: 0.05
+      max: 1.0
+      step: 0.01
+    mutation:
+      division-threshold: 2.0
+      division-impulse: 0.25
+      division-angle: 6.0
+      color-hue: 12.0
+      saturation: 8.0
+      lightness: 6.0
+      max-energy: 4.0
+      dry-mass: 20.0
+      elasticity: 0.04
+
+  motion:
+    cell-speed:
+      initial: 0.0
+      min: 0.0
+      max: 20.0
+      step: 0.1
+    cell-direction:
+      initial: 0.0
+      min: 0.0
+      max: 359.0
+      step: 1.0

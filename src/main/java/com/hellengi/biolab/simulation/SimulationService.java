@@ -3,6 +3,7 @@ package com.hellengi.biolab.simulation;
 import com.hellengi.biolab.api.dto.SimulationSettingsDto;
 import com.hellengi.biolab.api.dto.SpawnCellRequestDto;
 import com.hellengi.biolab.api.dto.EnvironmentDto;
+import com.hellengi.biolab.simulation.lighting.LightingSystem;
 import com.hellengi.biolab.simulation.mapper.EnvironmentMapper;
 import com.hellengi.biolab.simulation.settings.RuntimeOverrides;
 import com.hellengi.biolab.simulation.settings.SimulationSettings;
@@ -18,17 +19,21 @@ public class SimulationService {
     private final EnvironmentMapper environmentMapper;
     private final SimulationControl simulationControl;
     private final SimulationSettings simulationSettings;
+    private final LightingSystem lightingSystem;
 
     public void reset() {
         simulationControl.reset();
     }
 
     public EnvironmentDto getState() {
+        lightingSystem.syncSourceCount();
         synchronized (world) {
             return environmentMapper.toDto(
                     world,
                     runtimeConfig.getDeadCellLifetimeTicks(),
-                    0L
+                    0L,
+                    lightingSystem.getSources(),
+                    runtimeConfig.getGlobalLight()
             );
         }
     }

@@ -1,33 +1,36 @@
 import { drawDeadCellEffects, updateDeadCellEffects } from "./effects.js";
+import { drawBackground, drawLightSourceBodies } from "./lightingRenderer.js";
 
-const COLD_FILTER_BASE_ALPHA  = 0.03;
-const COLD_FILTER_MAX_ALPHA = 0.22;
-
-const HOT_FILTER_BASE_ALPHA = 0.03;
-const HOT_FILTER_MAX_ALPHA = 0.18;
-
+const COLD_FILTER_BASE_ALPHA = 0.03;
+const COLD_FILTER_MAX_ALPHA  = 0.22;
+const HOT_FILTER_BASE_ALPHA  = 0.03;
+const HOT_FILTER_MAX_ALPHA   = 0.18;
 const COLD_FILTER_COLOR = "59, 130, 246";
-const HOT_FILTER_COLOR = "216, 106, 49";
+const HOT_FILTER_COLOR  = "216, 106, 49";
+const CELL_MIN_LIGHT = 0.5;
+const DIRECTION_VECTOR_LENGTH = 12.0;
 
 export function render(ctx, state) {
     if (!state.world || !state.config) return;
 
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
-    ctx.fillStyle = "#A0A0A0";
-    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    ctx.save();
+    clipTube(ctx);
+
+    drawBackground(ctx, state.world.lighting);
 
     for (const food of state.world.foods) {
         drawFood(ctx, food);
     }
 
     for (const cell of state.world.cells) {
-        drawCell(ctx, cell);
-        drawDirectionVector(ctx, cell, state.config.directionVectorLength);
+        drawCell(ctx, cell, state.world.lighting);
+        drawDirectionVector(ctx, cell, DIRECTION_VECTOR_LENGTH);
     }
 
     for (const deadCell of state.world.deadCells) {
-        drawDeadCell(ctx, deadCell);
+        drawDeadCell(ctx, deadCell, state.world.lighting);
     }
 
     if (state.selectedCellId) {
@@ -40,8 +43,35 @@ export function render(ctx, state) {
     updateDeadCellEffects();
     drawDeadCellEffects(ctx);
 
-    const sliderValue = state.pendingTimeSlider ?? state.config.timeSlider ?? 50;
+    if (state.world.lighting) {
+        drawLightSourceBodies(ctx, state.world.lighting);
+    }
+
+    const sliderValue = state.pendingTimeSlider ?? state.config.timeSlider?.value ?? 50;
     applyEnvironmentTint(ctx, sliderValue);
+
+    ctx.restore();
+    drawTubeBorder(ctx);
+}
+
+function clipTube(ctx) {
+    const d = ctx.canvas.width;
+    const r = d / 2;
+
+    ctx.beginPath();
+    ctx.arc(r, r, r, 0, Math.PI * 2);
+    ctx.clip();
+}
+
+function drawTubeBorder(ctx) {
+    const d = ctx.canvas.width;
+    const r = d / 2;
+
+    ctx.beginPath();
+    ctx.arc(r, r, r - 0.5, 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(226,232,240,0.35)";
+    ctx.lineWidth = 1;
+    ctx.stroke();
 }
 
 function drawFood(ctx, food) {
@@ -49,31 +79,47 @@ function drawFood(ctx, food) {
     fillCircle(ctx, food.x, food.y, food.radius, "hsl(52, 85%, 60%)");
 }
 
-function drawCell(ctx, cell) {
+function drawCell(ctx, cell, lighting) {
+    const illum = cellIlluminance(cell, lighting);
+    const l = modulateLightness(cell.genome.lightness, illum);
     fillCircle(
         ctx,
         cell.x,
         cell.y,
         cell.radius,
-        `hsl(${cell.genome.colorHue}, ${cell.genome.saturation}%, ${cell.genome.lightness}%)`
+        `hsl(${cell.genome.colorHue}, ${cell.genome.saturation}%, ${l}%)`
     );
 }
 
-function drawDeadCell(ctx, deadCell) {
-    fillCircle(ctx, deadCell.x, deadCell.y, deadCell.radius, "#7a4b2f");
+function drawDeadCell(ctx, deadCell, lighting) {
+    const illum = cellIlluminance(deadCell, lighting);
+    const l = modulateLightness(33, illum);
+    fillCircle(ctx, deadCell.x, deadCell.y, deadCell.radius,
+        `hsl(22, 43%, ${l}%)`);
+}
+
+function cellIlluminance(cell, lighting) {
+    const rawLight = typeof cell.localLight === 'number'
+        ? cell.localLight
+        : lighting?.globalLight ?? 0.75;
+
+    const clampedLight = Math.max(0, Math.min(1, rawLight));
+    return CELL_MIN_LIGHT + clampedLight * (1 - CELL_MIN_LIGHT);
+}
+
+function modulateLightness(genomeLightness, illuminance) {
+    const minL = 5;
+    return Math.round(minL + (genomeLightness - minL) * illuminance);
 }
 
 function drawDirectionVector(ctx, cell, length) {
-    const vectorLength = Math.hypot(cell.vx, cell.vy) || 1;
-    const directionX = cell.vx / vectorLength;
-    const directionY = cell.vy / vectorLength;
+    const angleRad = (cell.directionAngle - 90.0) * Math.PI / 180.0;
+    const dirX = Math.cos(angleRad);
+    const dirY = Math.sin(angleRad);
 
     ctx.beginPath();
     ctx.moveTo(cell.x, cell.y);
-    ctx.lineTo(
-        cell.x + directionX * length,
-        cell.y + directionY * length
-    );
+    ctx.lineTo(cell.x + dirX * length, cell.y + dirY * length);
     ctx.strokeStyle = "#ff8c42";
     ctx.lineWidth = 1.5;
     ctx.stroke();
@@ -96,11 +142,9 @@ function drawSelectedCellOutline(ctx, selectedCell) {
 
 function applyEnvironmentTint(ctx, timeSlider) {
     const value = timeSlider ?? 50;
-
-    if (value === 50) return;
+    if (Math.abs(value - 50) < 0.001) return;
 
     const power = Math.min(1, Math.abs(value - 50) / 50);
-
     let color, alpha;
 
     if (value < 50) {

@@ -1,17 +1,34 @@
 import { dom } from "./dom.js";
 
-export function bindInputs(rangeInput, numberInput, onChange) {
+export function bindInputs(rangeInput, numberInput, onInput, onCommit = onInput) {
     if (!rangeInput || !numberInput) return;
 
-    rangeInput.addEventListener("input", () => {
+    const syncFromRange = () => {
         numberInput.value = rangeInput.value;
-        onChange();
-    });
+        onInput();
+    };
 
-    numberInput.addEventListener("input", () => {
+    const syncFromNumber = () => {
         rangeInput.value = numberInput.value;
-        onChange();
-    });
+        onInput();
+    };
+
+    const commitFromRange = () => {
+        numberInput.value = rangeInput.value;
+        onCommit();
+    };
+
+    const commitFromNumber = () => {
+        rangeInput.value = numberInput.value;
+        onCommit();
+    };
+
+    rangeInput.addEventListener("input", syncFromRange);
+    rangeInput.addEventListener("change", commitFromRange);
+    rangeInput.addEventListener("pointerup", commitFromRange);
+
+    numberInput.addEventListener("input", syncFromNumber);
+    numberInput.addEventListener("change", commitFromNumber);
 }
 
 export function getCanvasCoordinates(event) {

@@ -12,7 +12,8 @@ export function connectSocket() {
     };
 
     socket.onmessage = (event) => {
-        setWorld(JSON.parse(event.data));
+        const world = JSON.parse(event.data);
+        setWorld(world);
         refreshSelection();
         updateStats();
     };

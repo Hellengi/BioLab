@@ -11,6 +11,11 @@ public record CellDto(
         boolean dead,
         GenomeDto genome,
         long lifetimeTicks,
-        long maxLifetimeTicks
+        long maxLifetimeTicks,
+        double localLight,
+        double mass,
+        double density,
+        CellMotionDto motion,
+        double directionAngle
 ) {
 }

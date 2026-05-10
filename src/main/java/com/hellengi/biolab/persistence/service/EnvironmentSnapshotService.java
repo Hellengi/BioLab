@@ -7,6 +7,7 @@ import com.hellengi.biolab.persistence.entity.EnvironmentSnapshotEntity;
 import com.hellengi.biolab.persistence.mapper.EnvironmentSnapshotMapper;
 import com.hellengi.biolab.persistence.repository.EnvironmentSnapshotRepository;
 import com.hellengi.biolab.simulation.SimulationControl;
+import com.hellengi.biolab.simulation.lighting.LightingSystem;
 import com.hellengi.biolab.simulation.settings.SimulationSettings;
 import com.hellengi.biolab.simulation.settings.RuntimeOverrides;
 import com.hellengi.biolab.simulation.mapper.EnvironmentMapper;
@@ -32,6 +33,7 @@ public class EnvironmentSnapshotService {
     private final RuntimeOverrides runtimeConfig;
     private final SimulationControl simulationControl;
     private final SimulationSettings simulationSettings;
+    private final LightingSystem lightingSystem;
 
     @Transactional
     public EnvironmentSnapshotDto save(String name) {
@@ -39,7 +41,14 @@ public class EnvironmentSnapshotService {
         SimulationSettingsDto configDto;
 
         synchronized (env) {
-            envDto = environmentMapper.toDto(env, runtimeConfig.getDeadCellLifetimeTicks(), 0L);
+            lightingSystem.syncSourceCount();
+            envDto = environmentMapper.toDto(
+                    env,
+                    runtimeConfig.getDeadCellLifetimeTicks(),
+                    0L,
+                    lightingSystem.getSources(),
+                    runtimeConfig.getGlobalLight()
+            );
             configDto = simulationSettings.getConfig();
         }
 

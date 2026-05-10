@@ -1,7 +1,7 @@
 package com.hellengi.biolab.simulation.mapper;
 
 import com.hellengi.biolab.api.dto.FoodDto;
-import com.hellengi.biolab.api.presentation.RenderMetrics;
+import com.hellengi.biolab.simulation.physics.FoodMetrics;
 import com.hellengi.biolab.model.Food;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class FoodMapper {
-    private final RenderMetrics renderMetrics;
+    private final FoodMetrics foodMetrics;
 
     public FoodDto toDto(Food food) {
         return new FoodDto(
@@ -17,7 +17,7 @@ public class FoodMapper {
                 food.getX(),
                 food.getY(),
                 food.getEnergy(),
-                renderMetrics.calculateFoodRadius(food.getEnergy()),
+                foodMetrics.radius(food.getEnergy()),
                 food.isConsumed()
         );
     }

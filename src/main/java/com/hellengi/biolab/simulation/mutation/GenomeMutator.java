@@ -2,6 +2,7 @@ package com.hellengi.biolab.simulation.mutation;
 
 import com.hellengi.biolab.config.YamlConfig;
 import com.hellengi.biolab.model.Genome;
+import com.hellengi.biolab.simulation.settings.RuntimeOverrides;
 import com.hellengi.biolab.util.GenomeCodec;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -19,18 +20,22 @@ public class GenomeMutator {
     private static final Logger log = LoggerFactory.getLogger(GenomeMutator.class);
 
     private final YamlConfig config;
+    private final RuntimeOverrides runtimeConfig;
     private final Random random = new Random();
 
     public Genome copyGenomeWithPossibleMutation(Genome parentGenome) {
         Genome oldGenome = parentGenome.copy();
         Genome genome = parentGenome.copy();
 
-        double mutationChance = config.getGenome().getRadiationChance();
+        double mutationChance = runtimeConfig.getRadiationMutationChance();
         boolean mutated = false;
 
         mutated |= mutateDivisionThreshold(genome, mutationChance);
         mutated |= mutateDivisionImpulse(genome, mutationChance);
+        mutated |= mutateDivisionAngle(genome, mutationChance);
         mutated |= mutateMaxEnergy(genome, mutationChance);
+        mutated |= mutateDryMass(genome, mutationChance);
+        mutated |= mutateElasticity(genome, mutationChance);
 
         if (!mutated) return genome;
 
@@ -52,9 +57,9 @@ public class GenomeMutator {
         genome.setDivisionThreshold(
                 mutateValue(
                         genome.getDivisionThreshold(),
-                            config.getGenome().getMutation().getDivisionThreshold(),
-                        config.getGenome().getLimits().getDivisionThreshold().getMin(),
-                        config.getGenome().getLimits().getDivisionThreshold().getMax()
+                        config.getGenome().getMutation().getDivisionThreshold(),
+                        config.getGenome().getDivisionThreshold().getMin(),
+                        config.getGenome().getDivisionThreshold().getMax()
                 )
         );
 
@@ -64,12 +69,27 @@ public class GenomeMutator {
     private boolean mutateDivisionImpulse(Genome genome, double chance) {
         if (!shouldMutate(chance)) return false;
 
-        genome.setDivisionImpulseStrength(
+        genome.setDivisionImpulse(
                 mutateValue(
-                        genome.getDivisionImpulseStrength(),
+                        genome.getDivisionImpulse(),
                         config.getGenome().getMutation().getDivisionImpulse(),
-                        config.getGenome().getLimits().getDivisionImpulse().getMin(),
-                        config.getGenome().getLimits().getDivisionImpulse().getMax()
+                        config.getGenome().getDivisionImpulse().getMin(),
+                        config.getGenome().getDivisionImpulse().getMax()
+                )
+        );
+
+        return true;
+    }
+
+    private boolean mutateDivisionAngle(Genome genome, double chance) {
+        if (!shouldMutate(chance)) return false;
+
+        genome.setDivisionAngle(
+                mutateWrappedValue(
+                        genome.getDivisionAngle(),
+                        config.getGenome().getMutation().getDivisionAngle(),
+                        config.getGenome().getDivisionAngle().getMin(),
+                        config.getGenome().getDivisionAngle().getMax()
                 )
         );
 
@@ -83,22 +103,53 @@ public class GenomeMutator {
                 mutateValue(
                         genome.getMaxEnergy(),
                         config.getGenome().getMutation().getMaxEnergy(),
-                        config.getGenome().getLimits().getMaxEnergy().getMin(),
-                        config.getGenome().getLimits().getMaxEnergy().getMax()
+                        config.getGenome().getMaxEnergy().getMin(),
+                        config.getGenome().getMaxEnergy().getMax()
                 )
         );
 
         return true;
     }
 
+    private boolean mutateDryMass(Genome genome, double chance) {
+        if (!shouldMutate(chance)) return false;
+
+        genome.setDryMass(
+                mutateValue(
+                        genome.getDryMass(),
+                        config.getGenome().getMutation().getDryMass(),
+                        config.getGenome().getDryMass().getMin(),
+                        config.getGenome().getDryMass().getMax()
+                )
+        );
+
+        return true;
+    }
+
+    private boolean mutateElasticity(Genome genome, double chance) {
+        if (!shouldMutate(chance)) return false;
+
+        genome.setElasticity(
+                mutateValue(
+                        genome.getElasticity(),
+                        config.getGenome().getMutation().getElasticity(),
+                        config.getGenome().getElasticity().getMin(),
+                        config.getGenome().getElasticity().getMax()
+                )
+        );
+
+        return true;
+    }
 
     private boolean mutateColorHue(Genome genome, double chance) {
         if (!shouldMutate(chance)) return false;
 
         genome.setColorHue(
-                mutateHue(
+                mutateWrappedValue(
                         genome.getColorHue(),
-                        config.getGenome().getMutation().getColorHue()
+                        config.getGenome().getMutation().getColorHue(),
+                        config.getGenome().getColorHue().getMin(),
+                        config.getGenome().getColorHue().getMax()
                 )
         );
 
@@ -112,8 +163,8 @@ public class GenomeMutator {
                 mutateValue(
                         genome.getSaturation(),
                         config.getGenome().getMutation().getSaturation(),
-                        config.getGenome().getLimits().getSaturation().getMin(),
-                        config.getGenome().getLimits().getSaturation().getMax()
+                        config.getGenome().getSaturation().getMin(),
+                        config.getGenome().getSaturation().getMax()
                 )
         );
 
@@ -127,8 +178,8 @@ public class GenomeMutator {
                 mutateValue(
                         genome.getLightness(),
                         config.getGenome().getMutation().getLightness(),
-                        config.getGenome().getLimits().getLightness().getMin(),
-                        config.getGenome().getLimits().getLightness().getMax()
+                        config.getGenome().getLightness().getMin(),
+                        config.getGenome().getLightness().getMax()
                 )
         );
 
@@ -140,20 +191,19 @@ public class GenomeMutator {
         return Math.max(minValue, Math.min(maxValue, mutatedValue));
     }
 
-    private double mutateHue(double hue, double delta) {
-        double mutatedHue = hue + (random.nextDouble() * 2.0 - 1.0) * delta;
-        double min = config.getGenome().getLimits().getColorHue().getMin();
-        double max = config.getGenome().getLimits().getColorHue().getMax();
+    private double mutateWrappedValue(double value, double mutationDelta, double minValue, double maxValue) {
+        double mutatedValue = value + (random.nextDouble() * 2.0 - 1.0) * mutationDelta;
+        double range = maxValue - minValue + 1.0;
 
-        while (mutatedHue < min) {
-            mutatedHue += 360.0;
+        while (mutatedValue < minValue) {
+            mutatedValue += range;
         }
 
-        while (mutatedHue > max) {
-            mutatedHue -= 360.0;
+        while (mutatedValue > maxValue) {
+            mutatedValue -= range;
         }
 
-        return mutatedHue;
+        return mutatedValue;
     }
 
     private void logGenomeMutation(Genome oldGenome, Genome newGenome) {
@@ -162,11 +212,14 @@ public class GenomeMutator {
 
         List<String> changes = new ArrayList<>();
         addGenomeChange(changes, "divisionThreshold", oldGenome.getDivisionThreshold(), newGenome.getDivisionThreshold());
-        addGenomeChange(changes, "divisionImpulseStrength", oldGenome.getDivisionImpulseStrength(), newGenome.getDivisionImpulseStrength());
+        addGenomeChange(changes, "divisionImpulse", oldGenome.getDivisionImpulse(), newGenome.getDivisionImpulse());
+        addGenomeChange(changes, "divisionAngle", oldGenome.getDivisionAngle(), newGenome.getDivisionAngle());
         addGenomeChange(changes, "colorHue", oldGenome.getColorHue(), newGenome.getColorHue());
         addGenomeChange(changes, "saturation", oldGenome.getSaturation(), newGenome.getSaturation());
         addGenomeChange(changes, "lightness", oldGenome.getLightness(), newGenome.getLightness());
         addGenomeChange(changes, "maxEnergy", oldGenome.getMaxEnergy(), newGenome.getMaxEnergy());
+        addGenomeChange(changes, "dryMass", oldGenome.getDryMass(), newGenome.getDryMass());
+        addGenomeChange(changes, "elasticity", oldGenome.getElasticity(), newGenome.getElasticity());
 
         log.info("Mutation: {} -> {} | {}", oldCode, newCode, String.join("; ", changes));
     }
