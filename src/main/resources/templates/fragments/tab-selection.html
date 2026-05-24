@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<body>
+
+<div th:fragment="tab-selection" id="tabSelected" class="tab-panel hidden">
+
+  <div class="panel-header-row">
+    <h2>Selected Cell</h2>
+    <button id="saveSelectedCellBtn" class="icon-btn hidden" title="Save cell template">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- Populated dynamically when a cell is selected -->
+  <div id="selectedCellContent" class="hidden">
+
+    <!-- Sticky preview canvas -->
+    <div class="sticky-preview" id="selectedStickyPreview">
+      <div class="selected-cell-preview-wrap" id="selectedCellPreviewWrap">
+
+        <div class="preview-triptych">
+
+          <div class="preview-zone preview-zone--left">
+            <div id="forceViewIndicator"
+                 class="preview-mode-badge preview-mode-badge--normal">
+              <span class="preview-mode-badge-bg"></span>
+              <span class="preview-mode-badge-text">Normal</span>
+            </div>
+          </div>
+
+          <div class="preview-zone preview-zone--center">
+            <canvas id="selectedCellPreviewCanvas" width="160" height="160"></canvas>
+          </div>
+
+          <div class="preview-zone preview-zone--right">
+            <div id="forceLegend" class="force-legend force-legend--hidden">
+              <!-- Строки добавляются JS из preview.js -->
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Кнопка переключения режима сил: левый нижний угол -->
+        <button id="forceViewToggleBtn" type="button"
+                class="icon-btn preview-action-btn" title="Show forces on preview">
+          <!-- vectors / forces icon -->
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+            <line x1="12" y1="19" x2="12" y2="5"/>
+            <polyline points="5 12 12 5 19 12"/>
+          </svg>
+        </button>
+
+      </div>
+    </div>
+
+    <!-- Overview -->
+    <div class="settings-section">
+      <div class="settings-section-header">
+        <span class="settings-section-label">Overview</span>
+      </div>
+      <div class="cell-info-grid">
+        <div class="cell-info-label">Code</div>
+        <div id="selectedCellCode"></div>
+
+        <div class="cell-info-label">Energy</div>
+        <div id="selectedCellEnergy"></div>
+
+        <div class="cell-info-label">Mass</div>
+        <div id="selectedCellMass"></div>
+
+        <div class="cell-info-label">Radius</div>
+        <div id="selectedCellRadius"></div>
+
+        <div class="cell-info-label">Density</div>
+        <div id="selectedCellDensity"></div>
+
+        <div class="cell-info-label">Elasticity</div>
+        <div id="selectedCellElasticity"></div>
+      </div>
+    </div>
+
+    <!-- Motion -->
+    <div class="settings-section">
+      <div class="settings-section-header">
+        <span class="settings-section-label">Motion</span>
+      </div>
+      <div class="cell-info-grid">
+
+        <div class="cell-info-label">Speed</div>
+        <div id="selectedCellSpeed"></div>
+
+        <div id="selectedCellGravBuoyLabel" class="cell-info-label">Grav/buoy force</div>
+        <div id="selectedCellGravBuoyForce"></div>
+
+        <div class="cell-info-label">Drag force</div>
+        <div id="selectedCellDragForce"></div>
+
+        <!-- Collision impulse — animated show/hide via JS -->
+        <div id="selectedCellImpulseRow" class="hidden">
+          <div class="cell-info-label">Collision impulse</div>
+          <div id="selectedCellCollisionImpulse"></div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Environment -->
+    <div class="settings-section">
+      <div class="settings-section-header">
+        <span class="settings-section-label">Environment</span>
+      </div>
+      <div class="cell-info-grid">
+        <div class="cell-info-label">Illumination</div>
+        <div id="selectedCellIllumination"></div>
+      </div>
+    </div>
+
+    <!-- Genome -->
+    <div class="settings-section">
+      <div class="settings-section-header">
+        <span class="settings-section-label">Genome</span>
+      </div>
+      <div class="cell-info-grid">
+        <div class="cell-info-label">Division energy</div>
+        <div id="selectedCellDivisionThreshold"></div>
+
+        <div class="cell-info-label">Division impulse</div>
+        <div id="selectedCellDivisionImpulse"></div>
+
+        <div class="cell-info-label">Division angle</div>
+        <div id="selectedCellDivisionAngle"></div>
+
+        <div class="cell-info-label">RGB</div>
+        <div id="selectedCellRgb"></div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+</body>
+</html>

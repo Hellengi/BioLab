@@ -2,17 +2,16 @@ package com.hellengi.biolab.api.dto;
 
 public record CellMotionDto(
         double speed,
+        double speedDirX,
+        double speedDirY,
 
-        double gravityBuoyancyForce,
-        double gravityBuoyancyDirX,
-        double gravityBuoyancyDirY,
+        double gravForce,
+        double gravDirX,
+        double gravDirY,
 
         double dragForce,
         double dragDirX,
         double dragDirY,
-
-        double velocityDirX,
-        double velocityDirY,
 
         long collisionImpulseId,
         double collisionImpulse,

@@ -49,7 +49,7 @@ export function setWorld(worldDto) {
     rebuildCellIndex();
 }
 
-export function rebuildCellIndex() {
+function rebuildCellIndex() {
     state.cellById = new Map(
         (state.world?.cells ?? []).map(cell => [cell.id, cell])
     );

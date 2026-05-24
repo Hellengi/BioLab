@@ -1,0 +1,276 @@
+/* ==========================================================
+   preview.css — shared selected/create preview and force view
+   ========================================================== */
+
+.sticky-preview {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--c-bg-surface);
+    padding-bottom: var(--gap-xs);
+}
+
+.selected-cell-preview-wrap {
+    position: relative;
+    display: block;
+    padding: var(--gap-sm);
+
+    background: var(--c-bg-deep);
+    border: 1px solid var(--c-border-soft);
+    border-radius: var(--radius-sm);
+
+    min-height: calc(var(--preview-size) + 2 * var(--gap-sm));
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+/* Угловые уголки-декораторы */
+.selected-cell-preview-wrap::before,
+.selected-cell-preview-wrap::after {
+    content: '';
+    position: absolute;
+    width: 8px; height: 8px;
+    border-color: var(--c-accent);
+    border-style: solid;
+    opacity: 0.6;
+}
+.selected-cell-preview-wrap::before {
+    top: 5px; left: 5px; border-width: 1px 0 0 1px;
+}
+
+.selected-cell-preview-wrap::after  {
+    bottom: 5px; right: 5px; border-width: 0 1px 1px 0;
+}
+
+.preview-triptych {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    width: 100%;
+    min-height: var(--preview-size);
+}
+
+.preview-zone {
+    min-width: 0;
+    min-height: var(--preview-size);
+}
+
+.preview-zone--left,
+.preview-zone--right {
+    flex: 1 1 0;
+    display: flex;
+    justify-content: center;
+}
+
+.preview-zone--left {
+    align-items: flex-start;
+    padding-top: var(--gap-xs);
+}
+
+.preview-zone--center {
+    flex: 0 0 var(--preview-size);
+    width: var(--preview-size);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.preview-zone--right {
+    align-items: center;
+}
+
+#selectedCellPreviewCanvas,
+#createCellPreviewCanvas {
+    display: block;
+    width: var(--preview-size);
+    height: var(--preview-size);
+    background: var(--c-bg-inner);
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius-xs);
+    flex-shrink: 0;
+}
+
+
+/* Preview action button; the base visual style comes from .icon-btn in controls.css. */
+.create-preview-wrap {
+    position: relative;
+}
+
+.preview-action-btn {
+    position: absolute;
+    bottom: var(--gap-sm);
+    left: var(--gap-sm);
+    z-index: 2;
+}
+
+.preview-action-btn.active {
+    background: var(--c-accent-dark);
+    border-color: var(--c-accent);
+    color: var(--c-accent);
+    box-shadow: 0 0 8px var(--c-accent-glow);
+}
+
+#forceLegend {
+    position: static;
+    width: min(88px, 100%);
+    max-height: var(--preview-size);
+    margin: 0 auto;
+
+    overflow-y: auto;
+    flex-direction: column;
+    gap: 0;
+    display: none;
+}
+
+#forceLegend:not(.force-legend--hidden) {
+    display: flex;
+}
+
+.force-legend--hidden {
+    display: none !important;
+}
+
+/* Строки легенды */
+.force-legend-row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 0;
+    min-height: 24px;
+}
+
+.force-legend-row + .force-legend-row {
+    border-top: 1px solid var(--c-border-soft);
+}
+
+.force-legend-label {
+    font-size: 9px;
+    color: var(--c-text-sub);
+    font-family: inherit;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    font-weight: 500;
+
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+    line-height: 1.25;
+    word-break: break-word;
+}
+
+.force-legend-row svg {
+    align-self: center;
+    flex-shrink: 0;
+}
+
+/* ────────────────────────────────────────────────────────────────
+   SELECTED CELL: force-mode badge + legend
+   ──────────────────────────────────────────────────────────────── */
+
+.preview-mode-badge {
+    position: relative;
+    z-index: 2;
+    pointer-events: none;
+
+    width: min(88px, calc(100% - 2 * var(--gap-xs)));
+    height: 22px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-top: 1px solid transparent;
+    border-bottom: 1px solid transparent;
+    border-left: none;
+    border-right: none;
+    border-radius: 0;
+    background: transparent;
+
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+    line-height: 1;
+
+    color: var(--c-text-muted);
+    transition: color 0.2s;
+}
+
+.preview-mode-badge::before,
+.preview-mode-badge::after {
+    content: '';
+    position: absolute;
+    left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(
+            to right,
+            transparent 0%,
+            currentColor 30%,
+            currentColor 70%,
+            transparent 100%
+    );
+    opacity: 0.4;
+}
+
+.preview-mode-badge::before {
+    top: 0;
+}
+
+.preview-mode-badge::after {
+    bottom: 0;
+}
+
+.preview-mode-badge {
+    --preview-mode-bg: transparent;
+}
+
+.preview-mode-badge .preview-mode-badge-bg {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+            90deg,
+            transparent 0%,
+            var(--preview-mode-bg) 22%,
+            var(--preview-mode-bg) 50%,
+            var(--preview-mode-bg) 78%,
+            transparent 100%
+    );
+    pointer-events: none;
+}
+
+.preview-mode-badge--normal {
+    color: var(--c-success);
+    --preview-mode-bg: var(--c-success-glow);
+}
+
+.preview-mode-badge--forces {
+    color: var(--c-danger);
+    --preview-mode-bg: var(--c-danger-glow);
+}
+
+
+#forceViewToggleBtn:hover {
+    background: var(--c-bg-surface);
+    border-color: var(--c-border-mid);
+    color: var(--c-text);
+    box-shadow: none;
+}
+
+/* Кнопка в forces-режиме (класс .active) — красный */
+#forceViewToggleBtn.active {
+    background: var(--c-danger-bg);
+    border-color: var(--c-danger);
+    color: var(--c-danger);
+    box-shadow: 0 0 8px var(--c-danger-glow);
+}
+
+.preview-mode-badge--create-off {
+    color: var(--c-text-muted);
+    --preview-mode-bg: transparent;
+}
+
+.preview-mode-badge--create-on {
+    color: var(--c-accent);
+    --preview-mode-bg: var(--c-accent-glow);
+}

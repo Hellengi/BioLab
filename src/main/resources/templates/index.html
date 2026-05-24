@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head th:replace="~{fragments/head :: head}"></head>
+
+<body>
+<div th:replace="~{fragments/toolbar :: toolbar}"></div>
+
+<div class="main-layout">
+
+  <div class="environment-scroll">
+    <div class="environment-wrap">
+      <canvas id="environment"></canvas>
+    </div>
+  </div>
+
+  <!--
+    Хост для панелей органелл.
+    Располагается между environment-scroll и sidebar-wrapper,
+    перекрывает environment сверху (z-index через CSS).
+    JS переносит сюда .organelle-panel элементы.
+  -->
+  <aside id="organellePanelHost" class="organelle-panel-host"></aside>
+
+  <div class="sidebar-wrapper">
+    <nav th:replace="~{fragments/sidebar-nav :: sidebar-nav}"></nav>
+    <aside class="cell-sidebar">
+      <div th:replace="~{fragments/tab-control :: tab-control}"></div>
+      <div th:replace="~{fragments/tab-settings :: tab-settings}"></div>
+      <div th:replace="~{fragments/tab-selection :: tab-selection}"></div>
+      <div th:replace="~{fragments/tab-creation :: tab-creation}"></div>
+      <div th:replace="~{fragments/tab-species :: tab-species}"></div>
+      <div th:replace="~{fragments/tab-logs :: tab-logs}"></div>
+    </aside>
+  </div>
+
+</div>
+
+<!-- Панели органелл — вне sidebar, JS перенесёт их в organellePanelHost -->
+<div th:replace="~{fragments/tab-creation-organelle :: organelle-panels}"></div>
+
+<div th:replace="~{fragments/modals :: saveWorldModal}"></div>
+<div th:replace="~{fragments/modals :: loadWorldModal}"></div>
+<div th:replace="~{fragments/modals :: saveSelectedCellModal}"></div>
+<div th:replace="~{fragments/modals :: saveCellModal}"></div>
+<div th:replace="~{fragments/modals :: loadCellModal}"></div>
+
+<script type="module" th:src="@{/js/app.js}"></script>
+</body>
+</html>

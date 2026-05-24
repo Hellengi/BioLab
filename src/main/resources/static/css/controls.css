@@ -1,0 +1,280 @@
+/* ═══════════════════════════════════════════════════════
+   controls.css — кнопки, поля ввода, слайдеры, скроллбар
+   ═══════════════════════════════════════════════════════ */
+
+/* ── Кнопки ─────────────────────────────────────────────── */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 5px 11px;
+    font-size: var(--font-base);
+    font-family: inherit;
+    font-weight: 500;
+    line-height: 1.4;
+    border-radius: var(--radius-sm);
+    border: 1px solid transparent;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, opacity 0.15s;
+    box-shadow: var(--shadow-btn);
+    letter-spacing: 0.01em;
+    user-select: none;
+}
+
+.btn:disabled,
+.btn.disabled {
+    opacity: 0.38;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.btn-primary {
+    background: linear-gradient(160deg, var(--c-accent) 0%, var(--c-accent-dim) 100%);
+    border-color: var(--c-accent-dim);
+    color: #062637;
+    font-weight: 600;
+}
+.btn-primary:hover {
+    background: linear-gradient(160deg, #67d8f8 0%, var(--c-accent) 100%);
+    border-color: var(--c-accent);
+    color: #041a24;
+}
+.btn-primary:active  { background: var(--c-accent-dim); transform: translateY(1px); }
+
+.btn-primary.active {
+    background: var(--c-accent-dark);
+    border-color: var(--c-accent);
+    color: var(--c-accent);
+    box-shadow: 0 0 10px var(--c-accent-glow);
+}
+
+.btn-secondary {
+    background: var(--c-bg-surface);
+    border-color: var(--c-border-mid);
+    color: var(--c-text);
+}
+.btn-secondary:hover  { background: #263550; border-color: var(--c-accent); color: var(--c-accent); }
+.btn-secondary:active { background: #1c2840; transform: translateY(1px); }
+
+.btn-outline-secondary {
+    background: transparent;
+    border-color: var(--c-border);
+    color: var(--c-text-sub);
+}
+.btn-outline-secondary:hover  { background: var(--c-bg-surface); border-color: var(--c-border-mid); color: var(--c-text); }
+.btn-outline-secondary:active { background: #1c2840; transform: translateY(1px); }
+
+.btn-outline-danger {
+    background: transparent;
+    border-color: var(--c-danger-border);
+    color: var(--c-danger);
+}
+.btn-outline-danger:hover  { background: var(--c-danger-bg); border-color: var(--c-danger); color: var(--c-danger); }
+.btn-outline-danger:active { background: #501a1a; transform: translateY(1px); }
+
+.btn.w-100 { width: 100%; }
+
+/* ── Icon-кнопка ─────────────────────────────────────────── */
+.icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--c-text-sub);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    flex-shrink: 0;
+}
+.icon-btn svg { width: 14px; height: 14px; pointer-events: none; }
+.icon-btn:hover  { background: var(--c-bg-surface); border-color: var(--c-accent); color: var(--c-accent); }
+.icon-btn:active { transform: translateY(1px); }
+
+/* ── Текстовые и числовые поля ───────────────────────────── */
+.form-control,
+.form-control-sm,
+input[type="text"],
+input[type="number"] {
+    display: block;
+    width: 100%;
+    padding: 5px 9px;
+    font-size: var(--font-base);
+    font-family: inherit;
+    color: var(--c-text);
+    background: var(--c-bg-deep);
+    border: 1px solid var(--c-border-mid);
+    border-radius: var(--radius-sm);
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    box-shadow: var(--shadow-inset);
+    line-height: 1.4;
+}
+
+.form-control-sm { padding: 3px 7px; font-size: var(--font-sm); }
+
+.form-control:focus,
+.form-control-sm:focus,
+input[type="text"]:focus,
+input[type="number"]:focus {
+    border-color: var(--c-accent);
+    box-shadow: 0 0 0 3px var(--c-accent-glow), var(--shadow-inset);
+    color: var(--c-text);
+    background: var(--c-bg-deep);
+}
+
+.form-control:disabled,
+.form-control-sm:disabled,
+input[type="text"]:disabled,
+input[type="number"]:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button { opacity: 0.4; }
+
+/* ── Select ─────────────────────────────────────────────── */
+.form-select {
+    display: block;
+    width: 100%;
+    padding: 5px 9px;
+    font-size: var(--font-base);
+    font-family: inherit;
+    color: var(--c-text);
+    background-color: var(--c-bg-deep);
+    border: 1px solid var(--c-border-mid);
+    border-radius: var(--radius-sm);
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    box-shadow: var(--shadow-inset);
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2338bdf8'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 9px center;
+    padding-right: 26px;
+}
+
+select[size]:not([size="1"]) {
+    background-image: none;
+    padding-right: 9px;
+    overflow-y: auto;
+}
+
+.form-select:focus      { border-color: var(--c-accent); box-shadow: 0 0 0 3px var(--c-accent-glow); color: var(--c-text); }
+.form-select option     { background: var(--c-bg-surface); color: var(--c-text); padding: 4px 6px; }
+.form-select option:checked,
+.form-select option:hover { background: var(--c-accent-dark); color: var(--c-accent); }
+
+/* ── Modal list (select внутри модала) ───────────────────── */
+.modal-list {
+    background: var(--c-bg-deep);
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius-sm);
+    display: block;
+    width: 100%;
+    max-width: 420px;
+    min-height: 120px;
+    max-height: 200px;
+    overflow-y: auto;
+    margin-inline: auto;
+    padding: 6px;
+    font-size: var(--font-sm);
+    text-align: left;
+}
+.modal-list option {
+    padding: 5px 10px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--c-border-soft);
+    transition: background 0.1s;
+}
+.modal-list option:last-child { border-bottom: none; }
+.modal-list option:checked {
+    background: var(--c-accent-dark);
+    color: var(--c-accent);
+    font-weight: 600;
+}
+
+/* ── Range / слайдер ────────────────────────────────────── */
+.form-range,
+input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(to right, var(--c-accent-dark) 0%, var(--c-border) 100%);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+    border: none;
+    transition: opacity 0.15s;
+}
+
+.form-range:hover,
+input[type="range"]:hover { opacity: 1; }
+
+.form-range::-webkit-slider-thumb,
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    background: var(--c-accent);
+    border: 2px solid var(--c-bg-deep);
+    box-shadow: 0 0 0 1px var(--c-accent-dark), 0 2px 6px rgba(56,189,248,0.35);
+    cursor: grab;
+    transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+}
+.form-range::-webkit-slider-thumb:hover,
+input[type="range"]::-webkit-slider-thumb:hover {
+    background: #67d8f8;
+    box-shadow: 0 0 0 3px var(--c-accent-glow);
+}
+.form-range::-webkit-slider-thumb:active,
+input[type="range"]::-webkit-slider-thumb:active {
+    cursor: grabbing;
+    transform: scale(1.2);
+    background: #67d8f8;
+}
+
+.form-range::-moz-range-thumb,
+input[type="range"]::-moz-range-thumb {
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    background: var(--c-accent);
+    border: 2px solid var(--c-bg-deep);
+    cursor: grab;
+    box-shadow: 0 0 0 2px var(--c-accent-dark);
+}
+
+/* ── Labels ─────────────────────────────────────────────── */
+label,
+.settings-field label,
+.settings-field > label {
+    display: block;
+    margin-bottom: var(--gap-xs);
+    color: var(--c-text-sub);
+    font-size: var(--font-sm);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+/* ── Scrollbar ──────────────────────────────────────────── */
+::-webkit-scrollbar         { width: 5px; height: 5px; }
+::-webkit-scrollbar-track   { background: var(--c-bg-deep); }
+::-webkit-scrollbar-thumb   {
+    background: var(--c-border-mid);
+    border-radius: 3px;
+    border: 1px solid var(--c-bg-deep);
+}
+::-webkit-scrollbar-thumb:hover { background: var(--c-accent-dark); }
+::-webkit-scrollbar-corner  { background: var(--c-bg-deep); }
+
+* { scrollbar-width: thin; scrollbar-color: var(--c-border-mid) var(--c-bg-deep); }

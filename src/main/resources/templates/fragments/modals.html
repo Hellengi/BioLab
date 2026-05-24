@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<body>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     World snapshots
+     ══════════════════════════════════════════════════════════════════════════ -->
+
+<div th:fragment="saveWorldModal" id="saveWorldModal" class="modal-overlay hidden">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">Save World</span>
+    </div>
+    <div class="modal-body">
+      <label for="saveWorldNameInput">World name</label>
+      <input id="saveWorldNameInput" type="text" class="form-control"
+             maxlength="200" placeholder="Enter world name" autofocus>
+    </div>
+    <div class="modal-footer">
+      <button id="saveWorldCancelBtn"  class="btn btn-outline-secondary">Cancel</button>
+      <button id="saveWorldConfirmBtn" class="btn btn-primary">Save</button>
+    </div>
+  </div>
+</div>
+
+<div th:fragment="loadWorldModal" id="loadWorldModal" class="modal-overlay hidden">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">Load World</span>
+    </div>
+    <div class="modal-body">
+      <label for="worldSnapshotsList">Saved worlds</label>
+      <select id="worldSnapshotsList" class="form-select modal-list" size="8"></select>
+    </div>
+    <div class="modal-footer">
+      <button id="loadWorldCancelBtn"  class="btn btn-outline-secondary">Cancel</button>
+      <button id="loadWorldDeleteBtn"  class="btn btn-outline-danger">Delete</button>
+      <button id="loadWorldConfirmBtn" class="btn btn-primary">Load</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     Cell templates
+     ══════════════════════════════════════════════════════════════════════════ -->
+
+<div th:fragment="saveSelectedCellModal" id="saveSelectedCellModal" class="modal-overlay hidden">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">Save Selected Cell</span>
+    </div>
+    <div class="modal-body">
+      <label for="saveSelectedCellNameInput">Template name</label>
+      <input id="saveSelectedCellNameInput" type="text" class="form-control"
+             maxlength="200" placeholder="Enter template name" autofocus>
+    </div>
+    <div class="modal-footer">
+      <button id="saveSelectedCellCancelBtn"  class="btn btn-outline-secondary">Cancel</button>
+      <button id="saveSelectedCellConfirmBtn" class="btn btn-primary">Save</button>
+    </div>
+  </div>
+</div>
+
+<div th:fragment="saveCellModal" id="saveCellModal" class="modal-overlay hidden">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">Save Cell Template</span>
+    </div>
+    <div class="modal-body">
+      <label for="saveCellNameInput">Template name</label>
+      <input id="saveCellNameInput" type="text" class="form-control"
+             maxlength="200" placeholder="Enter template name" autofocus>
+    </div>
+    <div class="modal-footer">
+      <button id="saveCellCancelBtn"  class="btn btn-outline-secondary">Cancel</button>
+      <button id="saveCellConfirmBtn" class="btn btn-primary">Save</button>
+    </div>
+  </div>
+</div>
+
+<div th:fragment="loadCellModal" id="loadCellModal" class="modal-overlay hidden">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">Load Cell Template</span>
+    </div>
+    <div class="modal-body">
+      <label for="cellTemplatesList">Saved templates</label>
+      <select id="cellTemplatesList" class="form-select modal-list" size="8"></select>
+    </div>
+    <div class="modal-footer">
+      <button id="loadCellCancelBtn"  class="btn btn-outline-secondary">Cancel</button>
+      <button id="loadCellDeleteBtn"  class="btn btn-outline-danger">Delete</button>
+      <button id="loadCellConfirmBtn" class="btn btn-primary">Load</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

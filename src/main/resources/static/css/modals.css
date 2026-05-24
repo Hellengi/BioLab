@@ -1,0 +1,76 @@
+/* ═══════════════════════════════════════════════════════
+   modals.css — оверлей, окно, заголовок, тело, футер
+   ═══════════════════════════════════════════════════════ */
+
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(8, 14, 28, 0.72);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: var(--z-modal);
+    backdrop-filter: blur(4px) saturate(0.8);
+}
+
+.modal-box {
+    flex: 0 0 auto;
+    width: 380px;
+    max-width: calc(100vw - 32px);
+    max-height: calc(100vh - 32px);
+    background: var(--c-bg-surface);
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-modal);
+    box-sizing: border-box;
+    overflow: hidden;
+    color: var(--c-text);
+    font-size: var(--font-base);
+    position: relative;
+}
+
+/* Акцентная полоска сверху */
+.modal-box::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    border-radius: var(--radius) var(--radius) 0 0;
+    background: linear-gradient(90deg, var(--c-accent-dark), var(--c-accent), var(--c-accent-dark));
+}
+
+.modal-header {
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid var(--c-border-soft);
+}
+
+.modal-title {
+    font-size: var(--font-base);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--c-text);
+}
+
+.modal-body {
+    padding: var(--gap-md) 16px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-sm);
+    max-height: 60vh;
+    overflow-y: auto;
+}
+.modal-body label { margin-bottom: 4px; }
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--gap-sm);
+    padding: var(--gap-sm) 16px var(--gap-md);
+    border-top: 1px solid var(--c-border-soft);
+}
+
+#loadWorldCancelBtn,
+#loadCellCancelBtn {
+    margin-right: auto;
+}

@@ -1,0 +1,314 @@
+/* ═══════════════════════════════════════════════════════
+   layout.css — тулбар, основной layout, canvas, sidebar
+   ═══════════════════════════════════════════════════════ */
+
+/* ── Тулбар ─────────────────────────────────────────────── */
+.toolbar {
+    display: flex;
+    flex: 0 0 var(--toolbar-h);
+    height: var(--toolbar-h);
+    min-height: var(--toolbar-h);
+    max-height: var(--toolbar-h);
+    gap: var(--gap-sm);
+    align-items: center;
+    background: var(--c-bg-surface);
+    border-bottom: 1px solid var(--c-border);
+    padding: 0 var(--gap-md);
+    font-size: var(--font-base);
+    box-sizing: border-box;
+    user-select: none;
+    color: var(--c-text);
+    overflow: hidden;
+    white-space: nowrap;
+    box-shadow: var(--shadow-toolbar);
+    z-index: var(--z-toolbar);
+    position: relative;
+}
+
+/* Текстурная полоска на тулбаре */
+.toolbar::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+            0deg,
+            transparent,
+            transparent 3px,
+            rgba(255,255,255,0.012) 3px,
+            rgba(255,255,255,0.012) 4px
+    );
+    pointer-events: none;
+}
+
+.toolbar .btn { padding: 4px 10px; font-size: var(--font-base); white-space: nowrap; }
+
+/* ── Группа управления временем ─────────────────────────── */
+.time-control {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: var(--gap-sm);
+    min-width: 0;
+}
+
+.temp-display {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: center;
+    min-width: 72px;
+    padding: 3px 8px;
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius-sm);
+    background: var(--c-bg-deep);
+    line-height: 1;
+    flex-shrink: 0;
+    box-shadow: var(--shadow-inset);
+    cursor: pointer;
+}
+.temp-display:hover { border-color: var(--c-accent); }
+
+.temp-value {
+    font-family: var(--font-mono);
+    font-size: 19px;
+    font-weight: 700;
+    letter-spacing: -1px;
+    color: var(--c-temp-normal);
+    transition: color 0.4s ease;
+    white-space: nowrap;
+}
+
+.speed-value {
+    font-family: var(--font-mono);
+    font-size: var(--font-sm);
+    color: var(--c-text-sub);
+    margin-top: 1px;
+    white-space: nowrap;
+}
+
+#timeSlider { width: var(--time-slider-w); }
+
+#stats {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: var(--font-sm);
+    color: var(--c-text-sub);
+    margin-left: var(--gap-xs);
+    white-space: nowrap;
+    font-family: var(--font-mono);
+    letter-spacing: 0.02em;
+}
+
+.fps-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: var(--radius-xs);
+    background: var(--c-bg-deep);
+    border: 1px solid var(--c-border);
+    font-family: var(--font-mono);
+    font-size: var(--font-sm);
+    color: var(--c-accent);
+    font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
+    box-shadow: var(--shadow-inset), 0 0 8px var(--c-accent-glow);
+    letter-spacing: 0.04em;
+}
+
+#pauseBtn.paused {
+    background: var(--c-accent-dark);
+    border-color: var(--c-accent);
+    color: var(--c-accent);
+    box-shadow: 0 0 10px var(--c-accent-glow);
+}
+
+/* ── Основной layout ─────────────────────────────────────── */
+.main-layout {
+    display: flex;
+    position: relative;
+    align-items: stretch;
+    width: 100vw;
+    height: calc(100vh - var(--toolbar-h));
+    min-height: 0;
+    overflow: hidden;
+    background: var(--c-bg-deep);
+    box-sizing: border-box;
+}
+
+/* ── Область canvas ─────────────────────────────────────── */
+.environment-scroll {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-start;
+    overflow: auto;
+    background:
+            radial-gradient(ellipse 70% 60% at 30% 40%, rgba(56,189,248,0.04) 0%, transparent 70%),
+            radial-gradient(ellipse 50% 80% at 75% 65%, rgba(14,165,233,0.03) 0%, transparent 60%),
+            var(--c-bg-deep);
+    padding: var(--gap-lg);
+    box-sizing: border-box;
+}
+
+@supports (align-items: safe center) {
+    .environment-scroll {
+        align-items: safe center;
+        justify-content: safe center;
+    }
+}
+
+.environment-wrap {
+    position: relative;
+    flex-shrink: 0;
+    display: inline-block;
+}
+
+canvas {
+    display: block;
+    border: 1px solid var(--c-border);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.5), 0 0 0 1px var(--c-border-soft);
+    box-sizing: border-box;
+    border-radius: var(--radius-xs);
+    flex-shrink: 0;
+}
+
+#environment {
+    width: auto;
+    height: auto;
+    max-width: none;
+    max-height: none;
+    background: transparent;
+    border-radius: 50%;
+    border: none;
+    box-shadow:
+            0 0 0 2px rgba(56,189,248,0.20),
+            0 0 0 4px rgba(12,74,110,0.35),
+            0 0 40px rgba(0,0,0,0.6);
+    position: relative;
+    z-index: 0;
+}
+
+.cell-create-mode-active {
+    outline: 2px dashed var(--c-accent);
+    outline-offset: 2px;
+    box-shadow: 0 0 18px var(--c-accent-glow);
+}
+
+/* ── Sidebar-обёртка и вкладки-иконки ───────────────────── */
+.sidebar-wrapper {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    flex: 0 0 auto;
+    height: 100%;
+    position: relative;
+    z-index: var(--z-sidebar);
+}
+
+.sidebar-tabs {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    width: var(--tabs-w);
+    padding: var(--gap-sm) 4px;
+    background: var(--c-bg-surface);
+    border-left: 1px solid var(--c-border);
+    border-right: 1px solid var(--c-border-soft);
+    flex-shrink: 0;
+}
+
+.sidebar-tab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--c-text-muted);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    padding: 0;
+    flex-shrink: 0;
+}
+.sidebar-tab svg { width: 15px; height: 15px; pointer-events: none; }
+.sidebar-tab:hover {
+    background: var(--c-bg-inner);
+    color: var(--c-text-sub);
+    border-color: var(--c-border);
+}
+.sidebar-tab.active {
+    background: var(--c-accent-dark);
+    border-color: var(--c-accent);
+    color: var(--c-accent);
+    box-shadow: 0 0 8px var(--c-accent-glow);
+}
+.sidebar-tab--disabled,
+.sidebar-tab[disabled] {
+    opacity: 0.3;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* ── Панель-sidebar ──────────────────────────────────────── */
+.cell-sidebar {
+    flex: 0 0 var(--sidebar-w);
+    width: var(--sidebar-w);
+    min-width: var(--sidebar-w);
+    max-width: var(--sidebar-w);
+    height: 100%;
+    max-height: 100%;
+    box-sizing: border-box;
+    background: var(--c-bg-surface);
+    color: var(--c-text);
+    border-left: 1px solid var(--c-border);
+    overflow-y: auto;
+    overflow-x: hidden;
+    font-size: var(--font-base);
+    line-height: 1.35;
+    position: relative;
+}
+
+/* Акцентная линия сверху sidebar */
+.cell-sidebar::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--c-accent), transparent);
+    opacity: 0.5;
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* ── Tab-панели ─────────────────────────────────────────── */
+.tab-panel {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-sm);
+    padding: var(--gap-md);
+}
+
+.tab-panel h2 {
+    margin: 0;
+    font-size: var(--font-base);
+    font-weight: 700;
+    color: var(--c-text);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: var(--gap-sm);
+}
+.tab-panel h2::before {
+    content: '▸';
+    color: var(--c-accent);
+    font-size: 11px;
+}

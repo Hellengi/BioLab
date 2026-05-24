@@ -1,23 +1,34 @@
-import { state, resetClientState, loadSimulationConfig, applySimulationConfig } from "./store/store.js";
-import { dom } from "./ui/dom.js";
+import {dom, bindDom} from "./ui/dom.js";
+import {state} from "./store/state.js";
 import { render } from "./render/canvas.js";
 import { connectSocket } from "./transport/ws/socket.js";
 import { bindEvents } from "./ui/events.js";
-import { recordWorldFrame } from "./render/fpsMeter.js";
-import { loadSettingsIntoPanel } from "./ui/panels/settingsPanel.js";
-import { initCreatePanel } from "./ui/panels/creationPanel.js";
+import { recordWorldFrame } from "./render/fps.js";
+import { loadSettingsIntoPanel } from "./ui/tabs/settings.js";
+import { initCreatePanel } from "./ui/tabs/creation.js";
+import {applySimulationConfig, loadSimulationConfig, resetClientState} from "./store/actions.js";
+
+document.addEventListener("DOMContentLoaded", async () => {
+    try {
+        bindDom();
+        bindEvents();
+        await initializePage();
+    } catch (error) {
+        console.error("Unexpected initialization error", error);
+        if (dom.stats) dom.stats.textContent = "Application initialization error";
+    }
+});
 
 async function initializePage() {
     resetClientState();
-    bindEvents();
 
     try {
         await loadSimulationConfig();
         applySimulationConfig();
-        loadSettingsIntoPanel();
+        await loadSettingsIntoPanel();
     } catch (error) {
         console.error("Config loading error", error);
-        dom.stats.textContent = "Config loading error";
+        if (dom.stats) dom.stats.textContent = "Config loading error";
         return;
     }
 
@@ -38,8 +49,3 @@ function animationLoop() {
     }
     requestAnimationFrame(animationLoop);
 }
-
-initializePage().catch((error) => {
-    console.error("Unexpected initialization error", error);
-    dom.stats.textContent = "Application initialization error";
-});

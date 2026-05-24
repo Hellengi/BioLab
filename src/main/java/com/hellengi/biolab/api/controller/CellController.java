@@ -2,8 +2,8 @@ package com.hellengi.biolab.api.controller;
 
 import com.hellengi.biolab.api.dto.CellTemplateDto;
 import com.hellengi.biolab.api.dto.SpawnCellRequestDto;
-import com.hellengi.biolab.persistence.service.CellTemplateService;
-import com.hellengi.biolab.simulation.SimulationService;
+import com.hellengi.biolab.database.service.CellTemplateService;
+import com.hellengi.biolab.domain.SimulationEngine;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,7 +15,7 @@ import java.util.Map;
 @RequestMapping("/api/cells")
 @RequiredArgsConstructor
 public class CellController {
-    private final SimulationService simulationService;
+    private final SimulationEngine simulationEngine;
     private final CellTemplateService cellTemplateService;
 
     @GetMapping("/templates")
@@ -33,15 +33,15 @@ public class CellController {
         return ResponseEntity.ok(cellTemplateService.save(name, cell));
     }
 
-    @PostMapping("/spawn")
-    public ResponseEntity<Map<String, String>> spawnCell(@RequestBody SpawnCellRequestDto requestDto) {
-        simulationService.spawnCell(requestDto);
-        return ResponseEntity.ok(Map.of("status", "spawned"));
-    }
-
     @DeleteMapping("/templates/{id}")
     public ResponseEntity<Map<String, String>> deleteTemplate(@PathVariable Long id) {
         cellTemplateService.delete(id);
         return ResponseEntity.ok(Map.of("status", "deleted"));
+    }
+
+    @PostMapping("/spawn")
+    public ResponseEntity<Map<String, String>> spawnCell(@RequestBody SpawnCellRequestDto requestDto) {
+        simulationEngine.spawnCell(requestDto);
+        return ResponseEntity.ok(Map.of("status", "spawned"));
     }
 }

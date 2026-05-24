@@ -1,29 +1,47 @@
+/**
+ * ui/events.js
+ * Точка привязки всех событий UI.
+ * Каждая группа обработчиков делегируется соответствующему модулю.
+ */
+
 import { dom } from "./dom.js";
+import { bindSettingsForm, resetSettings } from "./tabs/settings.js";
 import {
-    handleSimulationReset,
-    togglePause,
-    startSliderDrag,
-    endSliderDrag,
-    updateTimeLocal,
-    resetTimeToNormal,
-    setCursorLight,
-    state,
-} from "../store/store.js";
-import { bindSettingsForm, resetSettings } from "./panels/settingsPanel.js";
-import { openSaveWorldModal, openLoadWorldModal, confirmSaveWorld, confirmLoadWorld, deleteSelectedWorld } from "./panels/snapshotPanel.js";
+    openSaveWorldModal,
+    openLoadWorldModal,
+    confirmSaveWorld,
+    confirmLoadWorld,
+    deleteSelectedWorld,
+} from "./panels/snapshot.js";
 import {
     confirmSaveSelectedCell,
     confirmSaveDraftCell,
     openLoadCellModal,
     confirmLoadCell,
     deleteSelectedTemplate,
-} from "./panels/templatesPanel.js";
-import { toggleCellPlacement, onCreateFormChange, createCellFields, createMotionFields, setPlaceMode } from "./panels/creationPanel.js";
-import { onCanvasClick } from "./panels/canvasController.js";
-import { bindInputs, closeModal } from "./panels.js";
-import { initTabs } from "./panels/tabsPanel.js";
-import { updateCursorReadout } from "./panels/cursorReadoutPanel.js";
+} from "./panels/templates.js";
+import {
+    toggleCellPlacement,
+    onCreateFormChange,
+    getCreateCellFields,
+    getCreateChloroplastFields,
+    setPlaceMode,
+} from "./tabs/creation.js";
+import { onCanvasClick }                from "./panels/canvas.js";
+import { bindCanvasMouseEvents }        from "./panels/cursor.js";
+import { bindInputs, closeModal, bindAsyncClick } from "./panels/_panels.js";
+import { initTabs }                     from "./tabs/_tabs.js";
 import { drawSelectedCellPreview, setForceViewEnabled } from "../render/preview.js";
+import { handleSimulationReset, togglePause } from "../store/actions.js";
+import { state } from "../store/state.js";
+import {
+    endSliderDrag,
+    resetTimeToNormal,
+    startSliderDrag,
+    updateTimeLocal,
+} from "../store/slider.js";
+
+// ── Точка входа ───────────────────────────────────────────────────────────────
 
 export function bindEvents() {
     initTabs();
@@ -38,12 +56,14 @@ export function bindEvents() {
     bindSettingsForm();
 }
 
+// ── Тулбар ────────────────────────────────────────────────────────────────────
+
 function bindToolbarEvents() {
     dom.timeSlider.addEventListener("pointerdown", () => startSliderDrag());
-    dom.tempDisplay.addEventListener("click", () => resetTimeToNormal());
-    dom.timeSlider.addEventListener("input", () => updateTimeLocal(dom.timeSlider.value));
-    dom.timeSlider.addEventListener("pointerup", () => endSliderDrag(dom.timeSlider.value));
-    dom.timeSlider.addEventListener("touchend", () => endSliderDrag(dom.timeSlider.value), { passive: true });
+    dom.timeSlider.addEventListener("input",       () => updateTimeLocal(dom.timeSlider.value));
+    dom.timeSlider.addEventListener("pointerup",   () => endSliderDrag());
+    dom.timeSlider.addEventListener("touchend",    () => endSliderDrag(), { passive: true });
+    dom.tempDisplay.addEventListener("click",      () => resetTimeToNormal());
 
     dom.pauseBtn.addEventListener("click", () => togglePause());
 
@@ -51,8 +71,11 @@ function bindToolbarEvents() {
         "Reset simulation error", "Failed to reset simulation");
 }
 
+// ── Панель настроек ───────────────────────────────────────────────────────────
+
 function bindSettingsTabEvents() {
-    bindAsyncClick(dom.resetSettingsBtn, resetSettings, "Reset settings error", "Failed to reset settings");
+    bindAsyncClick(dom.resetSettingsBtn, resetSettings,
+        "Reset settings error", "Failed to reset settings");
 
     dom.exportWorldBtn?.addEventListener("click", openSaveWorldModal);
     dom.importWorldBtn?.addEventListener("click", () =>
@@ -64,7 +87,6 @@ function bindSettingsTabEvents() {
 
     dom.saveWorldCancelBtn?.addEventListener("click", () => closeModal(dom.saveWorldModal));
     dom.loadWorldCancelBtn?.addEventListener("click", () => closeModal(dom.loadWorldModal));
-
     dom.saveWorldModal?.addEventListener("click", e => {
         if (e.target === dom.saveWorldModal) closeModal(dom.saveWorldModal);
     });
@@ -72,9 +94,26 @@ function bindSettingsTabEvents() {
         if (e.target === dom.loadWorldModal) closeModal(dom.loadWorldModal);
     });
 
-    bindAsyncClick(dom.saveWorldConfirmBtn, confirmSaveWorld, "Save world error", "Failed to save world");
-    bindAsyncClick(dom.loadWorldConfirmBtn, confirmLoadWorld, "Load world error", "Failed to load world");
-    bindAsyncClick(dom.loadWorldDeleteBtn, deleteSelectedWorld, "Delete world error", "Failed to delete world");
+    bindAsyncClick(dom.saveWorldConfirmBtn, confirmSaveWorld,  "Save world error",   "Failed to save world");
+    bindAsyncClick(dom.loadWorldConfirmBtn, confirmLoadWorld,  "Load world error",   "Failed to load world");
+    bindAsyncClick(dom.loadWorldDeleteBtn,  deleteSelectedWorld, "Delete world error", "Failed to delete world");
+}
+
+// ── Панель выбранной клетки ───────────────────────────────────────────────────
+
+function syncForceViewUi(active) {
+    dom.forceViewToggleBtn?.classList.toggle("active", active);
+
+    const badge = dom.forceViewIndicator;
+    if (!badge) return;
+
+    badge.classList.toggle("preview-mode-badge--forces", active);
+    badge.classList.toggle("preview-mode-badge--normal", !active);
+
+    const text = badge.querySelector(".preview-mode-badge-text");
+    if (text) {
+        text.textContent = active ? "Forces" : "Normal";
+    }
 }
 
 function bindSelectedCellEvents() {
@@ -91,24 +130,30 @@ function bindSelectedCellEvents() {
     bindAsyncClick(dom.saveSelectedCellConfirmBtn, confirmSaveSelectedCell,
         "Save selected cell error", "Failed to save cell template");
 
-    dom.forceViewToggle?.addEventListener("change", () => {
-        setForceViewEnabled(dom.forceViewToggle.checked);
+    const forceBtn = dom.forceViewToggleBtn;
+    if (forceBtn) {
+        forceBtn.addEventListener("click", () => {
+            const isActive = !forceBtn.classList.contains("active");
 
-        const selectedCell = state.cellById?.get(state.selectedCellId);
-        if (selectedCell && state.selectedCellTemplate) {
-            drawSelectedCellPreview(selectedCell, state.selectedCellTemplate);
-        }
-    });
+            setForceViewEnabled(isActive);
+            syncForceViewUi(isActive);
+
+            const selectedCell = state.cellById?.get(state.selectedCellId);
+            if (selectedCell && state.selectedCellTemplate) {
+                drawSelectedCellPreview(selectedCell, state.selectedCellTemplate);
+            }
+        });
+    }
 }
+
+// ── Панель создания клетки ────────────────────────────────────────────────────
 
 function bindCreatePanelEvents() {
     dom.placeCellModeBtn?.addEventListener("click", () => {
-        try {
-            toggleCellPlacement();
-        } catch (err) {
+        void toggleCellPlacement().catch(err => {
             console.error("Failed to toggle cell placement mode", err);
             alert("Failed to toggle placement mode");
-        }
+        });
     });
 
     dom.exportCellBtn?.addEventListener("click", () => {
@@ -125,7 +170,6 @@ function bindCreatePanelEvents() {
 
     dom.saveCellCancelBtn?.addEventListener("click", () => closeModal(dom.saveCellModal));
     dom.loadCellCancelBtn?.addEventListener("click", () => closeModal(dom.loadCellModal));
-
     dom.saveCellModal?.addEventListener("click", e => {
         if (e.target === dom.saveCellModal) closeModal(dom.saveCellModal);
     });
@@ -133,70 +177,35 @@ function bindCreatePanelEvents() {
         if (e.target === dom.loadCellModal) closeModal(dom.loadCellModal);
     });
 
-    bindAsyncClick(dom.saveCellConfirmBtn, confirmSaveDraftCell, "Save draft cell error", "Failed to save template");
-    bindAsyncClick(dom.loadCellConfirmBtn, confirmLoadCell, "Load cell error", "Failed to load template");
-    bindAsyncClick(dom.loadCellDeleteBtn, deleteSelectedTemplate, "Delete template error", "Failed to delete template");
+    bindAsyncClick(dom.saveCellConfirmBtn, confirmSaveDraftCell,    "Save draft cell error",  "Failed to save template");
+    bindAsyncClick(dom.loadCellConfirmBtn, confirmLoadCell,          "Load cell error",        "Failed to load template");
+    bindAsyncClick(dom.loadCellDeleteBtn,  deleteSelectedTemplate,   "Delete template error",  "Failed to delete template");
 }
 
 function bindCreateFormEvents() {
-    for (const { range, input } of createCellFields) {
+    for (const { range, input } of getCreateCellFields()) {
         bindInputs(range, input, onCreateFormChange);
     }
-
-    for (const { range, input } of createMotionFields) {
+    for (const { range, input } of getCreateChloroplastFields()) {
         bindInputs(range, input, onCreateFormChange);
     }
 }
+
+// ── Canvas-события ────────────────────────────────────────────────────────────
 
 function bindCanvasEvents() {
     dom.canvas.addEventListener("click", onCanvasClick);
-    dom.canvas.addEventListener("mousemove", onCanvasMouseMove);
-    dom.canvas.addEventListener("mouseleave", onCanvasMouseLeave);
+    bindCanvasMouseEvents(dom.canvas);
 }
 
-function onCanvasMouseMove(event) {
-    const lighting = state.world?.lighting;
-    if (!lighting) return;
-
-    const rect = dom.canvas.getBoundingClientRect();
-    const cx = event.clientX - rect.left;
-    const cy = event.clientY - rect.top;
-
-    const light = sampleLightAt(cx, cy, lighting);
-    setCursorLight(light);
-    updateCursorReadout();
-}
-
-function onCanvasMouseLeave() {
-    setCursorLight(null);
-    updateCursorReadout();
-}
-
-function sampleLightAt(cx, cy, lighting) {
-    const { lightMap, gridStep, gridWidth, gridHeight, globalLight } = lighting;
-
-    if (!lightMap?.length || gridStep <= 0 || gridWidth <= 0 || gridHeight <= 0) {
-        return globalLight ?? null;
-    }
-
-    const col = Math.floor(cx / gridStep);
-    const row = Math.floor(cy / gridStep);
-    const clampedCol = Math.max(0, Math.min(gridWidth - 1, col));
-    const clampedRow = Math.max(0, Math.min(gridHeight - 1, row));
-
-    return lightMap[clampedRow * gridWidth + clampedCol] ?? globalLight;
-}
+// ── Клавиатура ────────────────────────────────────────────────────────────────
 
 function bindKeyboardEvents() {
     document.addEventListener("keydown", event => {
-        if (event.repeat || isTypingTarget(event.target)) {
-            return;
-        }
+        if (event.repeat || _isTypingTarget(event.target)) return;
 
         if (event.key === "Escape") {
-            if (state.placeMode) {
-                setPlaceMode(false);
-            }
+            if (state.placeMode) setPlaceMode(false);
             return;
         }
 
@@ -207,39 +216,56 @@ function bindKeyboardEvents() {
     });
 }
 
-function isTypingTarget(target) {
-    if (!(target instanceof HTMLElement)) {
-        return false;
-    }
-
+function _isTypingTarget(target) {
+    if (!(target instanceof HTMLElement)) return false;
     return target.matches("input, textarea, select") || target.isContentEditable;
 }
 
+// ── Боковая панель (мобильный режим) ─────────────────────────────────────────
+
 function bindSidebarToggle() {
     const wrapper = document.querySelector(".sidebar-wrapper");
-    if (!dom.sidebarToggleBtn || !wrapper) return;
+    if (!wrapper || !dom.sidebarToggleBtn) return;
+
+    const mobileSidebarQuery = window.matchMedia("(max-width: 900px)");
+
+    function syncSidebarState() {
+        if (!mobileSidebarQuery.matches) {
+            wrapper.classList.remove("sidebar-open");
+            document.body.classList.remove("sidebar-hidden");
+            return;
+        }
+
+        document.body.classList.toggle(
+            "sidebar-hidden",
+            !wrapper.classList.contains("sidebar-open")
+        );
+    }
+
+    syncSidebarState();
+
+    mobileSidebarQuery.addEventListener("change", syncSidebarState);
 
     dom.sidebarToggleBtn.addEventListener("click", () => {
+        if (!mobileSidebarQuery.matches) return;
+
         wrapper.classList.toggle("sidebar-open");
+        syncSidebarState();
     });
 
-    document.addEventListener("click", (event) => {
+    document.addEventListener("click", event => {
+        if (!mobileSidebarQuery.matches) return;
+
+        const clickedToggle = dom.sidebarToggleBtn.contains(event.target);
+        const clickedInsideSidebar = wrapper.contains(event.target);
+
         if (
             wrapper.classList.contains("sidebar-open") &&
-            !wrapper.contains(event.target) &&
-            event.target !== dom.sidebarToggleBtn
+            !clickedInsideSidebar &&
+            !clickedToggle
         ) {
             wrapper.classList.remove("sidebar-open");
+            syncSidebarState();
         }
-    });
-}
-
-function bindAsyncClick(element, handler, logMessage, alertMessage) {
-    if (!element) return;
-    element.addEventListener("click", () => {
-        handler().catch(err => {
-            console.error(logMessage, err);
-            alert(alertMessage);
-        });
     });
 }

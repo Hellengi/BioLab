@@ -5,175 +5,178 @@ function requireEl(id) {
 }
 
 function optionalEl(id) {
-    const el = document.getElementById(id);
-    if (!el) console.warn(`DOM element missing: #${id}`);
-    return el;
+    return document.getElementById(id);
 }
 
-const canvas = requireEl("environment");
-const selectedCellPreviewCanvas = optionalEl("selectedCellPreviewCanvas");
-const createCellPreviewCanvas = optionalEl("createCellPreviewCanvas");
+export const dom = {};
 
-export const dom = {
+export function bindDom() {
 
-    canvas,
-    ctx: canvas.getContext("2d"),
+    dom.canvas = requireEl("environment");
+    dom.ctx = requireEl("environment").getContext("2d");
 
-    createCellPreviewCanvas,
-    createCellPreviewCtx: createCellPreviewCanvas?.getContext("2d") ?? null,
+    dom.createCellPreviewCanvas = optionalEl("createCellPreviewCanvas");
+    dom.createCellPreviewCtx = optionalEl("createCellPreviewCanvas")?.getContext("2d");
 
-    stats: requireEl("stats"),
-    fpsLabel: optionalEl("fpsLabel"),
-    tempDisplay: requireEl("tempDisplay"),
-    timeSlider: requireEl("timeSlider"),
-    pauseBtn: requireEl("pauseBtn"),
-    temperatureLabel: requireEl("temperatureLabel"),
-    speedLabel: requireEl("speedLabel"),
-    resetBtn: requireEl("resetBtn"),
-    sidebarToggleBtn: optionalEl("sidebarToggleBtn"),
+    dom.stats = requireEl("stats");
+    dom.fpsLabel = optionalEl("fpsLabel");
+    dom.tempDisplay = requireEl("tempDisplay");
+    dom.timeSlider = requireEl("timeSlider");
+    dom.pauseBtn = requireEl("pauseBtn");
+    dom.temperatureLabel = requireEl("temperatureLabel");
+    dom.speedLabel = requireEl("speedLabel");
+    dom.resetBtn = requireEl("resetBtn");
+    dom.sidebarToggleBtn = optionalEl("sidebarToggleBtn");
 
-    initialCellCountSlider: optionalEl("initialCellCountSlider"),
-    initialCellCountValue: optionalEl("initialCellCountValue"),
+    dom.initialCellCountSlider = optionalEl("initialCellCountSlider");
+    dom.initialCellCountValue = optionalEl("initialCellCountValue");
 
-    foodSpawnRateSlider: optionalEl("foodSpawnRateSlider"),
-    foodSpawnRateValue: optionalEl("foodSpawnRateValue"),
+    dom.foodSpawnRateSlider = optionalEl("foodSpawnRateSlider");
+    dom.foodSpawnRateValue = optionalEl("foodSpawnRateValue");
 
-    viscositySlider: optionalEl("viscositySlider"),
-    viscosityValue: optionalEl("viscosityValue"),
+    dom.viscositySlider = optionalEl("viscositySlider");
+    dom.viscosityValue = optionalEl("viscosityValue");
 
-    turbiditySlider: optionalEl("turbiditySlider"),
-    turbidityValue: optionalEl("turbidityValue"),
+    dom.turbiditySlider = optionalEl("turbiditySlider");
+    dom.turbidityValue = optionalEl("turbidityValue");
 
-    gravitySlider: optionalEl("gravitySlider"),
-    gravityValue: optionalEl("gravityValue"),
+    dom.gravitySlider = optionalEl("gravitySlider");
+    dom.gravityValue = optionalEl("gravityValue");
 
-    radiationSlider: optionalEl("radiationSlider"),
-    radiationValue: optionalEl("radiationValue"),
+    dom.radiationSlider = optionalEl("radiationSlider");
+    dom.radiationValue = optionalEl("radiationValue");
 
-    globalLightSlider: optionalEl("globalLightSlider"),
-    globalLightValue: optionalEl("globalLightValue"),
+    dom.globalLightSlider = optionalEl("globalLightSlider");
+    dom.globalLightValue = optionalEl("globalLightValue");
 
-    globalLightCycleEnabled: optionalEl("globalLightCycleEnabled"),
-    globalLightCycleMinSlider: optionalEl("globalLightCycleMinSlider"),
-    globalLightCycleMinValue: optionalEl("globalLightCycleMinValue"),
-    globalLightCyclePeriodSlider: optionalEl("globalLightCyclePeriodSlider"),
-    globalLightCyclePeriodValue: optionalEl("globalLightCyclePeriodValue"),
+    dom.globalLightCycleEnabled = optionalEl("globalLightCycleEnabled");
+    dom.globalLightCycleMinSlider = optionalEl("globalLightCycleMinSlider");
+    dom.globalLightCycleMinValue = optionalEl("globalLightCycleMinValue");
+    dom.globalLightCyclePeriodSlider = optionalEl("globalLightCyclePeriodSlider");
+    dom.globalLightCyclePeriodValue = optionalEl("globalLightCyclePeriodValue");
 
-    localLightSourcesEnabled: optionalEl("localLightSourcesEnabled"),
-    localLightSourceFields: optionalEl("localLightSourceFields"),
+    dom.localLightSourcesEnabled = optionalEl("localLightSourcesEnabled");
+    dom.localLightSourceFields = optionalEl("localLightSourceFields");
 
-    lightSourceCountTicks: optionalEl("lightSourceCountTicks"),
-    lightSourceCountSlider: optionalEl("lightSourceCountSlider"),
-    lightSourceStartAngleTicks: optionalEl("lightSourceStartAngleTicks"),
-    lightSourceStartAngleSlider: optionalEl("lightSourceStartAngleSlider"),
-    lightSourceStartAngleLabel: optionalEl("lightSourceStartAngleLabel"),
-    lightSourceBrightnessSlider: optionalEl("lightSourceBrightnessSlider"),
-    lightSourceBrightnessValue: optionalEl("lightSourceBrightnessValue"),
-    lightSourceOrbitRadiusSlider: optionalEl("lightSourceOrbitRadiusSlider"),
-    lightSourceOrbitRadiusValue: optionalEl("lightSourceOrbitRadiusValue"),
-    lightSourceOrbitSpeedSlider: optionalEl("lightSourceOrbitSpeedSlider"),
-    lightSourceOrbitSpeedValue: optionalEl("lightSourceOrbitSpeedValue"),
+    dom.lightSourceCountTicks = optionalEl("lightSourceCountTicks");
+    dom.lightSourceCountSlider = optionalEl("lightSourceCountSlider");
+    dom.lightSourceStartAngleTicks = optionalEl("lightSourceStartAngleTicks");
+    dom.lightSourceStartAngleSlider = optionalEl("lightSourceStartAngleSlider");
+    dom.lightSourceStartAngleLabel = optionalEl("lightSourceStartAngleLabel");
+    dom.lightSourceBrightnessSlider = optionalEl("lightSourceBrightnessSlider");
+    dom.lightSourceBrightnessValue = optionalEl("lightSourceBrightnessValue");
+    dom.lightSourceOrbitRadiusSlider = optionalEl("lightSourceOrbitRadiusSlider");
+    dom.lightSourceOrbitRadiusValue = optionalEl("lightSourceOrbitRadiusValue");
+    dom.lightSourceOrbitSpeedSlider = optionalEl("lightSourceOrbitSpeedSlider");
+    dom.lightSourceOrbitSpeedValue = optionalEl("lightSourceOrbitSpeedValue");
 
-    resetSettingsBtn: optionalEl("resetSettingsBtn"),
+    dom.resetSettingsBtn = optionalEl("resetSettingsBtn");
 
-    lightCycleFields: optionalEl("lightCycleFields"),
+    dom.lightCycleFields = optionalEl("lightCycleFields");
 
-    cursorReadoutDisplay: optionalEl("lightProbeDisplay"),
+    dom.cursorReadoutDisplay = optionalEl("lightProbeDisplay");
 
-    selectedCellContent: optionalEl("selectedCellContent"),
+    dom.selectedCellContent = optionalEl("selectedCellContent");
 
-    selectedCellMass: optionalEl("selectedCellMass"),
-    selectedCellEnergy: optionalEl("selectedCellEnergy"),
-    selectedCellDensity: optionalEl("selectedCellDensity"),
-    selectedCellRadius: optionalEl("selectedCellRadius"),
-    selectedCellDivisionThreshold: optionalEl("selectedCellDivisionThreshold"),
-    selectedCellDivisionImpulse: optionalEl("selectedCellDivisionImpulse"),
-    selectedCellDivisionAngle: optionalEl("selectedCellDivisionAngle"),
-    selectedCellElasticity: optionalEl("selectedCellElasticity"),
-    selectedCellRgb: optionalEl("selectedCellRgb"),
-    selectedCellCode: optionalEl("selectedCellCode"),
-    selectedCellPreviewCanvas: optionalEl("selectedCellPreviewCanvas"),
-    selectedCellPreviewCtx: optionalEl("selectedCellPreviewCanvas")?.getContext("2d"),
+    dom.selectedCellMass = optionalEl("selectedCellMass");
+    dom.selectedCellEnergy = optionalEl("selectedCellEnergy");
+    dom.selectedCellDensity = optionalEl("selectedCellDensity");
+    dom.selectedCellRadius = optionalEl("selectedCellRadius");
+    dom.selectedCellDivisionThreshold = optionalEl("selectedCellDivisionThreshold");
+    dom.selectedCellDivisionImpulse = optionalEl("selectedCellDivisionImpulse");
+    dom.selectedCellDivisionAngle = optionalEl("selectedCellDivisionAngle");
+    dom.selectedCellElasticity = optionalEl("selectedCellElasticity");
+    dom.selectedCellRgb = optionalEl("selectedCellRgb");
+    dom.selectedCellCode = optionalEl("selectedCellCode");
+    dom.selectedCellPreviewCanvas = optionalEl("selectedCellPreviewCanvas");
+    dom.selectedCellPreviewCtx = optionalEl("selectedCellPreviewCanvas")?.getContext("2d");
 
-    saveSelectedCellBtn: optionalEl("saveSelectedCellBtn"),
+    dom.saveSelectedCellBtn = optionalEl("saveSelectedCellBtn");
 
-    selectedCellSpeed: optionalEl("selectedCellSpeed"),
-    selectedCellGravBuoyForce: optionalEl("selectedCellGravBuoyForce"),
-    selectedCellGravBuoyLabel: optionalEl("selectedCellGravBuoyLabel"),
-    selectedCellDragForce: optionalEl("selectedCellDragForce"),
-    selectedCellCollisionImpulse: optionalEl("selectedCellCollisionImpulse"),
+    dom.selectedCellSpeed = optionalEl("selectedCellSpeed");
+    dom.selectedCellGravBuoyForce = optionalEl("selectedCellGravBuoyForce");
+    dom.selectedCellGravBuoyLabel = optionalEl("selectedCellGravBuoyLabel");
+    dom.selectedCellDragForce = optionalEl("selectedCellDragForce");
+    dom.selectedCellCollisionImpulse = optionalEl("selectedCellCollisionImpulse");
 
-    forceViewToggle: optionalEl("forceViewToggle"),
+    dom.forceViewToggleBtn   = optionalEl("forceViewToggleBtn");
+    dom.forceViewIndicator   = optionalEl("forceViewIndicator");
+    dom.forceLegend          = optionalEl("forceLegend");
 
-    selectedCellIllumination: optionalEl("selectedCellIllumination"),
+    dom.organellePanelHost   = optionalEl("organellePanelHost");
 
-    placeCellModeBtn: optionalEl("placeCellModeBtn"),
-    createCellModeHint: optionalEl("createCellModeHint"),
+    dom.selectedCellIllumination = optionalEl("selectedCellIllumination");
 
-    createDivisionThresholdSlider: optionalEl("createDivisionThresholdSlider"),
-    createDivisionThresholdInput: optionalEl("createDivisionThresholdInput"),
+    dom.placeCellModeBtn = optionalEl("placeCellModeBtn");
+    dom.createCellModeHint = optionalEl("createCellModeHint");
 
-    createDivisionImpulseSlider: optionalEl("createDivisionImpulseSlider"),
-    createDivisionImpulseInput: optionalEl("createDivisionImpulseInput"),
+    dom.createDivisionThresholdSlider = optionalEl("createDivisionThresholdSlider");
+    dom.createDivisionThresholdInput = optionalEl("createDivisionThresholdInput");
 
-    createDivisionAngleSlider: optionalEl("createDivisionAngleSlider"),
-    createDivisionAngleInput: optionalEl("createDivisionAngleInput"),
+    dom.createDivisionImpulseSlider = optionalEl("createDivisionImpulseSlider");
+    dom.createDivisionImpulseInput = optionalEl("createDivisionImpulseInput");
 
-    createInitialSpeedSlider: optionalEl("createInitialSpeedSlider"),
-    createInitialSpeedInput: optionalEl("createInitialSpeedInput"),
+    dom.createDivisionAngleSlider = optionalEl("createDivisionAngleSlider");
+    dom.createDivisionAngleInput = optionalEl("createDivisionAngleInput");
 
-    createInitialDirectionSlider: optionalEl("createInitialDirectionSlider"),
-    createInitialDirectionInput: optionalEl("createInitialDirectionInput"),
+    dom.createColorHueSlider = optionalEl("createColorHueSlider");
+    dom.createColorHueInput = optionalEl("createColorHueInput");
 
-    createColorHueSlider: optionalEl("createColorHueSlider"),
-    createColorHueInput: optionalEl("createColorHueInput"),
+    dom.createSaturationSlider = optionalEl("createSaturationSlider");
+    dom.createSaturationInput = optionalEl("createSaturationInput");
 
-    createSaturationSlider: optionalEl("createSaturationSlider"),
-    createSaturationInput: optionalEl("createSaturationInput"),
+    dom.createLightnessSlider = optionalEl("createLightnessSlider");
+    dom.createLightnessInput = optionalEl("createLightnessInput");
 
-    createLightnessSlider: optionalEl("createLightnessSlider"),
-    createLightnessInput: optionalEl("createLightnessInput"),
+    dom.createMaxEnergySlider = optionalEl("createMaxEnergySlider");
+    dom.createMaxEnergyInput = optionalEl("createMaxEnergyInput");
 
-    createMaxEnergySlider: optionalEl("createMaxEnergySlider"),
-    createMaxEnergyInput: optionalEl("createMaxEnergyInput"),
+    dom.createDryMassSlider = optionalEl("createDryMassSlider");
+    dom.createDryMassInput = optionalEl("createDryMassInput");
 
-    createDryMassSlider: document.getElementById("createDryMassSlider"),
-    createDryMassInput: document.getElementById("createDryMassInput"),
+    dom.createElasticitySlider = optionalEl("createElasticitySlider");
+    dom.createElasticityInput = optionalEl("createElasticityInput");
 
-    createElasticitySlider: optionalEl("createElasticitySlider"),
-    createElasticityInput: optionalEl("createElasticityInput"),
+    dom.createChloroplastAmountSlider = optionalEl("createChloroplastAmountSlider");
+    dom.createChloroplastAmountInput =  optionalEl("createChloroplastAmountInput");
 
-    exportWorldBtn: optionalEl("exportWorldBtn"),
-    importWorldBtn: optionalEl("importWorldBtn"),
+    dom.createChlorophyllSlider = optionalEl("createChlorophyllSlider");
+    dom.createChlorophyllInput =  optionalEl("createChlorophyllInput");
 
-    saveWorldModal: optionalEl("saveWorldModal"),
-    saveWorldNameInput: optionalEl("saveWorldNameInput"),
-    saveWorldCancelBtn: optionalEl("saveWorldCancelBtn"),
-    saveWorldConfirmBtn: optionalEl("saveWorldConfirmBtn"),
+    dom.createCarotenoidsSlider = optionalEl("createCarotenoidsSlider");
+    dom.createCarotenoidsInput =  optionalEl("createCarotenoidsInput");
 
-    loadWorldModal: optionalEl("loadWorldModal"),
-    worldSnapshotsList: optionalEl("worldSnapshotsList"),
-    loadWorldCancelBtn: optionalEl("loadWorldCancelBtn"),
-    loadWorldDeleteBtn: optionalEl("loadWorldDeleteBtn"),
-    loadWorldConfirmBtn: optionalEl("loadWorldConfirmBtn"),
+    dom.exportWorldBtn = optionalEl("exportWorldBtn");
+    dom.importWorldBtn = optionalEl("importWorldBtn");
 
-    saveSelectedCellModal: optionalEl("saveSelectedCellModal"),
-    saveSelectedCellNameInput: optionalEl("saveSelectedCellNameInput"),
-    saveSelectedCellCancelBtn: optionalEl("saveSelectedCellCancelBtn"),
-    saveSelectedCellConfirmBtn: optionalEl("saveSelectedCellConfirmBtn"),
-    selectedCellTab: optionalEl("selectedCellTab"),
+    dom.saveWorldModal = optionalEl("saveWorldModal");
+    dom.saveWorldNameInput = optionalEl("saveWorldNameInput");
+    dom.saveWorldCancelBtn = optionalEl("saveWorldCancelBtn");
+    dom.saveWorldConfirmBtn = optionalEl("saveWorldConfirmBtn");
 
-    exportCellBtn: optionalEl("exportCellBtn"),
-    importCellBtn: optionalEl("importCellBtn"),
+    dom.loadWorldModal = optionalEl("loadWorldModal");
+    dom.worldSnapshotsList = optionalEl("worldSnapshotsList");
+    dom.loadWorldCancelBtn = optionalEl("loadWorldCancelBtn");
+    dom.loadWorldDeleteBtn = optionalEl("loadWorldDeleteBtn");
+    dom.loadWorldConfirmBtn = optionalEl("loadWorldConfirmBtn");
 
-    saveCellModal: optionalEl("saveCellModal"),
-    saveCellNameInput: optionalEl("saveCellNameInput"),
-    saveCellCancelBtn: optionalEl("saveCellCancelBtn"),
-    saveCellConfirmBtn: optionalEl("saveCellConfirmBtn"),
+    dom.saveSelectedCellModal = optionalEl("saveSelectedCellModal");
+    dom.saveSelectedCellNameInput = optionalEl("saveSelectedCellNameInput");
+    dom.saveSelectedCellCancelBtn = optionalEl("saveSelectedCellCancelBtn");
+    dom.saveSelectedCellConfirmBtn = optionalEl("saveSelectedCellConfirmBtn");
+    dom.selectedCellTab = optionalEl("selectedCellTab");
 
-    loadCellModal: optionalEl("loadCellModal"),
-    cellTemplatesList: optionalEl("cellTemplatesList"),
-    loadCellCancelBtn: optionalEl("loadCellCancelBtn"),
-    loadCellDeleteBtn: optionalEl("loadCellDeleteBtn"),
-    loadCellConfirmBtn: optionalEl("loadCellConfirmBtn"),
-};
+    dom.exportCellBtn = optionalEl("exportCellBtn");
+    dom.importCellBtn = optionalEl("importCellBtn");
+
+    dom.saveCellModal = optionalEl("saveCellModal");
+    dom.saveCellNameInput = optionalEl("saveCellNameInput");
+    dom.saveCellCancelBtn = optionalEl("saveCellCancelBtn");
+    dom.saveCellConfirmBtn = optionalEl("saveCellConfirmBtn");
+
+    dom.loadCellModal = optionalEl("loadCellModal");
+    dom.cellTemplatesList = optionalEl("cellTemplatesList");
+    dom.loadCellCancelBtn = optionalEl("loadCellCancelBtn");
+    dom.loadCellDeleteBtn = optionalEl("loadCellDeleteBtn");
+    dom.loadCellConfirmBtn = optionalEl("loadCellConfirmBtn");
+}

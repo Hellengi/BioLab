@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<body>
+
+<div th:fragment="organelle-panels">
+
+  <div id="organellePanelNucleus" class="organelle-panel hidden" data-organelle="nucleus">
+    <div class="organelle-panel-header"><span class="organelle-panel-title">Nucleus</span></div>
+    <div class="organelle-panel-placeholder">
+      <div class="placeholder-block placeholder-block--small">
+        <div class="placeholder-text">Visualisation coming soon</div>
+      </div>
+    </div>
+    <div class="organelle-panel-sliders">
+      <div class="organelle-slider-group">
+        <div class="organelle-slider-group-label">Division</div>
+        <div class="organelle-slider-cols">
+          <div class="settings-field">
+            <label for="createDivisionThresholdSlider">Division threshold</label>
+            <div class="settings-input-row">
+              <input id="createDivisionThresholdSlider" type="range" class="form-range">
+              <input id="createDivisionThresholdInput" type="number" class="form-control form-control-sm">
+            </div>
+          </div>
+          <div class="settings-field">
+            <label for="createDivisionImpulseSlider">Division impulse</label>
+            <div class="settings-input-row">
+              <input id="createDivisionImpulseSlider" type="range" class="form-range">
+              <input id="createDivisionImpulseInput" type="number" class="form-control form-control-sm">
+            </div>
+          </div>
+          <div class="settings-field">
+            <label for="createDivisionAngleSlider">Division angle</label>
+            <div class="settings-input-row">
+              <input id="createDivisionAngleSlider" type="range" class="form-range">
+              <input id="createDivisionAngleInput" type="number" class="form-control form-control-sm">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="organellePanelCytosol" class="organelle-panel hidden" data-organelle="cytosol">
+    <div class="organelle-panel-header"><span class="organelle-panel-title">Cytosol</span></div>
+    <div class="organelle-panel-placeholder">
+      <div class="placeholder-block placeholder-block--small">
+        <div class="placeholder-text">Visualisation coming soon</div>
+      </div>
+    </div>
+    <div class="organelle-panel-sliders">
+      <div class="organelle-slider-group">
+        <div class="organelle-slider-group-label">Composition</div>
+        <div class="organelle-slider-cols">
+          <div class="settings-field">
+            <label for="createDryMassSlider">Dry mass</label>
+            <div class="settings-input-row">
+              <input id="createDryMassSlider" type="range" class="form-range">
+              <input id="createDryMassInput" type="number" class="form-control form-control-sm">
+            </div>
+          </div>
+          <div class="settings-field">
+            <label for="createMaxEnergySlider">Max energy</label>
+            <div class="settings-input-row">
+              <input id="createMaxEnergySlider" type="range" class="form-range">
+              <input id="createMaxEnergyInput" type="number" class="form-control form-control-sm">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="organellePanelMembrane" class="organelle-panel hidden" data-organelle="membrane">
+    <div class="organelle-panel-header"><span class="organelle-panel-title">Membrane</span></div>
+    <div class="organelle-panel-placeholder">
+      <div class="placeholder-block placeholder-block--small">
+        <div class="placeholder-text">Visualisation coming soon</div>
+      </div>
+    </div>
+    <div class="organelle-panel-sliders">
+      <div class="organelle-slider-group">
+        <div class="organelle-slider-group-label">Properties</div>
+        <div class="organelle-slider-cols">
+          <div class="settings-field">
+            <label for="createElasticitySlider">Elasticity</label>
+            <div class="settings-input-row">
+              <input id="createElasticitySlider" type="range" class="form-range">
+              <input id="createElasticityInput" type="number" class="form-control form-control-sm">
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="organelle-slider-group">
+        <div class="organelle-slider-group-label">Color</div>
+        <div class="organelle-slider-cols">
+          <div class="settings-field">
+            <label for="createColorHueSlider">Hue</label>
+            <div class="settings-input-row">
+              <input id="createColorHueSlider" type="range" class="form-range">
+              <input id="createColorHueInput" type="number" class="form-control form-control-sm">
+            </div>
+          </div>
+          <div class="settings-field">
+            <label for="createSaturationSlider">Saturation</label>
+            <div class="settings-input-row">
+              <input id="createSaturationSlider" type="range" class="form-range">
+              <input id="createSaturationInput" type="number" class="form-control form-control-sm">
+            </div>
+          </div>
+          <div class="settings-field">
+            <label for="createLightnessSlider">Lightness</label>
+            <div class="settings-input-row">
+              <input id="createLightnessSlider" type="range" class="form-range">
+              <input id="createLightnessInput" type="number" class="form-control form-control-sm">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="organellePanelChloroplast" class="organelle-panel hidden" data-organelle="chloroplast">
+    <div class="organelle-panel-header"><span class="organelle-panel-title">Chloroplast</span></div>
+    <div class="organelle-panel-placeholder">
+      <div class="placeholder-block placeholder-block--small">
+        <div class="placeholder-text">Visualisation coming soon</div>
+      </div>
+    </div>
+    <div class="organelle-panel-sliders">
+      <div class="organelle-slider-group">
+        <div class="organelle-slider-group-label">Properties</div>
+        <div class="organelle-slider-cols">
+          <div class="settings-field">
+            <label for="createChloroplastAmountSlider">Amount</label>
+            <div class="settings-input-row">
+              <input id="createChloroplastAmountSlider" type="range" class="form-range">
+              <input id="createChloroplastAmountInput" type="number" class="form-control form-control-sm">
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="organelle-slider-group">
+        <div class="organelle-slider-group-label">Pigments</div>
+        <div class="organelle-slider-cols">
+          <div class="settings-field">
+            <label for="createChlorophyllSlider">Chlorophyll</label>
+            <div class="settings-input-row">
+              <input id="createChlorophyllSlider" type="range" class="form-range">
+              <input id="createChlorophyllInput" type="number" class="form-control form-control-sm">
+            </div>
+          </div>
+          <div class="settings-field">
+            <label for="createCarotenoidsSlider">Carotenoids</label>
+            <div class="settings-input-row">
+              <input id="createCarotenoidsSlider" type="range" class="form-range">
+              <input id="createCarotenoidsInput" type="number" class="form-control form-control-sm">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

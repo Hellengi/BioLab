@@ -1,5 +1,6 @@
 package com.hellengi.biolab.api.dto;
 
+/** Runtime configuration. The deprecated phase field is retained only to read old saved snapshots. */
 public record SimulationSettingsDto(
         RangedValueDto timeSlider,
 
@@ -15,7 +16,7 @@ public record SimulationSettingsDto(
         boolean globalLightCycleEnabled,
         RangedValueDto globalLightCycleMinPercent,
         RangedValueDto globalLightCyclePeriodSeconds,
-        double globalLightCycleElapsedTicks,
+        @Deprecated double globalLightCycleElapsedTicks,
 
         boolean localLightSourcesEnabled,
         RangedValueDto lightSourceCount,

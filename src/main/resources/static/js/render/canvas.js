@@ -1,5 +1,5 @@
 import { drawDeadCellEffects, updateDeadCellEffects } from "./effects.js";
-import { drawBackground, drawLightSourceBodies } from "./lightingRenderer.js";
+import { drawBackground, drawLightSourceBodies } from "./lighting.js";
 
 const COLD_FILTER_BASE_ALPHA = 0.03;
 const COLD_FILTER_MAX_ALPHA  = 0.22;
@@ -12,46 +12,38 @@ const DIRECTION_VECTOR_LENGTH = 12.0;
 
 export function render(ctx, state) {
     if (!state.world || !state.config) return;
-
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-
     ctx.save();
     clipTube(ctx);
-
     drawBackground(ctx, state.world.lighting);
-
     for (const food of state.world.foods) {
         drawFood(ctx, food);
     }
-
-    for (const cell of state.world.cells) {
+    for (const cell of state.world.cells.filter(cell => !cell.dead)) {
         drawCell(ctx, cell, state.world.lighting);
         drawDirectionVector(ctx, cell, DIRECTION_VECTOR_LENGTH);
     }
-
-    for (const deadCell of state.world.deadCells) {
+    for (const deadCell of state.world.cells.filter(cell => cell.dead)) {
         drawDeadCell(ctx, deadCell, state.world.lighting);
     }
-
     if (state.selectedCellId) {
         const selectedCell = state.cellById.get(state.selectedCellId);
         if (selectedCell) {
             drawSelectedCellOutline(ctx, selectedCell);
         }
     }
-
     updateDeadCellEffects();
     drawDeadCellEffects(ctx);
+
+    const sliderValue = state.pendingTimeSlider ?? state.config.timeSlider?.value ?? 50;
+    applyEnvironmentTint(ctx, sliderValue);
+    ctx.restore();
+
+    drawTubeBorder(ctx);
 
     if (state.world.lighting) {
         drawLightSourceBodies(ctx, state.world.lighting);
     }
-
-    const sliderValue = state.pendingTimeSlider ?? state.config.timeSlider?.value ?? 50;
-    applyEnvironmentTint(ctx, sliderValue);
-
-    ctx.restore();
-    drawTubeBorder(ctx);
 }
 
 function clipTube(ctx) {
@@ -113,9 +105,9 @@ function modulateLightness(genomeLightness, illuminance) {
 }
 
 function drawDirectionVector(ctx, cell, length) {
-    const angleRad = (cell.directionAngle - 90.0) * Math.PI / 180.0;
-    const dirX = Math.cos(angleRad);
-    const dirY = Math.sin(angleRad);
+    const dirX = cell.motion?.speedDirX ?? 0.0;
+    const dirY = cell.motion?.speedDirY ?? 0.0;
+    if (dirX === 0.0 && dirY === 0.0) return;
 
     ctx.beginPath();
     ctx.moveTo(cell.x, cell.y);

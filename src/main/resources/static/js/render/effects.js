@@ -1,4 +1,4 @@
-import { state } from "../store/store.js";
+import {state} from "../store/state.js";
 
 const DEAD_CELL_DISAPPEAR_EFFECT_DURATION_MS = 500;
 const DEAD_CELL_DISAPPEAR_EFFECT_MAX_BLUR_PX = 12;
@@ -6,7 +6,7 @@ const DEAD_CELL_DISAPPEAR_EFFECT_GROWTH = 1.35;
 
 export function updateDeadCellEffects() {
     const currentDeadCellsById = new Map();
-    for (const deadCell of state.world?.deadCells ?? []) {
+    for (const deadCell of (state.world?.cells ?? []).filter(cell => cell.dead) ?? []) {
         currentDeadCellsById.set(deadCell.id, deadCell);
     }
 
@@ -43,7 +43,7 @@ export function drawDeadCellEffects(ctx) {
     });
 }
 
-export function startDeadCellEffect(deadCell) {
+function startDeadCellEffect(deadCell) {
     state.deadCellDisappearEffects.push({
         x: deadCell.x,
         y: deadCell.y,

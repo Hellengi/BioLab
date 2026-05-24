@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<body>
+
+<div th:fragment="tab-creation" id="tabCreate" class="tab-panel hidden">
+
+  <div class="panel-header-row">
+    <h2>Create Cell</h2>
+    <div class="panel-header-actions">
+      <button id="exportCellBtn" class="icon-btn" title="Save cell template">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+      </button>
+      <button id="importCellBtn" class="icon-btn" title="Load cell template">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!--
+    Превью: фиксированная высота.
+    Hint — pill-badge в левом верхнем углу (position:absolute).
+    Кнопка Place — левый нижний угол (position:absolute).
+    Canvas — единственный flex-item → строго по центру.
+  -->
+  <div class="sticky-preview">
+    <div class="selected-cell-preview-wrap create-preview-wrap" id="createPreviewWrap">
+
+      <div class="preview-triptych">
+
+        <div class="preview-zone preview-zone--left">
+          <div id="createCellModeHint"
+               class="preview-mode-badge preview-mode-badge--create-off">
+            <span class="preview-mode-badge-bg"></span>
+            <span class="preview-mode-badge-text">Off</span>
+          </div>
+        </div>
+
+        <div class="preview-zone preview-zone--center">
+          <canvas id="createCellPreviewCanvas" width="160" height="160"></canvas>
+        </div>
+
+        <div class="preview-zone preview-zone--right"></div>
+
+      </div>
+
+      <button id="placeCellModeBtn" type="button" class="icon-btn preview-action-btn" title="Place on the field">
+        <!-- crosshair icon -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+          <circle cx="12" cy="12" r="3"/>
+          <line x1="12" y1="2" x2="12" y2="6"/>
+          <line x1="12" y1="18" x2="12" y2="22"/>
+          <line x1="2" y1="12" x2="6" y2="12"/>
+          <line x1="18" y1="12" x2="22" y2="12"/>
+        </svg>
+      </button>
+
+    </div>
+  </div>
+
+  <!--
+    Переключатель Organelles / Info.
+    data-active="organelles" задан сразу в HTML.
+  -->
+  <div class="create-mode-switcher" id="createModeSwitcher" data-active="organelles">
+    <span class="create-mode-label" data-mode="organelles">Organelles</span>
+    <span class="create-mode-label" data-mode="info">Info</span>
+    <div class="create-mode-thumb"></div>
+  </div>
+
+  <!-- Скользящий контент -->
+  <div class="create-content-viewport">
+    <div class="create-content-track" id="createContentTrack" data-active="organelles">
+
+      <!-- Панель органелл -->
+      <div class="create-content-pane" data-pane="organelles">
+        <div class="organelle-list">
+
+          <button class="organelle-btn" data-organelle="nucleus" id="organelleBtnNucleus">
+            <span class="organelle-btn-icon">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" width="18" height="18">
+                <circle cx="10" cy="10" r="8"/>
+                <circle cx="10" cy="10" r="4" stroke-dasharray="2 2"/>
+              </svg>
+            </span>
+            <span class="organelle-btn-name">Nucleus</span>
+          </button>
+
+          <button class="organelle-btn" data-organelle="cytosol" id="organelleBtnCytosol">
+            <span class="organelle-btn-icon">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" width="18" height="18">
+                <circle cx="10" cy="10" r="8"/>
+                <circle cx="7" cy="8" r="1.5" fill="currentColor" opacity=".5"/>
+                <circle cx="13" cy="12" r="1.5" fill="currentColor" opacity=".5"/>
+              </svg>
+            </span>
+            <span class="organelle-btn-name">Cytosol</span>
+          </button>
+
+          <button class="organelle-btn" data-organelle="membrane" id="organelleBtnMembrane">
+            <span class="organelle-btn-icon">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" width="18" height="18">
+                <circle cx="10" cy="10" r="8"/>
+                <circle cx="10" cy="10" r="6" stroke-dasharray="3 1.5"/>
+              </svg>
+            </span>
+            <span class="organelle-btn-name">Membrane</span>
+          </button>
+
+          <button class="organelle-btn organelle-btn--optional organelle-disabled" data-organelle="chloroplast" id="organelleBtnChloroplast">
+            <span class="organelle-btn-icon">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" width="18" height="18">
+                <ellipse cx="10" cy="10" rx="7" ry="4.5"/>
+                <line x1="3" y1="10" x2="17" y2="10"/>
+              </svg>
+            </span>
+            <span class="organelle-btn-name">Chloroplast</span>
+            <span class="organelle-toggle" id="chloroplastToggle" title="Enable / disable chloroplast">
+              <input type="checkbox" id="chloroplastEnabled" class="organelle-toggle-input">
+              <span class="organelle-toggle-track"></span>
+            </span>
+          </button>
+
+        </div>
+      </div>
+
+      <!-- Панель Info -->
+      <div class="create-content-pane" data-pane="info">
+
+        <div class="settings-section">
+          <div class="settings-section-header">
+            <span class="settings-section-label">Overview</span>
+          </div>
+          <div class="cell-info-grid">
+            <div class="cell-info-label">Mass</div>
+            <div id="createInfoMass"></div>
+
+            <div class="cell-info-label">Energy</div>
+            <div id="createInfoEnergy"></div>
+
+            <div class="cell-info-label">Elasticity</div>
+            <div id="createInfoElasticity"></div>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <div class="settings-section-header">
+            <span class="settings-section-label">Genome</span>
+          </div>
+          <div class="cell-info-grid">
+            <div class="cell-info-label">Division energy</div>
+            <div id="createInfoDivisionThreshold"></div>
+
+            <div class="cell-info-label">Division impulse</div>
+            <div id="createInfoDivisionImpulse"></div>
+
+            <div class="cell-info-label">Division angle</div>
+            <div id="createInfoDivisionAngle"></div>
+
+            <div class="cell-info-label">RGB</div>
+            <div id="createInfoRgb"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

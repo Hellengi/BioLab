@@ -1,0 +1,215 @@
+/* ==========================================================
+   creation.css — Create Cell switcher, organelle list and toggle
+   ========================================================== */
+
+/* ────────────────────────────────────────────────────────────────
+   ПЕРЕКЛЮЧАТЕЛЬ РЕЖИМОВ
+   ──────────────────────────────────────────────────────────────── */
+
+.create-mode-switcher {
+    position: relative;
+    display: flex;
+    align-items: center;
+    margin: var(--gap-sm) 0 var(--gap-xs);
+    height: 30px;
+    background: var(--c-bg-deep);
+    border: 1px solid var(--c-border-soft);
+    border-radius: 20px;
+    overflow: hidden;
+    cursor: pointer;
+    user-select: none;
+}
+
+.create-mode-label {
+    flex: 1;
+    text-align: center;
+    font-size: var(--font-sm);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--c-text-muted);
+    line-height: 30px;
+    position: relative;
+    z-index: 1;
+    transition: color 0.25s;
+    pointer-events: none;
+}
+
+.create-mode-switcher[data-active="organelles"] .create-mode-label[data-mode="organelles"],
+.create-mode-switcher[data-active="info"]       .create-mode-label[data-mode="info"] {
+    color: var(--c-text-on);
+}
+
+.create-mode-thumb {
+    position: absolute;
+    top: 3px; bottom: 3px; left: 3px;
+    width: calc(50% - 6px);
+    background: var(--c-accent-dark);
+    border: 1px solid var(--c-accent);
+    border-radius: 16px;
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 0;
+    pointer-events: none;
+}
+.create-mode-switcher[data-active="info"] .create-mode-thumb {
+    transform: translateX(calc(100% + 6px));
+}
+
+
+/* ────────────────────────────────────────────────────────────────
+   SLIDING VIEWPORT
+   ──────────────────────────────────────────────────────────────── */
+
+.create-content-viewport {
+    width: 100%;
+    position: relative;
+    overflow: visible;
+}
+
+.create-content-track {
+    display: block;
+    width: 100%;
+}
+
+.create-content-pane {
+    display: none;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.create-content-track[data-active="organelles"] .create-content-pane[data-pane="organelles"],
+.create-content-track[data-active="info"] .create-content-pane[data-pane="info"] {
+    display: block;
+    animation: create-content-pane-show var(--anim-fast) var(--ease-default);
+}
+
+@keyframes create-content-pane-show {
+    from {
+        opacity: 0;
+        transform: translateY(2px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ────────────────────────────────────────────────────────────────
+   КНОПКИ ОРГАНЕЛЛ
+   ──────────────────────────────────────────────────────────────── */
+
+.organelle-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-xs);
+    padding-top: var(--gap-xs);
+}
+
+.organelle-btn {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: var(--gap-sm);
+    width: 100%;
+    padding: 10px 12px;
+    background: var(--c-bg-deep);
+    border: 1px solid var(--c-border-soft);
+    border-radius: var(--radius);
+    color: var(--c-text);
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.15s, border-color 0.15s;
+    user-select: none;
+    box-sizing: border-box;
+}
+.organelle-btn:hover {
+    background: var(--c-bg-surface);
+    border-color: var(--c-border-mid);
+}
+.organelle-btn.active {
+    background: var(--c-bg-inner);
+    border-color: var(--c-accent);
+    box-shadow: 0 0 0 1px var(--c-accent-dark);
+}
+
+.organelle-btn-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 28px; height: 28px;
+    color: var(--c-accent);
+    opacity: 0.7;
+    transition: opacity 0.15s;
+}
+.organelle-btn:hover .organelle-btn-icon,
+.organelle-btn.active .organelle-btn-icon { opacity: 1; }
+
+.organelle-btn-name {
+    flex: 1;
+    font-size: var(--font-base);
+    font-weight: 600;
+    color: var(--c-text);
+    min-width: 0;
+}
+
+.organelle-btn--optional.organelle-disabled {
+    opacity: 0.4;
+    border-color: var(--c-border-soft);
+    background: var(--c-bg-deep);
+    cursor: default;
+}
+.organelle-btn--optional.organelle-disabled > *:not(.organelle-toggle) {
+    pointer-events: none;
+}
+
+
+/* ────────────────────────────────────────────────────────────────
+   TOGGLE-ПЕРЕКЛЮЧАТЕЛЬ ВНУТРИ КНОПКИ ХЛОРОПЛАСТА
+   ──────────────────────────────────────────────────────────────── */
+
+.organelle-toggle {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    margin-left: auto;
+    cursor: pointer;
+    z-index: 1;
+}
+
+.organelle-toggle-input {
+    position: absolute;
+    opacity: 0;
+    width: 0; height: 0;
+    pointer-events: none;
+}
+
+.organelle-toggle-track {
+    display: block;
+    width: 30px; height: 17px;
+    border-radius: 9px;
+    background: var(--c-border-mid);
+    border: 1px solid transparent;
+    position: relative;
+    transition: background 0.2s, border-color 0.2s;
+    pointer-events: none;
+}
+.organelle-toggle-track::after {
+    content: '';
+    position: absolute;
+    top: 2px; left: 2px;
+    width: 11px; height: 11px;
+    border-radius: 50%;
+    background: var(--c-text-muted);
+    transition: transform 0.2s, background 0.2s;
+}
+.organelle-toggle-input:checked + .organelle-toggle-track {
+    background: var(--c-accent-dark);
+    border-color: var(--c-accent);
+}
+.organelle-toggle-input:checked + .organelle-toggle-track::after {
+    transform: translateX(13px);
+    background: var(--c-accent);
+}

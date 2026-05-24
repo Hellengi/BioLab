@@ -1,6 +1,6 @@
 package com.hellengi.biolab.util;
 
-import com.hellengi.biolab.model.Genome;
+import com.hellengi.biolab.domain.model.Genome;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -18,40 +18,16 @@ public final class GenomeCodec {
     }
 
     public static String encode(Genome genome) {
-        return encode(
-                genome.getDivisionThreshold(),
-                genome.getDivisionImpulse(),
-                genome.getDivisionAngle(),
-                genome.getColorHue(),
-                genome.getSaturation(),
-                genome.getLightness(),
-                genome.getMaxEnergy(),
-                genome.getDryMass(),
-                genome.getElasticity()
-        );
-    }
-
-    public static String encode(
-            double divisionThreshold,
-            double divisionImpulse,
-            double divisionAngle,
-            double colorHue,
-            double saturation,
-            double lightness,
-            double maxEnergy,
-            double dryMass,
-            double elasticity
-    ) {
         return PREFIX
-                + pack(divisionThreshold)
-                + pack(divisionImpulse)
-                + pack(divisionAngle)
-                + pack(colorHue)
-                + pack(saturation)
-                + pack(lightness)
-                + pack(maxEnergy)
-                + pack(dryMass)
-                + pack(elasticity);
+                + pack(genome.getDivisionThreshold())
+                + pack(genome.getDivisionImpulse())
+                + pack(genome.getDivisionAngle())
+                + pack(genome.getColorHue())
+                + pack(genome.getSaturation())
+                + pack(genome.getLightness())
+                + pack(genome.getMaxEnergy())
+                + pack(genome.getDryMass())
+                + pack(genome.getElasticity());
     }
 
     public static Genome decode(String code) {

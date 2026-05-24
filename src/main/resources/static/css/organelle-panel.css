@@ -1,0 +1,137 @@
+/* ==========================================================
+   organelle-panel.css — slide-out organelle settings panel
+   ========================================================== */
+
+/* ────────────────────────────────────────────────────────────────
+   ХОСТ И БОКОВАЯ ПАНЕЛЬ ОРГАНЕЛЛ
+   (aside#organellePanelHost в main-layout)
+   ──────────────────────────────────────────────────────────────── */
+
+/*
+ * aside#organellePanelHost — flex-item между environment-scroll и sidebar-wrapper.
+ * Ширина 0 по умолчанию, панель выезжает поверх environment через translateX.
+ * overflow:visible нужен для выезда без клиппинга.
+ */
+.organelle-panel-host {
+    position: absolute;
+    top: 0;
+    right: calc(var(--sidebar-w) + var(--tabs-w));
+    width: var(--organelle-panel-w);
+    height: 100%;
+    z-index: var(--z-organelle-panel);
+    pointer-events: none;
+    overflow: visible;
+}
+
+
+.organelle-panel {
+    pointer-events: none;
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--c-bg-surface);
+    border-left: 1px solid var(--c-border);
+    transform: translateX(100%);
+    opacity: 0;
+    transition:
+            transform var(--anim-fast) var(--ease-default),
+            opacity var(--anim-fast) ease;
+}
+
+.organelle-panel.panel-open {
+    transform: translateX(0);
+    opacity: 1;
+    pointer-events: auto;
+}
+
+
+.organelle-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--gap-md);
+    border-bottom: 1px solid var(--c-border-soft);
+    flex-shrink: 0;
+}
+.organelle-panel-title {
+    font-size: var(--font-lg);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--c-text);
+}
+
+.organelle-panel-placeholder {
+    flex-shrink: 0;
+    padding: var(--gap-sm) var(--gap-md);
+    border-bottom: 1px solid var(--c-border-soft);
+}
+.placeholder-block--small { padding: var(--gap-sm); text-align: center; }
+.placeholder-block--small .placeholder-text {
+    font-size: var(--font-sm);
+    color: var(--c-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.organelle-panel-sliders {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--gap-sm) var(--gap-md) var(--gap-lg);
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-sm);
+}
+
+.organelle-slider-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-xs);
+}
+.organelle-slider-group-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--c-text-muted);
+    padding: 2px 0 4px;
+    border-bottom: 1px solid var(--c-border-soft);
+    margin-bottom: 2px;
+}
+
+.organelle-slider-cols {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-sm);
+}
+
+.organelle-panel .settings-field { margin: 0; }
+.organelle-panel .settings-field label {
+    display: block;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--c-text-sub);
+    margin-bottom: 3px;
+}
+.organelle-panel .settings-input-row {
+    display: flex;
+    align-items: center;
+    gap: var(--gap-sm);
+}
+.organelle-panel .form-range {
+    flex: 0 0 var(--organelle-slider-w);
+    width: var(--organelle-slider-w);
+    min-width: var(--organelle-slider-w);
+}
+.organelle-panel .form-control-sm {
+    flex: 0 0 var(--number-input-w);
+    width: var(--number-input-w);
+    padding: 2px 5px;
+    font-size: 11px;
+}

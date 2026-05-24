@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="tab-settings" id="tabSettings" class="tab-panel hidden">
+  <div class="panel-header-row">
+    <h2>Simulation Settings</h2>
+    <div class="panel-header-actions">
+      <button id="exportWorldBtn" class="icon-btn" title="Save world">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      </button>
+      <button id="importWorldBtn" class="icon-btn" title="Load world">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Environment -->
+  <div class="settings-field">
+    <label for="initialCellCountSlider">Initial number of cells</label>
+    <div class="settings-input-row">
+      <input id="initialCellCountSlider" type="range" class="form-range">
+      <input id="initialCellCountValue" type="number" class="form-control form-control-sm">
+    </div>
+  </div>
+  <div class="settings-field">
+    <label for="foodSpawnRateSlider">Intensity of food generation</label>
+    <div class="settings-input-row">
+      <input id="foodSpawnRateSlider" type="range" class="form-range">
+      <input id="foodSpawnRateValue" type="number" class="form-control form-control-sm">
+    </div>
+  </div>
+  <div class="settings-field">
+    <label for="viscositySlider">Viscosity</label>
+    <div class="settings-input-row">
+      <input id="viscositySlider" type="range" class="form-range">
+      <input id="viscosityValue" type="number" class="form-control form-control-sm">
+    </div>
+  </div>
+  <div class="settings-field">
+    <label for="gravitySlider">Gravity</label>
+    <div class="settings-input-row">
+      <input id="gravitySlider" type="range" class="form-range">
+      <input id="gravityValue" type="number" class="form-control form-control-sm">
+    </div>
+  </div>
+  <div class="settings-field">
+    <label for="radiationSlider">Radiation</label>
+    <div class="settings-input-row">
+      <input id="radiationSlider" type="range" class="form-range">
+      <input id="radiationValue" type="number" class="form-control form-control-sm">
+    </div>
+  </div>
+
+  <!-- Lighting section -->
+  <div class="settings-section">
+    <div class="settings-section-header">
+      <span class="settings-section-label">Lighting</span>
+    </div>
+    <div class="settings-section-body">
+
+      <div class="settings-field">
+        <label for="globalLightSlider">Ambient light</label>
+        <div class="settings-input-row">
+          <input id="globalLightSlider" type="range" class="form-range">
+          <input id="globalLightValue" type="number" class="form-control form-control-sm">
+        </div>
+      </div>
+
+      <div class="settings-field">
+        <label for="turbiditySlider">Turbidity</label>
+        <div class="settings-input-row">
+          <input id="turbiditySlider" type="range" class="form-range">
+          <input id="turbidityValue" type="number" class="form-control form-control-sm">
+        </div>
+      </div>
+
+      <hr style="border-color: var(--c-border-soft); margin: 2px 0;">
+
+      <!-- Day / night cycle toggle -->
+      <div class="settings-field checkbox-field">
+        <label for="globalLightCycleEnabled">
+          <input id="globalLightCycleEnabled" type="checkbox">
+          Day / night cycle
+        </label>
+      </div>
+      <div id="lightCycleFields" class="light-cycle-fields collapsed">
+        <div class="settings-field">
+          <label for="globalLightCycleMinSlider">Night light level</label>
+          <div class="settings-input-row">
+            <input id="globalLightCycleMinSlider" type="range" class="form-range">
+            <input id="globalLightCycleMinValue" type="number" class="form-control form-control-sm">
+          </div>
+        </div>
+        <div class="settings-field">
+          <label for="globalLightCyclePeriodSlider">Cycle period, sec</label>
+          <div class="settings-input-row">
+            <input id="globalLightCyclePeriodSlider" type="range" class="form-range">
+            <input id="globalLightCyclePeriodValue" type="number" class="form-control form-control-sm">
+          </div>
+        </div>
+      </div>
+
+      <!-- Local light sources toggle -->
+      <div class="settings-field checkbox-field">
+        <label for="localLightSourcesEnabled">
+          <input id="localLightSourcesEnabled" type="checkbox">
+          Local light sources
+        </label>
+      </div>
+      <div id="localLightSourceFields" class="light-cycle-fields collapsed">
+        <div class="settings-field">
+          <label for="lightSourceCountSlider">
+            Light source count:
+            <span id="lightSourceCountLabel">1</span>
+          </label>
+          <input id="lightSourceCountSlider" type="range" class="form-range discrete-slider">
+          <div id="lightSourceCountTicks" class="discrete-ticks"></div>
+        </div>
+        <div class="settings-field">
+          <label for="lightSourceStartAngleSlider">
+            First source angle:
+            <span id="lightSourceStartAngleLabel">270&#xB0;</span>
+          </label>
+          <input id="lightSourceStartAngleSlider" type="range" class="form-range discrete-slider">
+          <div id="lightSourceStartAngleTicks" class="discrete-ticks"></div>
+        </div>
+        <div class="settings-field">
+          <label for="lightSourceBrightnessSlider">Source brightness</label>
+          <div class="settings-input-row">
+            <input id="lightSourceBrightnessSlider" type="range" class="form-range">
+            <input id="lightSourceBrightnessValue" type="number" class="form-control form-control-sm">
+          </div>
+        </div>
+        <div class="settings-field">
+          <label for="lightSourceOrbitRadiusSlider">Orbit radius</label>
+          <div class="settings-input-row">
+            <input id="lightSourceOrbitRadiusSlider" type="range" class="form-range">
+            <input id="lightSourceOrbitRadiusValue" type="number" class="form-control form-control-sm">
+          </div>
+        </div>
+        <div class="settings-field">
+          <label for="lightSourceOrbitSpeedSlider">Orbit speed</label>
+          <div class="settings-input-row">
+            <input id="lightSourceOrbitSpeedSlider" type="range" class="form-range">
+            <input id="lightSourceOrbitSpeedValue" type="number" class="form-control form-control-sm">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <button id="resetSettingsBtn" type="button" class="btn btn-secondary w-100">Reset to defaults</button>
+</div>
+</body>
+</html>

@@ -1,4 +1,4 @@
-export function roundTo(value, digits) {
+function roundTo(value, digits) {
     const factor = 10 ** digits;
     return Math.round(value * factor) / factor;
 }
@@ -25,7 +25,7 @@ export function getCellRgbString(cell) {
     return `${rgb.r}, ${rgb.g}, ${rgb.b}`;
 }
 
-export function hslToRgb(h, s, l) {
+function hslToRgb(h, s, l) {
     const hue = ((h % 360) + 360) % 360;
     const sat = Math.max(0, Math.min(100, s)) / 100;
     const lig = Math.max(0, Math.min(100, l)) / 100;
@@ -65,33 +65,6 @@ export function hslToRgb(h, s, l) {
     };
 }
 
-export function drawArrow(targetCtx, startX, startY, endX, endY, color = "#ffffff") {
-    const angle = Math.atan2(endY - startY, endX - startX);
-    const headSize = 7;
-
-    targetCtx.beginPath();
-    targetCtx.moveTo(startX, startY);
-    targetCtx.lineTo(endX, endY);
-    targetCtx.strokeStyle = color;
-    targetCtx.lineWidth = 1;
-    targetCtx.stroke();
-
-    targetCtx.beginPath();
-    targetCtx.moveTo(endX, endY);
-    targetCtx.lineTo(
-        endX - Math.cos(angle - Math.PI / 6) * headSize,
-        endY - Math.sin(angle - Math.PI / 6) * headSize
-    );
-    targetCtx.moveTo(endX, endY);
-    targetCtx.lineTo(
-        endX - Math.cos(angle + Math.PI / 6) * headSize,
-        endY - Math.sin(angle + Math.PI / 6) * headSize
-    );
-    targetCtx.strokeStyle = color;
-    targetCtx.lineWidth = 1;
-    targetCtx.stroke();
-}
-
 export function preparePreviewCanvas(previewCtx, previewCanvas) {
     if (!previewCtx || !previewCanvas) {
         return null;
@@ -111,4 +84,8 @@ export function setText(element, value) {
     if (element) {
         element.textContent = value;
     }
+}
+
+export function cssVar(name) {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }

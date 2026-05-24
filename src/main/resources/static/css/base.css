@@ -1,0 +1,136 @@
+/* ═══════════════════════════════════════════════════════
+   base.css — CSS-переменные и базовый сброс
+   ═══════════════════════════════════════════════════════ */
+
+/* ── Custom properties ──────────────────────────────────── */
+:root {
+    /* Фоны */
+    --c-bg-deep:     #0f172a;
+    --c-bg-surface:  #1e293b;
+    --c-bg-inner:    #1a2744;
+    --c-bg-canvas:   #a0a0a0;
+
+    /* Границы */
+    --c-border:      #334155;
+    --c-border-soft: #263248;
+    --c-border-mid:  #475569;
+
+    /* Текст */
+    --c-text:        #f1f5f9;
+    --c-text-sub:    #94a3b8;
+    --c-text-muted:  #64748b;
+    --c-text-on:     #ffffff;
+
+    /* Акцент */
+    --c-accent:      #38bdf8;
+    --c-accent-dim:  #0ea5e9;
+    --c-accent-dark: #0c4a6e;
+    --c-accent-glow: rgba(56, 189, 248, 0.18);
+
+    /* Состояния */
+    --c-danger:        #f87171;
+    --c-danger-dark:   #dc2626;
+    --c-danger-bg:     #3d1515;
+    --c-danger-border: #7f1d1d;
+    --c-danger-glow: rgba(248, 113, 113, 0.18);
+
+    --c-success:        #4ade80;
+    --c-success-bg:     #14532d;
+    --c-success-border: #166534;
+    --c-success-glow: rgba(74,  222, 128, 0.18);
+
+    /* Цвета стрелок сил */
+    --c-arrow-gravity:  #f87171;  /* красный  — клетка тонет        */
+    --c-arrow-buoyancy: #4ade80;  /* зелёный  — клетка всплывает    */
+    --c-arrow-drag:     #fbbf24;  /* янтарный — сопротивление среды */
+    --c-arrow-impulse:  #c084fc;  /* фиолет   — импульс столкновения*/
+    --c-arrow-speed:    #e2e8f0;  /* белый    — скорость            */
+
+    /* Температурный индикатор */
+    --c-temp-cold:   #93c5fd;
+    --c-temp-normal: #f1f5f9;
+    --c-temp-hot:    #fca5a5;
+
+    /* Размеры layout */
+    --toolbar-h:         50px;
+    --sidebar-w:         400px;
+    --tabs-w:            40px;
+    --preview-size:      160px;
+    --organelle-panel-w: 320px;
+
+    /* Скругления */
+    --radius:    8px;
+    --radius-sm: 5px;
+    --radius-xs: 3px;
+
+    /* Отступы */
+    --gap-xs: 4px;
+    --gap-sm: 8px;
+    --gap-md: 12px;
+    --gap-lg: 16px;
+
+    /* Шрифты */
+    --font-sm:   11px;
+    --font-base: 13px;
+    --font-lg:   15px;
+    --font-mono: 'JetBrains Mono', 'Courier New', 'Lucida Console', monospace;
+
+    /* UI-элементы */
+    --time-slider-w:      190px;
+    --organelle-slider-w: 190px;
+    --number-input-w:     74px;
+
+    /* Z-index */
+    --z-toolbar: 10;
+    --z-sidebar: 20;
+    --z-modal:   1000;
+    --z-organelle-panel: 30;
+    --z-tooltip: 200;
+
+    /* Тени */
+    --shadow-toolbar: 0 1px 0 var(--c-border), 0 2px 8px rgba(0,0,0,0.5);
+    --shadow-modal:   0 24px 60px rgba(0,0,0,0.7), 0 0 0 1px var(--c-border);
+    --shadow-btn:     0 1px 3px rgba(0,0,0,0.4);
+    --shadow-inset:   inset 0 1px 3px rgba(0,0,0,0.35);
+
+    /* Анимации */
+    --anim-fast: 0.18s;
+    --anim-med: 0.28s;
+    --ease-default: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Сброс ──────────────────────────────────────────────── */
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+button,
+input,
+select,
+textarea {
+    margin: 0;
+    font: inherit;
+}
+
+button {
+    color: inherit;
+}
+
+.hidden {
+    display: none !important;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    margin: 0;
+}
+
+body {
+    font-family: 'IBM Plex Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--c-bg-deep);
+    color: var(--c-text);
+    font-size: var(--font-base);
+    line-height: 1.4;
+}

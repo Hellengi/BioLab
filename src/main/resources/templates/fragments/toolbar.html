@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="toolbar" class="toolbar">
+  <div class="time-control">
+    <div id="tempDisplay" class="temp-display" title="Temperature / simulation speed">
+      <span id="temperatureLabel" class="temp-value">20&#xB0;C</span>
+      <span id="speedLabel" class="speed-value">1.00&#xD7;</span>
+    </div>
+    <input id="timeSlider" type="range" min="0" max="100" step="1" value="50"
+           title="Temperature and simulation speed">
+    <button id="pauseBtn" type="button" class="btn btn-outline-secondary"
+            title="Pause / Resume">Pause</button>
+  </div>
+  <button id="resetBtn" type="button" class="btn btn-secondary">Reset</button>
+  <span id="fpsLabel" class="fps-badge" title="Client FPS / Server TPS">FPS/TPS = 0/0</span>
+  <span id="stats">Loading...</span>
+  <button id="sidebarToggleBtn" type="button" class="btn btn-outline-secondary"
+          title="Cell control">Control</button>
+</div>
+</body>
+</html>
