@@ -33,3 +33,12 @@ export function deleteWorld(id) {
 export function resetSimulation() {
     return request("/api/simulation/reset", { method: "POST" });
 }
+
+export function getLightAt(x, y) {
+    const query = new URLSearchParams({
+        x: String(x),
+        y: String(y),
+    });
+
+    return getJson(`/api/simulation/light?${query.toString()}`);
+}

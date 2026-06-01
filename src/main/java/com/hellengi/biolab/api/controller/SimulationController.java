@@ -2,6 +2,7 @@ package com.hellengi.biolab.api.controller;
 
 import com.hellengi.biolab.database.service.SnapshotService;
 import com.hellengi.biolab.domain.SimulationEngine;
+import com.hellengi.biolab.dto.LightProbeDto;
 import com.hellengi.biolab.dto.SimulationSettingsDto;
 import com.hellengi.biolab.dto.SimulationWorldDto;
 import com.hellengi.biolab.dto.SnapshotDto;
@@ -28,6 +29,14 @@ public class SimulationController {
     @GetMapping("/world")
     public ResponseEntity<SimulationWorldDto> state() {
         return ResponseEntity.ok(simulationEngine.getWorldDto());
+    }
+
+    @GetMapping("/light")
+    public ResponseEntity<LightProbeDto> lightAt(
+            @RequestParam double x,
+            @RequestParam double y
+    ) {
+        return ResponseEntity.ok(simulationEngine.sampleLightAt(x, y));
     }
 
     @GetMapping("/config")

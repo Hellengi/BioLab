@@ -23,11 +23,10 @@ public class SimulationWorldMapper {
 
     public SimulationWorldDto toDto(SimulationWorld world) {
         int diameter = config.getTubeDiameter();
-        int gridStep = Math.max(1, config.getLight().getGridStep());
-        int gridWidth = (int) Math.ceil(diameter / (double) gridStep);
-        int gridHeight = (int) Math.ceil(diameter / (double) gridStep);
-
-        double[] lightMap = lighting.buildLightMap(diameter, diameter, gridStep);
+        double[] lightMap = lighting.getLightMap();
+        int gridStep = lighting.getLightGridStep();
+        int gridWidth = lighting.getLightGridCols();
+        int gridHeight = lighting.getLightGridRows();
 
         List<CellDto> cells;
         cellMapper.useLightMap(lightMap, gridWidth, gridHeight, gridStep);

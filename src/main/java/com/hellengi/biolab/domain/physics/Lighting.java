@@ -1,3 +1,4 @@
+
 package com.hellengi.biolab.domain.physics;
 
 import com.hellengi.biolab.config.YamlConfig;
@@ -27,11 +28,54 @@ import java.util.Arrays;
 @RequiredArgsConstructor
 public class Lighting {
 
-    private static final int MIN_RAYS_PER_SOURCE = 720;
-    private static final double RAYS_PER_GRID_EDGE_CELL = 2.0;
+    /**
+     * Area-light sampling makes shadows soft without blurring the final light map.
+     * Because every real source is represented by several virtual sources, each
+     * virtual source can use fewer angular rays than the previous hard-shadow pass.
+     */
+    private static final int MIN_RAYS_PER_SOURCE = 360;
+    private static final double RAYS_PER_GRID_EDGE_CELL = 1.25;
+
+    /**
+     * Radius of a point light source in light-map grid cells. Bigger value gives
+     * wider penumbra, but also makes shadows softer.
+     */
+    private static final double POINT_AREA_LIGHT_RADIUS_GRID_CELLS = 2.0;
+
+    /**
+     * Half-length of an edge/wall light source in light-map grid cells. Edge
+     * sources are sampled along the wall tangent and emit only into the tube.
+     */
+    private static final double EDGE_AREA_LIGHT_HALF_LENGTH_GRID_CELLS = 4.0;
     private static final double MAX_OPTICAL_DEPTH = 30.0;
     private static final double SOURCE_CLAMP_EPSILON = 0.001;
     private static final double DIRECTION_EPSILON = 1.0e-9;
+    private static final double EDGE_SOURCE_RADIUS_EPSILON = 0.001;
+
+    /**
+     * {offsetX, offsetY, weight}. Offsets are multiplied by
+     * POINT_AREA_LIGHT_RADIUS_GRID_CELLS * gridStep. Weights sum to 1.
+     */
+    private static final double[][] POINT_AREA_LIGHT_SAMPLES = {
+            { 0.0,  0.0, 0.36},
+            { 1.0,  0.0, 0.16},
+            {-1.0,  0.0, 0.16},
+            { 0.0,  1.0, 0.16},
+            { 0.0, -1.0, 0.16}
+    };
+
+    /**
+     * {tangentOffset, unused, weight}. Edge sources are sampled only along the
+     * wall tangent, so the soft shadow remains directional and does not leak
+     * behind the light source. Weights sum to 1.
+     */
+    private static final double[][] EDGE_AREA_LIGHT_SAMPLES = {
+            {-1.0, 0.0, 0.12},
+            {-0.5, 0.0, 0.20},
+            { 0.0, 0.0, 0.36},
+            { 0.5, 0.0, 0.20},
+            { 1.0, 0.0, 0.12}
+    };
 
     private final YamlConfig config;
     private final RuntimeOverrides runtimeConfig;
@@ -39,6 +83,13 @@ public class Lighting {
 
     private Integer lastDistributedSourceCount;
     private Integer lastDistributedStartAngle;
+
+    private double[] cachedLightMap;
+    private double[] cachedOpacityMap;
+    private int cachedGridStep;
+    private int cachedCols;
+    private int cachedRows;
+    private boolean lightCacheDirty = true;
 
     // -------------------------------------------------------------------------
     // Simulation tick
@@ -51,11 +102,14 @@ public class Lighting {
         for (LightSource source : world.getLightSources()) {
             source.updateAngle(tickScale);
         }
+
+        invalidateLightCache();
     }
 
     public void applyRuntimeConfig(SimulationWorld world) {
         syncGlobalLight(world);
         syncLightSources(world);
+        invalidateLightCache();
     }
 
     public void reset(SimulationWorld world) {
@@ -85,6 +139,71 @@ public class Lighting {
         }
 
         applyRuntimeConfig(world);
+    }
+
+    public void invalidateLightCache() {
+        lightCacheDirty = true;
+    }
+
+    public double[] getLightMap() {
+        ensureLightCache();
+        return cachedLightMap;
+    }
+
+    public double[] getOpacityMap() {
+        ensureLightCache();
+        return cachedOpacityMap;
+    }
+
+    public int getLightGridStep() {
+        ensureLightCache();
+        return cachedGridStep;
+    }
+
+    public int getLightGridCols() {
+        ensureLightCache();
+        return cachedCols;
+    }
+
+    public int getLightGridRows() {
+        ensureLightCache();
+        return cachedRows;
+    }
+
+    public double sampleLightAt(double x, double y) {
+        ensureLightCache();
+        return sampleLightMap(cachedLightMap, cachedCols, cachedRows, cachedGridStep, x, y);
+    }
+
+    private void ensureLightCache() {
+        int diameter = config.getTubeDiameter();
+        int gridStep = Math.max(1, config.getLight().getGridStep());
+        int cols = (int) Math.ceil(diameter / (double) gridStep);
+        int rows = (int) Math.ceil(diameter / (double) gridStep);
+
+        boolean geometryChanged = cachedLightMap == null
+                || cachedOpacityMap == null
+                || cachedGridStep != gridStep
+                || cachedCols != cols
+                || cachedRows != rows;
+
+        if (!lightCacheDirty && !geometryChanged) {
+            return;
+        }
+
+        cachedGridStep = gridStep;
+        cachedCols = cols;
+        cachedRows = rows;
+        cachedOpacityMap = buildOpacityMap(diameter, diameter, gridStep);
+        cachedLightMap = buildLightMapFromOpacityMap(
+                diameter,
+                diameter,
+                gridStep,
+                cols,
+                rows,
+                cachedOpacityMap
+        );
+        lightCacheDirty = false;
     }
 
     // -------------------------------------------------------------------------
@@ -149,59 +268,8 @@ public class Lighting {
         int safeGridStep = Math.max(1, gridStep);
         int cols = (int) Math.ceil(width  / (double) safeGridStep);
         int rows = (int) Math.ceil(height / (double) safeGridStep);
-        double[] lightMap = new double[cols * rows];
-
-        double ambient = world.getGlobalLight().getValue();
-        Arrays.fill(lightMap, ambient);
-
-        if (world.getLightSources().isEmpty()) {
-            return lightMap;
-        }
-
         double[] opacityMap = buildOpacityMap(width, height, safeGridStep);
-
-        double centerX = config.worldCenterX();
-        double centerY = config.worldCenterY();
-        double r0 = Math.max(1.0, config.getLight().getFalloffFactor());
-        double r0sq = r0 * r0;
-
-        int rayCount = rayCountFor(cols, rows);
-
-        for (LightSource source : world.getLightSources()) {
-            double brightness = source.getBrightness();
-            if (brightness <= 0.0) {
-                continue;
-            }
-
-            double sx = clamp(source.getX(centerX), SOURCE_CLAMP_EPSILON, width - SOURCE_CLAMP_EPSILON);
-            double sy = clamp(source.getY(centerY), SOURCE_CLAMP_EPSILON, height - SOURCE_CLAMP_EPSILON);
-
-            double[] sourceMap = new double[cols * rows];
-
-            for (int i = 0; i < rayCount; i++) {
-                double angle = 2.0 * Math.PI * i / rayCount;
-                castLightRay(
-                        sourceMap,
-                        opacityMap,
-                        cols,
-                        rows,
-                        safeGridStep,
-                        sx,
-                        sy,
-                        Math.cos(angle),
-                        Math.sin(angle),
-                        brightness,
-                        r0sq
-                );
-            }
-
-            for (int i = 0; i < lightMap.length; i++) {
-                lightMap[i] += sourceMap[i];
-            }
-        }
-
-        lightMap = blurLightMap(lightMap, cols, rows, 1, 1);
-        return lightMap;
+        return buildLightMapFromOpacityMap(width, height, safeGridStep, cols, rows, opacityMap);
     }
 
     public double sampleLightMap(double[] lightMap, int cols, int rows,
@@ -242,12 +310,146 @@ public class Lighting {
     // Internal helpers
     // -------------------------------------------------------------------------
 
+    private double[] buildLightMapFromOpacityMap(
+            int width,
+            int height,
+            int gridStep,
+            int cols,
+            int rows,
+            double[] opacityMap
+    ) {
+        double[] lightMap = new double[cols * rows];
+
+        double ambient = world.getGlobalLight().getValue();
+        Arrays.fill(lightMap, ambient);
+
+        if (world.getLightSources().isEmpty()) {
+            return lightMap;
+        }
+
+        double centerX = config.worldCenterX();
+        double centerY = config.worldCenterY();
+        double r0 = Math.max(1.0, config.getLight().getFalloffFactor());
+        double r0sq = r0 * r0;
+
+        int rayCount = rayCountFor(cols, rows);
+
+        for (LightSource source : world.getLightSources()) {
+            accumulateAreaLight(
+                    lightMap,
+                    opacityMap,
+                    cols,
+                    rows,
+                    gridStep,
+                    width,
+                    height,
+                    source,
+                    centerX,
+                    centerY,
+                    r0sq,
+                    rayCount
+            );
+        }
+
+        return lightMap;
+    }
+
     private int rayCountFor(int cols, int rows) {
         int edge = Math.max(cols, rows);
         return Math.max(
                 MIN_RAYS_PER_SOURCE,
                 (int) Math.ceil(2.0 * Math.PI * edge * RAYS_PER_GRID_EDGE_CELL)
         );
+    }
+
+    private void accumulateAreaLight(
+            double[] lightMap,
+            double[] opacityMap,
+            int cols,
+            int rows,
+            int gridStep,
+            int width,
+            int height,
+            LightSource source,
+            double centerX,
+            double centerY,
+            double r0sq,
+            int baseRayCount
+    ) {
+        double brightness = source.getBrightness();
+        if (brightness <= 0.0) {
+            return;
+        }
+
+        double sx = source.getX(centerX);
+        double sy = source.getY(centerY);
+        boolean edgeSource = isEdgeSource(source);
+        double[][] samples = edgeSource ? EDGE_AREA_LIGHT_SAMPLES : POINT_AREA_LIGHT_SAMPLES;
+
+        double tangentX = -Math.sin(source.getAngle());
+        double tangentY =  Math.cos(source.getAngle());
+
+        double pointRadius = POINT_AREA_LIGHT_RADIUS_GRID_CELLS * gridStep;
+        double edgeHalfLength = EDGE_AREA_LIGHT_HALF_LENGTH_GRID_CELLS * gridStep;
+
+        int rayCount = edgeSource
+                ? Math.max(MIN_RAYS_PER_SOURCE / 2, baseRayCount / 2)
+                : baseRayCount;
+        double angleSpan = edgeSource ? Math.PI : 2.0 * Math.PI;
+        double startAngle = edgeSource
+                ? source.getAngle() + Math.PI - angleSpan * 0.5
+                : 0.0;
+
+        double[] virtualSourceMap = new double[cols * rows];
+
+        for (int sampleIndex = 0; sampleIndex < samples.length; sampleIndex++) {
+            double[] sample = samples[sampleIndex];
+            double sampleX;
+            double sampleY;
+
+            if (edgeSource) {
+                double offset = sample[0] * edgeHalfLength;
+                sampleX = sx + tangentX * offset;
+                sampleY = sy + tangentY * offset;
+            } else {
+                sampleX = sx + sample[0] * pointRadius;
+                sampleY = sy + sample[1] * pointRadius;
+            }
+
+            sampleX = clamp(sampleX, SOURCE_CLAMP_EPSILON, width  - SOURCE_CLAMP_EPSILON);
+            sampleY = clamp(sampleY, SOURCE_CLAMP_EPSILON, height - SOURCE_CLAMP_EPSILON);
+
+            Arrays.fill(virtualSourceMap, 0.0);
+
+            // A tiny per-sample phase shift reduces angular banding without any blur.
+            double phaseShift = angleSpan * sampleIndex / (rayCount * samples.length);
+            double sampleBrightness = brightness * sample[2];
+
+            for (int i = 0; i < rayCount; i++) {
+                double angle = startAngle + phaseShift + angleSpan * (i + 0.5) / rayCount;
+                castLightRay(
+                        virtualSourceMap,
+                        opacityMap,
+                        cols,
+                        rows,
+                        gridStep,
+                        sampleX,
+                        sampleY,
+                        Math.cos(angle),
+                        Math.sin(angle),
+                        sampleBrightness,
+                        r0sq
+                );
+            }
+
+            for (int i = 0; i < lightMap.length; i++) {
+                lightMap[i] += virtualSourceMap[i];
+            }
+        }
+    }
+
+    private boolean isEdgeSource(LightSource source) {
+        return Math.abs(source.getOrbitRadius() - config.worldRadius()) < EDGE_SOURCE_RADIUS_EPSILON;
     }
 
     private void castLightRay(
@@ -369,76 +571,6 @@ public class Lighting {
         }
 
         return inside / (double) (samples * samples);
-    }
-
-    private double[] blurLightMap(double[] source, int cols, int rows, int radius, int passes) {
-        if (radius <= 0 || passes <= 0) {
-            return source;
-        }
-
-        double[] current = source;
-
-        for (int pass = 0; pass < passes; pass++) {
-            double[] horizontal = new double[current.length];
-            double[] vertical = new double[current.length];
-
-            // Horizontal pass
-            for (int row = 0; row < rows; row++) {
-                for (int col = 0; col < cols; col++) {
-                    double sum = 0.0;
-                    int count = 0;
-
-                    for (int dx = -radius; dx <= radius; dx++) {
-                        int sampleCol = col + dx;
-                        if (sampleCol < 0 || sampleCol >= cols) {
-                            continue;
-                        }
-
-                        sum += current[row * cols + sampleCol];
-                        count++;
-                    }
-
-                    horizontal[row * cols + col] = sum / count;
-                }
-            }
-
-            // Vertical pass
-            for (int row = 0; row < rows; row++) {
-                for (int col = 0; col < cols; col++) {
-                    double sum = 0.0;
-                    int count = 0;
-
-                    for (int dy = -radius; dy <= radius; dy++) {
-                        int sampleRow = row + dy;
-                        if (sampleRow < 0 || sampleRow >= rows) {
-                            continue;
-                        }
-
-                        sum += horizontal[sampleRow * cols + col];
-                        count++;
-                    }
-
-                    vertical[row * cols + col] = sum / count;
-                }
-            }
-
-            current = vertical;
-        }
-
-        return current;
-    }
-
-    /**
-     * @deprecated Use {@link #buildLightMap} + {@link #sampleLightMap} for batch queries.
-     */
-    @Deprecated
-    public double computeLocalLight(double x, double y) {
-        int diameter  = config.getTubeDiameter();
-        int gridStep  = Math.max(1, config.getLight().getGridStep());
-        int cols = (int) Math.ceil(diameter / (double) gridStep);
-        int rows = (int) Math.ceil(diameter / (double) gridStep);
-        double[] lightMap = buildLightMap(diameter, diameter, gridStep);
-        return sampleLightMap(lightMap, cols, rows, gridStep, x, y);
     }
 
     // -------------------------------------------------------------------------

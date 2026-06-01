@@ -3,9 +3,12 @@ package com.hellengi.biolab.domain.physics;
 import com.hellengi.biolab.config.YamlConfig;
 import com.hellengi.biolab.domain.model.Cell;
 import com.hellengi.biolab.domain.model.ImpulseEvent;
+import com.hellengi.biolab.domain.spatial.Quadtree;
+import com.hellengi.biolab.domain.spatial.SpatialBounds;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static com.hellengi.biolab.util.Utils.*;
@@ -18,19 +21,53 @@ public class MotionCollision {
     private final YamlConfig config;
 
     public void resolveAll(List<Cell> cells) {
-        for (int i = 0; i < cells.size(); i++) {
-            Cell first = cells.get(i);
+        if (cells == null || cells.isEmpty()) {
+            return;
+        }
 
-            if (first.isMarkedForRemoval()) continue;
-
-            for (int j = i + 1; j < cells.size(); j++) {
-                Cell second = cells.get(j);
-
-                if (second.isMarkedForRemoval()) continue;
-
-                resolvePair(first, first.getRadius(), second, second.getRadius());
+        Quadtree<Cell> cellIndex = new Quadtree<>(worldBounds(), this::cellBounds);
+        for (Cell cell : cells) {
+            if (!cell.isMarkedForRemoval()) {
+                cellIndex.insert(cell);
             }
         }
+
+        List<Cell> candidates = new ArrayList<>();
+        for (Cell first : cells) {
+            if (first.isMarkedForRemoval()) {
+                continue;
+            }
+
+            double firstRadius = first.getRadius();
+            candidates.clear();
+            cellIndex.query(SpatialBounds.fromCenterAndRadius(first.getX(), first.getY(), firstRadius), candidates);
+
+            for (Cell second : candidates) {
+                if (second == first || second.isMarkedForRemoval()) {
+                    continue;
+                }
+                if (second.getId() <= first.getId()) {
+                    continue;
+                }
+
+                resolvePair(first, firstRadius, second, second.getRadius());
+            }
+        }
+    }
+
+    private SpatialBounds cellBounds(Cell cell) {
+        return SpatialBounds.fromCenterAndRadius(cell.getX(), cell.getY(), cell.getRadius());
+    }
+
+    private SpatialBounds worldBounds() {
+        double margin = Math.max(
+                32.0,
+                config.getCell().getBaseRadius()
+                        + config.getCell().getEnergyToRadiusFactor()
+                        + config.getCollision().getMaxStepDistance()
+        );
+        double diameter = config.getTubeDiameter();
+        return SpatialBounds.fromMinMax(-margin, -margin, diameter + margin, diameter + margin);
     }
 
     private void resolvePair(Cell first, double firstRadius, Cell second, double secondRadius) {

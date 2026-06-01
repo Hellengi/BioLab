@@ -69,6 +69,7 @@ public class SimulationEngine {
         }
         synchronized (world) {
             world.addCell(cellFactory.createCell(requestDto));
+            lighting.invalidateLightCache();
         }
     }
 
@@ -121,6 +122,30 @@ public class SimulationEngine {
         }
     }
 
+    public LightProbeDto sampleLightAt(double x, double y) {
+        if (!Double.isFinite(x) || !Double.isFinite(y)) {
+            throw new IllegalArgumentException("Light probe coordinates must be finite");
+        }
+
+        synchronized (world) {
+            int diameter = baseConfig.getTubeDiameter();
+            int gridStep = Math.max(1, baseConfig.getLight().getGridStep());
+
+            double clampedX = Math.max(0.0, Math.min(diameter, x));
+            double clampedY = Math.max(0.0, Math.min(diameter, y));
+
+            double light = lighting.sampleLightAt(clampedX, clampedY);
+
+            return new LightProbeDto(
+                    clampedX,
+                    clampedY,
+                    light,
+                    world.getTick(),
+                    world.getTime()
+            );
+        }
+    }
+
     public SimulationSettingsDto updateSettings(SimulationSettingsDto dto) {
         synchronized (world) {
             runtimeConfig.apply(dto);
@@ -156,5 +181,6 @@ public class SimulationEngine {
         world.removeExpiredCellEvents();
         world.removeMarkedCells();
         world.removeMarkedFoods();
+        lighting.invalidateLightCache();
     }
 }

@@ -1,13 +1,22 @@
 /**
  * ui/panels/cursor.js
  * Всё, что связано с курсором над canvas:
- *  – определение освещённости под курсором (пробник света)
+ *  – запрос фактической освещённости под курсором у backend
  *  – привязка mouse-событий canvas
  *  – обновление DOM-индикатора освещённости
  */
 
 import { dom } from "../dom.js";
 import { state, setCursorLight } from "../../store/state.js";
+import { getLightAt } from "../../transport/api/simulation.js";
+
+const CURSOR_LIGHT_REQUEST_INTERVAL_MS = 60;
+
+let cursorInsideCanvas = false;
+let latestCursorPoint = null;
+let cursorLightTimer = null;
+let cursorLightInFlight = false;
+let latestRequestId = 0;
 
 // ── Привязка событий ─────────────────────────────────────────────────────────
 
@@ -24,52 +33,82 @@ export function bindCanvasMouseEvents(canvas) {
 // ── Обработчики событий ──────────────────────────────────────────────────────
 
 function _onCanvasMouseMove(event) {
-    const lighting = state.world?.lighting;
-    if (!lighting) return;
+    if (!state.world) return;
 
-    const rect = dom.canvas.getBoundingClientRect();
-    const cx   = event.clientX - rect.left;
-    const cy   = event.clientY - rect.top;
-
-    setCursorLight(sampleLightAt(cx, cy, lighting));
-    updateCursorReadout();
+    cursorInsideCanvas = true;
+    latestCursorPoint = canvasPointFromMouseEvent(event);
+    scheduleCursorLightRequest();
 }
 
 function _onCanvasMouseLeave() {
+    cursorInsideCanvas = false;
+    latestCursorPoint = null;
+
+    if (cursorLightTimer !== null) {
+        clearTimeout(cursorLightTimer);
+        cursorLightTimer = null;
+    }
+
     setCursorLight(null);
     updateCursorReadout();
 }
 
-// ── Пробник освещённости ─────────────────────────────────────────────────────
+// ── Backend-пробник освещённости ─────────────────────────────────────────────
 
-/**
- * Возвращает значение освещённости в точке (cx, cy) canvas
- * на основе lightMap текущего кадра.
- * @param {number} cx
- * @param {number} cy
- * @param {object} lighting — объект lighting из state.world
- * @returns {number|null}
- */
-function sampleLightAt(cx, cy, lighting) {
-    const { lightMap, gridStep, gridWidth, gridHeight, globalLight } = lighting;
+function canvasPointFromMouseEvent(event) {
+    const rect = dom.canvas.getBoundingClientRect();
 
-    if (!lightMap?.length || gridStep <= 0 || gridWidth <= 0 || gridHeight <= 0) {
-        return globalLight ?? null;
+    return {
+        x: (event.clientX - rect.left) * (dom.canvas.width / rect.width),
+        y: (event.clientY - rect.top) * (dom.canvas.height / rect.height),
+    };
+}
+
+function scheduleCursorLightRequest() {
+    if (cursorLightTimer !== null || cursorLightInFlight) {
+        return;
     }
 
-    const col        = Math.floor(cx / gridStep);
-    const row        = Math.floor(cy / gridStep);
-    const clampedCol = Math.max(0, Math.min(gridWidth  - 1, col));
-    const clampedRow = Math.max(0, Math.min(gridHeight - 1, row));
+    cursorLightTimer = setTimeout(() => {
+        cursorLightTimer = null;
+        requestCursorLight();
+    }, CURSOR_LIGHT_REQUEST_INTERVAL_MS);
+}
 
-    return lightMap[clampedRow * gridWidth + clampedCol] ?? globalLight;
+async function requestCursorLight() {
+    if (!cursorInsideCanvas || !latestCursorPoint) {
+        return;
+    }
+
+    const point = latestCursorPoint;
+    const requestId = ++latestRequestId;
+    cursorLightInFlight = true;
+
+    try {
+        const dto = await getLightAt(point.x, point.y);
+
+        if (!cursorInsideCanvas || requestId !== latestRequestId) {
+            return;
+        }
+
+        setCursorLight(dto.light ?? null);
+        updateCursorReadout();
+    } catch (err) {
+        console.error("Cursor light probe error", err);
+    } finally {
+        cursorLightInFlight = false;
+
+        if (cursorInsideCanvas && latestCursorPoint !== point) {
+            scheduleCursorLightRequest();
+        }
+    }
 }
 
 // ── Обновление DOM-индикатора ────────────────────────────────────────────────
 
 /**
  * Обновляет текстовый индикатор освещённости под курсором.
- * Вызывается при каждом движении мыши и при уходе с canvas.
+ * Вызывается после получения ответа backend и при уходе с canvas.
  */
 function updateCursorReadout() {
     if (!dom.cursorReadoutDisplay) return;

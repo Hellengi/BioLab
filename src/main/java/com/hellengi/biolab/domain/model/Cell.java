@@ -14,6 +14,7 @@ import java.util.List;
 @Getter
 public class Cell {
     public static final double CELL_OPACITY = 0.1;
+    private static final int MAX_EVENTS = 20;
 
     private final long id;
 
@@ -102,6 +103,9 @@ public class Cell {
 
     public void addEvent(Event event) {
         events.add(event);
+        while (events.size() > MAX_EVENTS) {
+            events.removeFirst();
+        }
     }
 
     public void setEvents(List<Event> events) {

@@ -9,7 +9,7 @@ spring:
 
 simulation:
   tick-rate-ms: 10
-  broadcast-fps: 100
+  broadcast-fps: 60
   diameter: 800
 
   time:
@@ -40,7 +40,7 @@ simulation:
   collision:
     cell-restitution: 1.0
     dead-cell-restitution: 0.05
-    max-substeps: 8
+    max-substeps: 4
     max-step-distance: 4.0
     position-slop: 0.01
     correction-percent: 0.8

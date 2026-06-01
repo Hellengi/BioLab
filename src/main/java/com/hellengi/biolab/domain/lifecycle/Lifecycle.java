@@ -4,6 +4,8 @@ import com.hellengi.biolab.config.YamlConfig;
 import com.hellengi.biolab.domain.SimulationWorld;
 import com.hellengi.biolab.domain.model.Cell;
 import com.hellengi.biolab.domain.model.Food;
+import com.hellengi.biolab.domain.spatial.Quadtree;
+import com.hellengi.biolab.domain.spatial.SpatialBounds;
 import com.hellengi.biolab.domain.settings.RuntimeOverrides;
 import com.hellengi.biolab.domain.spawn.FoodFactory;
 import lombok.RequiredArgsConstructor;
@@ -25,10 +27,12 @@ public class Lifecycle {
 
     public void process(SimulationWorld world, double tickScale) {
         List<Cell> newborns = new ArrayList<>();
+        Quadtree<Food> foodIndex = buildFoodIndex(world);
+
         for (Cell cell : world.getCells()) {
             if (cell.isMarkedForRemoval()) continue;
             if (cell.isAlive()) {
-                updateLivingCell(world, cell, tickScale, newborns);
+                updateLivingCell(world, cell, tickScale, newborns, foodIndex);
             } else {
                 updateDeadCell(world, cell, tickScale);
             }
@@ -36,10 +40,16 @@ public class Lifecycle {
         newborns.forEach(world::addCell);
     }
 
-    private void updateLivingCell(SimulationWorld world, Cell cell, double tickScale, List<Cell> newborns) {
+    private void updateLivingCell(
+            SimulationWorld world,
+            Cell cell,
+            double tickScale,
+            List<Cell> newborns,
+            Quadtree<Food> foodIndex
+    ) {
         updateDirectionFromVelocity(cell);
         cell.setEnergy(cell.getEnergy() - baseConfig.getCell().getEnergyDecayPerTick() * tickScale);
-        consumeFoodIfPossible(world, cell);
+        consumeFoodIfPossible(cell, foodIndex);
 
         if (cell.getEnergy() <= baseConfig.getCell().getDeathEnergy()) {
             lifecycleKiller.killCell(cell);
@@ -65,14 +75,18 @@ public class Lifecycle {
         cell.setMarkedForRemoval(true);
     }
 
-    private void consumeFoodIfPossible(SimulationWorld world, Cell cell) {
-        for (Food food : world.getFoods()) {
+    private void consumeFoodIfPossible(Cell cell, Quadtree<Food> foodIndex) {
+        double consumptionRadius = baseConfig.getFood().getConsumptionRadius();
+        List<Food> nearbyFoods = foodIndex.query(
+                SpatialBounds.fromCenterAndRadius(cell.getX(), cell.getY(), consumptionRadius)
+        );
+
+        for (Food food : nearbyFoods) {
             if (food.isMarkedForRemoval()) {
                 continue;
             }
             double dx = cell.getX() - food.getX();
             double dy = cell.getY() - food.getY();
-            double consumptionRadius = baseConfig.getFood().getConsumptionRadius();
             if (dx * dx + dy * dy > consumptionRadius * consumptionRadius) {
                 continue;
             }
@@ -88,6 +102,26 @@ public class Lifecycle {
                 food.setEnergy(food.getEnergy() - energyDeficit);
             }
         }
+    }
+
+    private Quadtree<Food> buildFoodIndex(SimulationWorld world) {
+        Quadtree<Food> foodIndex = new Quadtree<>(worldBounds(), this::foodBounds);
+        for (Food food : world.getFoods()) {
+            if (!food.isMarkedForRemoval()) {
+                foodIndex.insert(food);
+            }
+        }
+        return foodIndex;
+    }
+
+    private SpatialBounds foodBounds(Food food) {
+        return SpatialBounds.fromCenterAndRadius(food.getX(), food.getY(), 0.0);
+    }
+
+    private SpatialBounds worldBounds() {
+        double margin = Math.max(32.0, baseConfig.getFood().getConsumptionRadius());
+        double diameter = baseConfig.getTubeDiameter();
+        return SpatialBounds.fromMinMax(-margin, -margin, diameter + margin, diameter + margin);
     }
 
     private void updateDirectionFromVelocity(Cell cell) {
