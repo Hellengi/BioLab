@@ -7,25 +7,25 @@ import {state} from "../../store/state.js";
 
 async function refreshTemplateList() {
     const templates = await getTemplates();
-    if (!dom.cellTemplatesList) return;
+    if (!dom.strainsList) return;
 
-    dom.cellTemplatesList.innerHTML = "";
+    dom.strainsList.innerHTML = "";
     for (const cell of templates) {
         const option = document.createElement("option");
         option.value = String(cell.id);
         option.textContent = cell.name;
-        dom.cellTemplatesList.appendChild(option);
+        dom.strainsList.appendChild(option);
     }
 }
 
 
 export async function confirmSaveSelectedCell() {
-    if (!state.selectedCellTemplate) return;
+    if (!state.selectedStrain) return;
 
     const name = dom.saveSelectedCellNameInput?.value.trim();
     if (!name) { alert("Enter template name"); return; }
 
-    await saveTemplate(name, state.selectedCellTemplate);
+    await saveTemplate(name, state.selectedStrain);
     closeModal(dom.saveSelectedCellModal);
 }
 
@@ -51,7 +51,7 @@ export async function openLoadCellModal() {
 }
 
 export async function confirmLoadCell() {
-    const selectedId = dom.cellTemplatesList?.value;
+    const selectedId = dom.strainsList?.value;
     if (!selectedId) { alert("Select a cell template"); return; }
 
     state.cellDraft = await getTemplate(selectedId);
@@ -61,7 +61,7 @@ export async function confirmLoadCell() {
 }
 
 export async function deleteSelectedTemplate() {
-    const selectedId = dom.cellTemplatesList?.value;
+    const selectedId = dom.strainsList?.value;
     if (!selectedId) { alert("Select a template to delete"); return; }
     if (!confirm("Delete the selected template?")) return;
 

@@ -12,6 +12,7 @@ const TAB_PANELS = {
 };
 
 let _activeTab = "control";
+let _lastTab = "control";
 
 export function initTabs() {
     const tabButtons = document.querySelectorAll(".sidebar-tab");
@@ -27,6 +28,10 @@ export function initTabs() {
 export function switchTab(tabKey) {
     if (tabKey === "selected" && dom.selectedCellTab?.disabled) {
         return;
+    }
+
+    if (tabKey !== "selected") {
+        _lastTab = tabKey;
     }
 
     _activeTab = tabKey;
@@ -62,4 +67,8 @@ export function setSelectedTabEnabled(enabled) {
 
 export function getActiveTab() {
     return _activeTab;
+}
+
+export function getLastTab() {
+    return _lastTab;
 }

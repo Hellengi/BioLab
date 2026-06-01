@@ -18,15 +18,15 @@ public class LightSource {
         this.angle = angle;
     }
 
-    public void advanceAngle(double tickScale) {
+    public void updateAngle(double tickScale) {
         this.angle = (this.angle + orbitSpeed * tickScale) % (2 * Math.PI);
     }
 
-    public double currentX(double centerX) {
+    public double getX(double centerX) {
         return centerX + Math.cos(angle) * orbitRadius;
     }
 
-    public double currentY(double centerY) {
+    public double getY(double centerY) {
         return centerY + Math.sin(angle) * orbitRadius;
     }
 }

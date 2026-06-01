@@ -24,7 +24,7 @@ public class SnapshotEntity {
 
     @Lob
     @Column(nullable = false, columnDefinition = "TEXT")
-    private String stateJson;
+    private String worldJson;
 
     @Lob
     @Column(nullable = false, columnDefinition = "TEXT")
@@ -33,10 +33,10 @@ public class SnapshotEntity {
     public SnapshotEntity() {
     }
 
-    public SnapshotEntity(String name, LocalDateTime createdAt, String stateJson, String configJson) {
+    public SnapshotEntity(String name, LocalDateTime createdAt, String worldJson, String configJson) {
         this.name = name;
         this.createdAt = createdAt;
-        this.stateJson = stateJson;
+        this.worldJson = worldJson;
         this.configJson = configJson;
     }
 

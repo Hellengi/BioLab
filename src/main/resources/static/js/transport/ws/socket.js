@@ -1,5 +1,5 @@
 import { refreshSelection } from "../../ui/tabs/selection.js";
-import {setWorld, state} from "../../store/state.js";
+import {setWorld, setMetrics, resetMetrics} from "../../store/state.js";
 import {updateStats} from "../../store/actions.js";
 
 let socket = null;
@@ -11,14 +11,19 @@ export function connectSocket() {
         console.log("WebSocket connected");
     };
     socket.onmessage = (event) => {
-        const world = JSON.parse(event.data);
-        setWorld(world);
-        refreshSelection();
-        updateStats();
+        const message = JSON.parse(event.data);
+        if (message.type === "world") {
+            setWorld(message);
+            refreshSelection();
+            updateStats();
+        }
+        else if (message.type === "metrics") {
+            setMetrics(message);
+        }
     };
     socket.onclose = () => {
+        resetMetrics();
         console.log("WebSocket disconnected. Reconnecting...");
-        state.tps = 0;
         setTimeout(connectSocket, 1000);
     };
     socket.onerror = (error) => {

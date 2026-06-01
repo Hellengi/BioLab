@@ -1,58 +1,42 @@
 package com.hellengi.biolab.domain;
 
-import com.hellengi.biolab.api.dto.CellDto;
-import com.hellengi.biolab.api.dto.FoodDto;
-import com.hellengi.biolab.api.dto.SimulationSettingsDto;
-import com.hellengi.biolab.api.dto.SimulationWorldDto;
-import com.hellengi.biolab.api.dto.SpawnCellRequestDto;
-import com.hellengi.biolab.api.websocket.SimulationWorldBroadcaster;
 import com.hellengi.biolab.config.YamlConfig;
+import com.hellengi.biolab.domain.lifecycle.Lifecycle;
+import com.hellengi.biolab.domain.physics.Lighting;
+import com.hellengi.biolab.domain.physics.Motion;
 import com.hellengi.biolab.domain.settings.RuntimeOverrides;
-import com.hellengi.biolab.domain.settings.SimulationSettings;
 import com.hellengi.biolab.domain.spawn.CellFactory;
 import com.hellengi.biolab.domain.spawn.FoodFactory;
-import com.hellengi.biolab.mapper.api.CellMapper;
-import com.hellengi.biolab.mapper.api.FoodMapper;
-import com.hellengi.biolab.mapper.api.SimulationWorldMapper;
+import com.hellengi.biolab.domain.spawn.WorldValidator;
+import com.hellengi.biolab.dto.*;
+import com.hellengi.biolab.dto.domain_mapper.SimulationSettingsMapper;
+import com.hellengi.biolab.dto.domain_mapper.SimulationWorldMapper;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-/**
- * The only public entry point that can trigger simulation mutations.
- * Package-local processors execute ordered stages only while this engine holds the world lock.
- */
 @Service
 @RequiredArgsConstructor
 public class SimulationEngine {
     private final YamlConfig baseConfig;
     private final RuntimeOverrides runtimeConfig;
-    private final SimulationSettings simulationSettings;
     private final SimulationWorld world;
     private final SimulationClock clock;
     private final CellFactory cellFactory;
     private final FoodFactory foodFactory;
-    private final CellMapper cellMapper;
-    private final FoodMapper foodMapper;
-    private final SimulationWorldMapper stateMapper;
-    private final SimulationWorldBroadcaster stateBroadcaster;
-    private final LightingProcessor lightingProcessor;
-    private final PhysicsProcessor physicsProcessor;
-    private final CellLifecycleProcessor cellLifecycleProcessor;
-    private final FoodSpawnProcessor foodSpawnProcessor;
+    private final SimulationWorldMapper worldMapper;
+    private final SimulationSettingsMapper settingsMapper;
+    private final Lighting lighting;
+    private final Motion motion;
+    private final Lifecycle lifecycle;
     private final WorldValidator worldValidator;
-
-    public record PersistentSnapshot(SimulationWorldDto state, SimulationSettingsDto settings) {
-    }
 
     @PostConstruct
     private void init() {
         reset();
     }
 
-    /** Called only by SimulationLoop. */
-    public void poll() {
-        SimulationWorldDto snapshot = null;
+    public boolean poll() {
         synchronized (world) {
             double speedFactor = runtimeConfig.getSpeedFactor();
             if (speedFactor > 0.0) {
@@ -61,16 +45,9 @@ public class SimulationEngine {
                     performSimulationStep(batch.tickScale());
                 }
             } else {
-                clock.resetStepReference();
+                clock.resetSimulationStepTimer();
             }
-
-            if (clock.isBroadcastDue()) {
-                lightingProcessor.syncConfiguredState(world);
-                snapshot = currentState();
-            }
-        }
-        if (snapshot != null) {
-            stateBroadcaster.broadcast(snapshot);
+            return clock.isBroadcastDue();
         }
     }
 
@@ -78,13 +55,11 @@ public class SimulationEngine {
         synchronized (world) {
             world.clear();
             clock.reset();
-            for (int i = 0; i < runtimeConfig.getInitialCellCount(); i++) {
-                world.addCell(cellFactory.createRandomCell());
-            }
-            for (int i = 0; i < baseConfig.getFood().getStart(); i++) {
-                world.addFood(foodFactory.createRandomFood());
-            }
-            lightingProcessor.reset(world);
+            int cellAmount = runtimeConfig.getInitialCellCount();
+            int foodAmount = baseConfig.getFood().getStart();
+            cellFactory.fill(world, cellAmount);
+            foodFactory.fill(world, foodAmount);
+            lighting.reset(world);
         }
     }
 
@@ -97,112 +72,88 @@ public class SimulationEngine {
         }
     }
 
-    public void loadSnapshot(SimulationWorldDto stateDto, SimulationSettingsDto settingsDto) {
-        if (stateDto == null) {
+    public void loadSnapshot(SnapshotDto snapshot) {
+        if (snapshot == null || snapshot.world() == null) {
             throw new IllegalArgumentException("Simulation snapshot must not be null");
         }
+        SimulationWorldDto worldDto = snapshot.world();
         synchronized (world) {
-            runtimeConfig.applySnapshot(settingsDto);
+            runtimeConfig.apply(snapshot.settings());
             runtimeConfig.pause();
             world.clear();
-            world.setTick(stateDto.tick());
-            world.setFoodSpawnProgress(stateDto.foodSpawnProgress());
-            double phaseTicks = stateDto.globalLightCycleElapsedTicks();
-            world.setGlobalLightCycleElapsedTicks(phaseTicks);
-            for (CellDto dto : stateDto.cells()) {
-                world.addCell(cellMapper.toDomain(dto));
-            }
-            for (FoodDto dto : stateDto.foods()) {
-                world.addFood(foodMapper.toDomain(dto));
-            }
-            lightingProcessor.loadSnapshot(world, stateDto.lighting());
+            world.setTick(worldDto.tick());
+            world.setTime(worldDto.time());
+            world.setFoodSpawnBudget(worldDto.foodSpawnProgress());
+            cellFactory.loadSnapshot(world, worldDto.cells());
+            foodFactory.loadSnapshot(world, worldDto.foods());
+            lighting.loadSnapshot(world, worldDto.lighting());
             clock.reset();
         }
     }
 
-    public SimulationWorldDto getState() {
+    public SnapshotDto createSnapshot() {
         synchronized (world) {
-            lightingProcessor.syncConfiguredState(world);
-            return currentState();
+            return new SnapshotDto(
+                    null,
+                    null,
+                    null,
+                    worldMapper.toDto(world),
+                    settingsMapper.toDto(runtimeConfig)
+            );
         }
     }
 
-    public PersistentSnapshot createPersistentSnapshot() {
+    public SimulationMetricsDto getMetricsDto() {
         synchronized (world) {
-            lightingProcessor.syncConfiguredState(world);
-            return new PersistentSnapshot(currentState(), simulationSettings.getConfig());
+            return new SimulationMetricsDto(clock.getMeasuredTps());
         }
     }
 
-    public SimulationSettingsDto getConfig() {
+    public SimulationWorldDto getWorldDto() {
         synchronized (world) {
-            return simulationSettings.getConfig();
+            return worldMapper.toDto(world);
         }
     }
 
-    public SimulationSettingsDto updateConfig(SimulationSettingsDto configDto) {
+    public SimulationSettingsDto getSettingsDto() {
         synchronized (world) {
-            SimulationSettingsDto updated = simulationSettings.updateConfig(configDto);
-            lightingProcessor.syncConfiguredState(world);
+            return settingsMapper.toDto(runtimeConfig);
+        }
+    }
+
+    public SimulationSettingsDto updateSettings(SimulationSettingsDto dto) {
+        synchronized (world) {
+            runtimeConfig.apply(dto);
+            lighting.applyRuntimeConfig(world);
             if (runtimeConfig.getSpeedFactor() <= 0.0) {
-                clock.resetStepReference();
+                clock.resetSimulationStepTimer();
             }
-            return updated;
+            return settingsMapper.toDto(runtimeConfig);
         }
     }
 
-    public SimulationSettingsDto resetConfigToDefaults() {
+    public SimulationSettingsDto resetSettings() {
         synchronized (world) {
-            SimulationSettingsDto defaults = simulationSettings.resetToDefaults();
-            world.setGlobalLightCycleElapsedTicks(0.0);
-            lightingProcessor.syncConfiguredState(world);
+            runtimeConfig.reset();
+            world.getGlobalLight().resetTick();
+            lighting.applyRuntimeConfig(world);
             if (runtimeConfig.getSpeedFactor() <= 0.0) {
-                clock.resetStepReference();
+                clock.resetSimulationStepTimer();
             }
-            return defaults;
+            return settingsMapper.toDto(runtimeConfig);
         }
-    }
-
-    private SimulationWorldDto currentState() {
-        return stateMapper.toDto(world, clock.measuredTps(), runtimeConfig.getSpeedFactor() > 0.0);
     }
 
     private void performSimulationStep(double tickScale) {
-        advanceTick();
-        processLighting(tickScale);
-        processPhysics(tickScale);
-        processCells(tickScale);
-        processPeriodicFood(tickScale);
-        removeInvalidObjects();
-        removeMarkedObjects();
-    }
-
-    private void advanceTick() {
-        world.incrementTick();
+        world.incrementTick(baseConfig.getTickRateMs() / 1000.0 * tickScale);
         clock.recordProcessedTick();
-    }
-
-    private void processLighting(double tickScale) {
-        lightingProcessor.process(world, tickScale);
-    }
-
-    private void processPhysics(double tickScale) {
-        physicsProcessor.process(world, tickScale);
-    }
-
-    private void processCells(double tickScale) {
-        cellLifecycleProcessor.process(world, tickScale);
-    }
-
-    private void processPeriodicFood(double tickScale) {
-        foodSpawnProcessor.process(world, tickScale);
-    }
-
-    private void removeInvalidObjects() {
+        lighting.process(world, tickScale);
+        motion.process(world, tickScale);
+        lifecycle.process(world, tickScale);
+        foodFactory.process(world, tickScale);
         worldValidator.markInvalidObjects(world);
-    }
-
-    private void removeMarkedObjects() {
+        world.assignMissingCellEventTimes();
+        world.removeExpiredCellEvents();
         world.removeMarkedCells();
         world.removeMarkedFoods();
     }

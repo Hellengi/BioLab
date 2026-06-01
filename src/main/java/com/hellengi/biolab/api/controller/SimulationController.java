@@ -1,10 +1,10 @@
 package com.hellengi.biolab.api.controller;
 
-import com.hellengi.biolab.api.dto.SimulationSettingsDto;
-import com.hellengi.biolab.api.dto.SimulationWorldDto;
-import com.hellengi.biolab.api.dto.SnapshotDto;
 import com.hellengi.biolab.database.service.SnapshotService;
 import com.hellengi.biolab.domain.SimulationEngine;
+import com.hellengi.biolab.dto.SimulationSettingsDto;
+import com.hellengi.biolab.dto.SimulationWorldDto;
+import com.hellengi.biolab.dto.SnapshotDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -25,24 +25,24 @@ public class SimulationController {
         return ResponseEntity.ok(Map.of("status", "reset"));
     }
 
-    @GetMapping("/state")
+    @GetMapping("/world")
     public ResponseEntity<SimulationWorldDto> state() {
-        return ResponseEntity.ok(simulationEngine.getState());
+        return ResponseEntity.ok(simulationEngine.getWorldDto());
     }
 
     @GetMapping("/config")
     public ResponseEntity<SimulationSettingsDto> config() {
-        return ResponseEntity.ok(simulationEngine.getConfig());
+        return ResponseEntity.ok(simulationEngine.getSettingsDto());
     }
 
     @PutMapping("/config")
     public ResponseEntity<SimulationSettingsDto> updateConfig(@RequestBody SimulationSettingsDto configDto) {
-        return ResponseEntity.ok(simulationEngine.updateConfig(configDto));
+        return ResponseEntity.ok(simulationEngine.updateSettings(configDto));
     }
 
     @PostMapping("/config/reset")
-    public ResponseEntity<SimulationSettingsDto> resetConfigToDefaults() {
-        return ResponseEntity.ok(simulationEngine.resetConfigToDefaults());
+    public ResponseEntity<SimulationSettingsDto> resetConfig() {
+        return ResponseEntity.ok(simulationEngine.resetSettings());
     }
 
     @PostMapping("/snapshots")
@@ -57,7 +57,7 @@ public class SimulationController {
 
     @PostMapping("/snapshots/{id}/load")
     public ResponseEntity<Map<String, String>> load(@PathVariable Long id) {
-        snapshotService.loadSnapshot(id);
+        snapshotService.load(id);
         return ResponseEntity.ok(Map.of("status", "loaded"));
     }
 

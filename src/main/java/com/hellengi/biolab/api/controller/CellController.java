@@ -1,9 +1,9 @@
 package com.hellengi.biolab.api.controller;
 
-import com.hellengi.biolab.api.dto.CellTemplateDto;
-import com.hellengi.biolab.api.dto.SpawnCellRequestDto;
-import com.hellengi.biolab.database.service.CellTemplateService;
+import com.hellengi.biolab.database.service.StrainService;
 import com.hellengi.biolab.domain.SimulationEngine;
+import com.hellengi.biolab.dto.StrainDto;
+import com.hellengi.biolab.dto.SpawnCellRequestDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -12,30 +12,30 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/cells")
+@RequestMapping("/api/cell")
 @RequiredArgsConstructor
 public class CellController {
     private final SimulationEngine simulationEngine;
-    private final CellTemplateService cellTemplateService;
+    private final StrainService strainService;
 
-    @GetMapping("/templates")
-    public ResponseEntity<List<CellTemplateDto>> listTemplates() {
-        return ResponseEntity.ok(cellTemplateService.list());
+    @GetMapping("/strains")
+    public ResponseEntity<List<StrainDto>> list() {
+        return ResponseEntity.ok(strainService.list());
     }
 
-    @GetMapping("/templates/{id}")
-    public ResponseEntity<CellTemplateDto> getTemplate(@PathVariable Long id) {
-        return ResponseEntity.ok(cellTemplateService.get(id));
+    @GetMapping("/strains/{id}")
+    public ResponseEntity<StrainDto> get(@PathVariable Long id) {
+        return ResponseEntity.ok(strainService.get(id));
     }
 
-    @PostMapping("/templates")
-    public ResponseEntity<CellTemplateDto> saveTemplate(@RequestParam String name, @RequestBody CellTemplateDto cell) {
-        return ResponseEntity.ok(cellTemplateService.save(name, cell));
+    @PostMapping("/strains")
+    public ResponseEntity<StrainDto> save(@RequestParam String name, @RequestBody StrainDto cell) {
+        return ResponseEntity.ok(strainService.save(name, cell));
     }
 
-    @DeleteMapping("/templates/{id}")
-    public ResponseEntity<Map<String, String>> deleteTemplate(@PathVariable Long id) {
-        cellTemplateService.delete(id);
+    @DeleteMapping("/strains/{id}")
+    public ResponseEntity<Map<String, String>> delete(@PathVariable Long id) {
+        strainService.delete(id);
         return ResponseEntity.ok(Map.of("status", "deleted"));
     }
 

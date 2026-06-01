@@ -1,12 +1,12 @@
 package com.hellengi.biolab.database.service;
 
-import com.hellengi.biolab.api.dto.SimulationSettingsDto;
-import com.hellengi.biolab.api.dto.SimulationWorldDto;
-import com.hellengi.biolab.api.dto.SnapshotDto;
 import com.hellengi.biolab.database.entity.SnapshotEntity;
+import com.hellengi.biolab.dto.database_mapper.SnapshotMapper;
 import com.hellengi.biolab.database.repository.SnapshotRepository;
 import com.hellengi.biolab.domain.SimulationEngine;
-import com.hellengi.biolab.mapper.database.SnapshotMapper;
+import com.hellengi.biolab.dto.SimulationSettingsDto;
+import com.hellengi.biolab.dto.SimulationWorldDto;
+import com.hellengi.biolab.dto.SnapshotDto;
 import com.hellengi.biolab.util.NameValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -26,12 +26,12 @@ public class SnapshotService {
 
     @Transactional
     public SnapshotDto save(String name) {
-        SimulationEngine.PersistentSnapshot snapshot = simulationEngine.createPersistentSnapshot();
+        SnapshotDto snapshot = simulationEngine.createSnapshot();
         try {
             SnapshotEntity entity = snapshotMapper.toEntity(
                     NameValidator.normalize(name, "Snapshot name", 200),
                     LocalDateTime.now(),
-                    jsonMapper.writeValueAsString(snapshot.state()),
+                    jsonMapper.writeValueAsString(snapshot.world()),
                     jsonMapper.writeValueAsString(snapshot.settings())
             );
             return snapshotMapper.toDto(snapshotRepository.save(entity));
@@ -48,13 +48,19 @@ public class SnapshotService {
     }
 
     @Transactional
-    public void loadSnapshot(Long id) {
+    public void load(Long id) {
         SnapshotEntity snapshot = snapshotRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Snapshot not found: " + id));
         try {
-            SimulationWorldDto state = jsonMapper.readValue(snapshot.getStateJson(), SimulationWorldDto.class);
+            SimulationWorldDto world = jsonMapper.readValue(snapshot.getWorldJson(), SimulationWorldDto.class);
             SimulationSettingsDto settings = jsonMapper.readValue(snapshot.getConfigJson(), SimulationSettingsDto.class);
-            simulationEngine.loadSnapshot(state, settings);
+            simulationEngine.loadSnapshot(new SnapshotDto(
+                    snapshot.getId(),
+                    snapshot.getName(),
+                    snapshot.getCreatedAt(),
+                    world,
+                    settings)
+            );
         } catch (Exception e) {
             throw new RuntimeException("Failed to load simulation snapshot", e);
         }

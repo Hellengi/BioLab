@@ -4,8 +4,6 @@ import com.hellengi.biolab.config.YamlConfig;
 import com.hellengi.biolab.domain.model.Genome;
 import com.hellengi.biolab.domain.settings.RuntimeOverrides;
 import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.Random;
@@ -13,8 +11,6 @@ import java.util.Random;
 @Service
 @RequiredArgsConstructor
 public class Mutator {
-    private static final Logger log = LoggerFactory.getLogger(Mutator.class);
-
     private final YamlConfig config;
     private final RuntimeOverrides runtimeConfig;
     private final Random random = new Random();

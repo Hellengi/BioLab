@@ -32,7 +32,7 @@ simulation:
   light:
     max-turbidity-attenuation: 0.018
     global-cycle-enabled: false
-    local-sources-enabled: false
+    local-sources-enabled: true
     orbit-speed-max-radians-per-tick: 0.01
     falloff-factor: 400.0
     grid-step: 8
@@ -96,7 +96,7 @@ simulation:
       max: 100
       step: 1
     global-light:
-      initial: 75
+      initial: 0
       min: 0
       max: 100
       step: 1
@@ -126,12 +126,12 @@ simulation:
       max: 315
       step: 45
     light-source-brightness:
-      initial: 80
+      initial: 100
       min: 0
       max: 100
       step: 1
     light-source-orbit-radius:
-      initial: 50
+      initial: 100
       min: 0
       max: 100
       step: 1

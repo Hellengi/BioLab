@@ -10,12 +10,12 @@ import { getJson, postJson, del } from "./_http.js";
 
 /** Возвращает список всех сохранённых шаблонов. */
 export function getTemplates() {
-    return getJson("/api/cells/templates");
+    return getJson("/api/cell/strains");
 }
 
 /** Возвращает шаблон по id. */
 export function getTemplate(id) {
-    return getJson(`/api/cells/templates/${id}`);
+    return getJson(`/api/cell/strains/${id}`);
 }
 
 /**
@@ -25,14 +25,14 @@ export function getTemplate(id) {
  */
 export function saveTemplate(name, template) {
     return postJson(
-        `/api/cells/templates?name=${encodeURIComponent(name)}`,
+        `/api/cell/strains?name=${encodeURIComponent(name)}`,
         template
     );
 }
 
 /** Удаляет шаблон по id. */
 export function deleteTemplate(id) {
-    return del(`/api/cells/templates/${id}`);
+    return del(`/api/cell/strains/${id}`);
 }
 
 // ── Спавн ─────────────────────────────────────────────────────────────────────
@@ -44,7 +44,7 @@ export function deleteTemplate(id) {
  * @param {object} cell
  */
 export function spawnCell(x, y, cell) {
-    return postJson("/api/cells/spawn", {
+    return postJson("/api/cell/spawn", {
         x,
         y,
         genome:           cell.genome,

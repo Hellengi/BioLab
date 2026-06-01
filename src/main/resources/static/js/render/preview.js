@@ -1,12 +1,8 @@
 import {cssVar, preparePreviewCanvas} from "../core/utils.js";
 import { dom } from "../ui/dom.js";
 import {state} from "../store/state.js";
-import {
-    getCollisionImpulseHistory,
-} from "../ui/tabs/selection.js";
 
 const PREVIEW_RADIUS = 42;
-const COLLISION_FADE_SECONDS = 1.0;
 const IMPULSE_ARROW_SCALE = 0.25;
 const FORCE_ARROW_SCALE = 6.0;
 const DRAG_ARROW_SCALE = 6.0;
@@ -97,11 +93,11 @@ function _fillLegend(legend) {
     });
 }
 
-export function drawSelectedCellPreview(worldCell, cellTemplate) {
+export function drawSelectedCellPreview(worldCell, strain) {
     const prepared = preparePreviewCanvas(dom.selectedCellPreviewCtx, dom.selectedCellPreviewCanvas);
     if (!prepared) return;
 
-    if (!worldCell || !cellTemplate) return;
+    if (!worldCell || !strain) return;
 
     const ctx2 = dom.selectedCellPreviewCtx;
     const { width, height } = prepared;
@@ -109,9 +105,9 @@ export function drawSelectedCellPreview(worldCell, cellTemplate) {
     const cy = height / 2;
 
     if (_forceViewEnabled) {
-        _drawForceMode(ctx2, worldCell, cellTemplate, cx, cy, width, height);
+        _drawForceMode(ctx2, worldCell, strain, cx, cy, width, height);
     } else {
-        _drawNormalMode(ctx2, worldCell, cellTemplate, cx, cy);
+        _drawNormalMode(ctx2, worldCell, strain, cx, cy);
     }
 }
 
@@ -130,10 +126,10 @@ function _updateLegendGravRow(isSinking) {
     if (labelEl) { labelEl.textContent = label; }
 }
 
-function _drawNormalMode(ctx, worldCell, cellTemplate, cx, cy) {
+function _drawNormalMode(ctx, worldCell, strain, cx, cy) {
     ctx.beginPath();
     ctx.arc(cx, cy, PREVIEW_RADIUS, 0, Math.PI * 2);
-    ctx.fillStyle = `hsl(${cellTemplate.genome.colorHue}, ${cellTemplate.genome.saturation}%, ${cellTemplate.genome.lightness}%)`;
+    ctx.fillStyle = `hsl(${strain.genome.colorHue}, ${strain.genome.saturation}%, ${strain.genome.lightness}%)`;
     ctx.fill();
 }
 
@@ -143,7 +139,28 @@ function _directionFromDto(x, y) {
     return { x, y };
 }
 
-function _drawForceMode(ctx, worldCell, cellTemplate, cx, cy, width, height) {
+const EVENT_TYPE_IMPULSE = "impulse";
+
+function _getImpulseEvents(worldCell) {
+    return (worldCell.events ?? []).filter(event => event.type === EVENT_TYPE_IMPULSE);
+}
+
+function _eventAlpha(event) {
+    const currentTime = state.world?.time;
+
+    if (!Number.isFinite(currentTime) || !Number.isFinite(event.time)) {
+        return 1.0;
+    }
+
+    const duration = Number.isFinite(event.duration) && event.duration > 0
+        ? event.duration
+        : 1.0;
+
+    const age = Math.max(0.0, currentTime - event.time);
+    return Math.max(0.0, Math.min(1.0, 1.0 - age / duration));
+}
+
+function _drawForceMode(ctx, worldCell, strain, cx, cy, width, height) {
     ctx.beginPath();
     ctx.arc(cx, cy, PREVIEW_RADIUS, 0, Math.PI * 2);
     ctx.fillStyle = '#555a6a';
@@ -166,20 +183,18 @@ function _drawForceMode(ctx, worldCell, cellTemplate, cx, cy, width, height) {
 
     _updateLegendGravRow(isSinking);
 
-    for (const impulse of getCollisionImpulseHistory()) {
-        const alpha = Math.max(
-            0.0,
-            Math.min(1.0, 1.0 - impulse.ageSeconds / COLLISION_FADE_SECONDS)
-        );
+    for (const impulse of _getImpulseEvents(worldCell)) {
+        const alpha = _eventAlpha(impulse);
+
         const hasDirection =
-            Number.isFinite(impulse.dirX) &&
-            Number.isFinite(impulse.dirY) &&
-            (impulse.dirX !== 0 || impulse.dirY !== 0);
+            Number.isFinite(impulse.normalX) &&
+            Number.isFinite(impulse.normalY) &&
+            (impulse.normalX !== 0 || impulse.normalY !== 0);
 
         if (alpha > 0.0 && hasDirection) {
-            const dirX = impulse.dirX;
-            const dirY = impulse.dirY;
-            const impMag = Math.min(MAX_ARROW, Math.abs(impulse.impulse) * IMPULSE_ARROW_SCALE);
+            const dirX = impulse.normalX;
+            const dirY = impulse.normalY;
+            const impMag = Math.min(MAX_ARROW, Math.abs(impulse.impulse ?? 0) * IMPULSE_ARROW_SCALE);
 
             if (impMag > 1) {
                 const contactX = cx - dirX * PREVIEW_RADIUS;

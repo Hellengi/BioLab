@@ -1,13 +1,13 @@
 package com.hellengi.biolab.domain;
 
 import com.hellengi.biolab.config.YamlConfig;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
-/** Runtime timing and broadcast metrics; it is intentionally not snapshot state. */
 @Component
 @RequiredArgsConstructor
-final class SimulationClock {
+public class SimulationClock {
     private static final long MAX_STEPS_PER_POLL = 100L;
     private static final long NANOS_PER_MILLISECOND = 1_000_000L;
 
@@ -16,6 +16,7 @@ final class SimulationClock {
     private long lastStepTimeNs = System.nanoTime();
     private long lastBroadcastTimeMs = 0L;
     private long ticksProcessedInWindow = 0L;
+    @Getter
     private long measuredTps = 0L;
     private long tpsWindowStartNs = System.nanoTime();
 
@@ -61,12 +62,11 @@ final class SimulationClock {
         return true;
     }
 
-    long measuredTps() {
-        return measuredTps;
-    }
-
-    void resetStepReference() {
+    void resetSimulationStepTimer() {
         lastStepTimeNs = System.nanoTime();
+        ticksProcessedInWindow = 0L;
+        measuredTps = 0L;
+        tpsWindowStartNs = System.nanoTime();
     }
 
     void reset() {
@@ -97,7 +97,23 @@ final class SimulationClock {
         return 1.0;
     }
 
-    record StepBatch(long steps, double tickScale) {
+    static final class StepBatch {
+        private final long steps;
+        private final double tickScale;
+
+        StepBatch(long steps, double tickScale) {
+            this.steps = steps;
+            this.tickScale = tickScale;
+        }
+
+        long steps() {
+            return steps;
+        }
+
+        double tickScale() {
+            return tickScale;
+        }
+
         static StepBatch none() {
             return new StepBatch(0L, 0.0);
         }

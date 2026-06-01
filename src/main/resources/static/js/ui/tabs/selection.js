@@ -1,116 +1,62 @@
 import { dom } from "../dom.js";
 import { formatTwoDecimals, getCellRgbString, setText } from "../../core/utils.js";
 import { drawSelectedCellPreview } from "../../render/preview.js";
-import { getActiveTab, setSelectedTabEnabled, switchTab } from "./_tabs.js";
+import {getActiveTab, getLastTab, setSelectedTabEnabled, switchTab} from "./_tabs.js";
 import {getSelectedCell, state} from "../../store/state.js";
 import { clearTooltipElement, setTooltipPair, setTooltipValue } from "../cell-info.js";
 
-let _lastCollisionImpulse = null;
-let _collisionImpulseHistory = [];
-let lastSelectedCollisionImpulseId = null;
-const COLLISION_FADE_SECONDS = 1.0;
-
-function recordCollisionImpulse(impulse, dirX, dirY) {
-    const collisionImpulse = {
-        impulse,
-        dirX,
-        dirY,
-        ageSeconds: 0.0,
-        lastWorldTick: state.world?.tick ?? null,
-    };
-
-    _lastCollisionImpulse = collisionImpulse;
-    _collisionImpulseHistory.push(collisionImpulse);
-    _refreshCollisionImpulseDisplay();
-}
-
-function _refreshCollisionImpulseDisplay() {
+function refreshCollisionImpulseDisplay(cell) {
     if (!dom.selectedCellCollisionImpulse) return;
 
     const wrapper = document.getElementById('selectedCellImpulseRow');
     if (!wrapper) return;
 
+    const lastImpulse = getLastCollisionImpulse(cell);
+
+    if (!lastImpulse) {
+        clearCollisionImpulseDisplay();
+        return;
+    }
+
     wrapper.classList.remove('hidden');
     wrapper.classList.add('impulse-visible');
 
-    if (_lastCollisionImpulse) {
-        setTooltipValue(
-            dom.selectedCellCollisionImpulse,
-            formatTwoDecimals(Math.abs(_lastCollisionImpulse.impulse)),
-            "impulse = −(1 + restitution) ×<br>v<sub>normal</sub> / (1/mass₁ + 1/mass₂)\n" +
-            "restitution = baseRestitution ×<br>√(elasticity₁ × elasticity₂)"
-        );
-    }
-}
-
-export function getCollisionImpulseHistory() {
-    return _collisionImpulseHistory;
-}
-
-function updateCollisionImpulseLifetime() {
-    if (!_lastCollisionImpulse && _collisionImpulseHistory.length === 0) return;
-
-    const currentTick = state.world?.tick;
-    if (typeof currentTick !== "number") return;
-
-    const tickSeconds = Math.max(0.000001, (state.config?.tickRateMs ?? 10) / 1000.0);
-    const tickScale = currentClientTickScale();
-
-    for (const impulse of _collisionImpulseHistory) {
-        if (impulse.lastWorldTick === null) {
-            impulse.lastWorldTick = currentTick;
-            continue;
-        }
-
-        const deltaTicks = Math.max(0, currentTick - impulse.lastWorldTick);
-        impulse.lastWorldTick = currentTick;
-
-        if (deltaTicks > 0) {
-            impulse.ageSeconds += deltaTicks * tickSeconds * tickScale;
-        }
-    }
-
-    _collisionImpulseHistory = _collisionImpulseHistory.filter(
-        impulse => impulse.ageSeconds < COLLISION_FADE_SECONDS
+    setTooltipValue(
+        dom.selectedCellCollisionImpulse,
+        formatTwoDecimals(Math.abs(lastImpulse.impulse ?? 0)),
+        "impulse = −(1 + restitution) ×<br>v<sub>normal</sub> / (1/mass₁ + 1/mass₂)\n" +
+        "restitution = baseRestitution ×<br>√(elasticity₁ × elasticity₂)"
     );
-
-    if (_lastCollisionImpulse?.ageSeconds >= COLLISION_FADE_SECONDS) {
-        clearLastCollisionImpulseDisplay();
-    }
 }
 
-function currentClientTickScale() {
-    const speedFactor = state.config?.speedFactor ?? 1.0;
-
-    if (speedFactor <= 0.0) return 0.0;
-
-    return speedFactor < 1.0 ? speedFactor : 1.0;
-}
-
-function clearLastCollisionImpulseDisplay() {
+function clearCollisionImpulseDisplay() {
     const wrapper = document.getElementById('selectedCellImpulseRow');
 
     wrapper?.classList.remove('impulse-visible', 'impulse-fading');
     wrapper?.classList.add('hidden');
 
-    _lastCollisionImpulse = null;
     clearTooltipElement(dom.selectedCellCollisionImpulse);
 }
 
-function clearCollisionImpulseDisplay() {
-    _collisionImpulseHistory = [];
-    clearLastCollisionImpulseDisplay();
+const EVENT_TYPE_IMPULSE = "impulse";
+
+export function getCollisionImpulseHistory(cell = getSelectedCell()) {
+    return (cell?.events ?? []).filter(event => event.type === EVENT_TYPE_IMPULSE);
 }
 
+function getLastCollisionImpulse(cell) {
+    const impulses = getCollisionImpulseHistory(cell);
+    return impulses.length > 0 ? impulses[impulses.length - 1] : null;
+}
 
 export function selectCell(cell) {
     if (!cell) throw new Error("Environment cell is required");
     if (state.selectedCellId !== cell.id) {
-        lastSelectedCollisionImpulseId = null;
         clearCollisionImpulseDisplay();
     }
     state.selectedCellId = cell.id;
     updateSelectedCellPanel(cell);
+    refreshCollisionImpulseDisplay(cell);
     showCellContent(true);
     setSelectedTabEnabled(true);
     switchTab("selected");
@@ -118,14 +64,13 @@ export function selectCell(cell) {
 
 export function clearSelection() {
     state.selectedCellId = null;
-    state.selectedCellTemplate = null;
-    lastSelectedCollisionImpulseId = null;
+    state.selectedStrain = null;
     clearCollisionImpulseDisplay();
     clearSelectedCellInfo();
     showCellContent(false);
 
     if (getActiveTab() === "selected") {
-        switchTab("control");
+        switchTab(getLastTab());
     }
 
     setSelectedTabEnabled(false);
@@ -140,31 +85,13 @@ export function refreshSelection() {
     }
 
     updateSelectedCellPanel(cell);
-    recordSelectedCellCollisionImpulse(cell);
-    updateCollisionImpulseLifetime();
-}
-
-function recordSelectedCellCollisionImpulse(cell) {
-    const motion = cell.motion;
-
-    if (!motion || motion.collisionImpulseId <= 0) return;
-
-    const collisionKey = `${cell.id}:${motion.collisionImpulseId}`;
-    if (collisionKey === lastSelectedCollisionImpulseId) return;
-
-    lastSelectedCollisionImpulseId = collisionKey;
-
-    recordCollisionImpulse(
-        motion.collisionImpulse,
-        motion.collisionNormalX,
-        motion.collisionNormalY
-    );
+    refreshCollisionImpulseDisplay(cell);
 }
 
 function updateSelectedCellPanel(cell) {
-    state.selectedCellTemplate = mapWorldCellToTemplate(cell);
+    state.selectedStrain = mapWorldCellToTemplate(cell);
 
-    const genome = state.selectedCellTemplate.genome;
+    const genome = state.selectedStrain.genome;
 
     setText(dom.selectedCellCode, genome.code);
     setText(dom.selectedCellRadius, formatTwoDecimals(cell.radius));
@@ -172,7 +99,7 @@ function updateSelectedCellPanel(cell) {
     setText(dom.selectedCellDivisionImpulse, formatTwoDecimals(genome.divisionImpulse));
     setText(dom.selectedCellDivisionAngle, formatTwoDecimals(genome.divisionAngle ?? 0) + "°");
     setText(dom.selectedCellElasticity, formatTwoDecimals(cell.genome?.elasticity));
-    setText(dom.selectedCellRgb, getCellRgbString(state.selectedCellTemplate));
+    setText(dom.selectedCellRgb, getCellRgbString(state.selectedStrain));
 
     setTooltipPair(
         dom.selectedCellMass,
@@ -225,7 +152,7 @@ function updateSelectedCellPanel(cell) {
         "rв‚Ђ = falloffRadius"
     );
 
-    drawSelectedCellPreview(cell, state.selectedCellTemplate);
+    drawSelectedCellPreview(cell, state.selectedStrain);
 }
 
 function mapWorldCellToTemplate(cell) {

@@ -139,8 +139,8 @@ function bindSelectedCellEvents() {
             syncForceViewUi(isActive);
 
             const selectedCell = state.cellById?.get(state.selectedCellId);
-            if (selectedCell && state.selectedCellTemplate) {
-                drawSelectedCellPreview(selectedCell, state.selectedCellTemplate);
+            if (selectedCell && state.selectedStrain) {
+                drawSelectedCellPreview(selectedCell, state.selectedStrain);
             }
         });
     }

@@ -1,6 +1,6 @@
 package com.hellengi.biolab.config;
 
-import com.hellengi.biolab.api.websocket.SimulationSocketHandler;
+import com.hellengi.biolab.api.websocket.SocketHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.socket.config.annotation.EnableWebSocket;
@@ -11,11 +11,11 @@ import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry
 @EnableWebSocket
 @RequiredArgsConstructor
 public class WebSocketConfig implements WebSocketConfigurer {
-    private final SimulationSocketHandler simulationSocketHandler;
+    private final SocketHandler socketHandler;
 
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-        registry.addHandler(simulationSocketHandler, "/ws/simulation")
+        registry.addHandler(socketHandler, "/ws/simulation")
                 .setAllowedOrigins("*");
     }
 }

@@ -1,7 +1,7 @@
 package com.hellengi.biolab.domain.settings;
 
-import com.hellengi.biolab.api.dto.RangedValueDto;
-import com.hellengi.biolab.api.dto.SimulationSettingsDto;
+import com.hellengi.biolab.dto.RangedValueDto;
+import com.hellengi.biolab.dto.SimulationSettingsDto;
 import com.hellengi.biolab.config.YamlConfig;
 import org.springframework.stereotype.Component;
 
@@ -124,34 +124,6 @@ public class RuntimeOverrides {
         double max = baseConfig.getEnvironment().getMaxMutationChance();
         double t = getRadiationSlider() / 100.0;
         return base + (max - base) * t * t;
-    }
-
-    public double getGlobalLight(double globalLightCycleElapsedTicks) {
-        if (!isGlobalLightCycleEnabled()) {
-            return getStaticGlobalLight();
-        }
-
-        double periodSeconds = getGlobalLightCyclePeriodSeconds();
-        if (periodSeconds <= 0.0) {
-            return getStaticGlobalLight();
-        }
-
-        double min = getGlobalLightCycleMin();
-        double max = getStaticGlobalLight();
-
-        double periodTicks = Math.max(
-                1.0,
-                periodSeconds * ticksPerSecond()
-        );
-
-        double phase = (Math.max(0.0, globalLightCycleElapsedTicks) % periodTicks) / periodTicks;
-        double wave = (Math.sin(phase * Math.PI * 2.0 - Math.PI / 2.0) + 1.0) / 2.0;
-
-        return min + (max - min) * wave;
-    }
-
-    private double ticksPerSecond() {
-        return 1000.0 / Math.max(1.0, baseConfig.getTickRateMs());
     }
 
     public double getStaticGlobalLight() {
@@ -321,9 +293,6 @@ public class RuntimeOverrides {
         this.paused = true;
     }
 
-    public void applySnapshot(SimulationSettingsDto dto) {
-        apply(dto);
-    }
 
     private double getSliderSpeedFactor() {
         double value = Math.max(0.0, Math.min(100.0, getTimeSlider()));

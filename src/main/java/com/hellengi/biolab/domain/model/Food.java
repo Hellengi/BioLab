@@ -21,6 +21,7 @@ public class Food {
     public Food(long id, YamlConfig config) {
         this.id = id;
         this.config = config;
+        IdGenerator.advanceBeyond(id);
     }
 
     public Food(YamlConfig config) {

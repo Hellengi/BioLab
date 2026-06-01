@@ -2,7 +2,7 @@ export const state = {
     world: null,
     config: null,
     selectedCellId: null,
-    selectedCellTemplate: null,
+    selectedStrain: null,
     cellDraft: null,
     placeMode: false,
     settingsDraft: null,
@@ -43,10 +43,17 @@ export function findCellAt(x, y) {
     return null;
 }
 
-export function setWorld(worldDto) {
-    state.world = worldDto;
-    state.tps = worldDto.tps ?? 0;
+export function setWorld(dto) {
+    state.world = dto;
     rebuildCellIndex();
+}
+
+export function setMetrics(dto) {
+    state.tps = dto.tps ?? 0;
+}
+
+export function resetMetrics(dto) {
+    state.tps = 0;
 }
 
 function rebuildCellIndex() {

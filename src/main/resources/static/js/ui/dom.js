@@ -175,7 +175,7 @@ export function bindDom() {
     dom.saveCellConfirmBtn = optionalEl("saveCellConfirmBtn");
 
     dom.loadCellModal = optionalEl("loadCellModal");
-    dom.cellTemplatesList = optionalEl("cellTemplatesList");
+    dom.strainsList = optionalEl("strainsList");
     dom.loadCellCancelBtn = optionalEl("loadCellCancelBtn");
     dom.loadCellDeleteBtn = optionalEl("loadCellDeleteBtn");
     dom.loadCellConfirmBtn = optionalEl("loadCellConfirmBtn");
