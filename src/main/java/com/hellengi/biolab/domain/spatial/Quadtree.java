@@ -3,14 +3,6 @@ package com.hellengi.biolab.domain.spatial;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Simple broad-phase Quadtree for 2D simulation objects.
- *
- * The tree stores each object together with its axis-aligned bounds. If an
- * object does not fit fully into a child node, it stays in the parent node.
- * This keeps the index correct for circles near quadrant borders and avoids
- * losing large cells.
- */
 public final class Quadtree<T> {
     private static final int DEFAULT_NODE_CAPACITY = 12;
     private static final int DEFAULT_MAX_DEPTH = 10;
@@ -46,6 +38,12 @@ public final class Quadtree<T> {
     public List<T> query(SpatialBounds area) {
         List<T> result = new ArrayList<>();
         query(area, result);
+        return result;
+    }
+
+    public List<SpatialBounds> nodeBounds() {
+        List<SpatialBounds> result = new ArrayList<>();
+        root.collectBounds(result);
         return result;
     }
 
@@ -124,6 +122,16 @@ public final class Quadtree<T> {
 
             for (Node<T> child : children) {
                 child.query(area, result);
+            }
+        }
+
+        private void collectBounds(List<SpatialBounds> result) {
+            result.add(bounds);
+            if (children == null) {
+                return;
+            }
+            for (Node<T> child : children) {
+                child.collectBounds(result);
             }
         }
 

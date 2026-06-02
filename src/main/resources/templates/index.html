@@ -36,6 +36,27 @@
 
 </div>
 
+<div id="bottomStatusBar" class="bottom-status-bar" aria-live="polite">
+  <div class="bottom-status-group">
+    <span class="bottom-status-item">
+      <span class="bottom-status-label">Cells</span>
+      <span id="cellsCountValue" class="bottom-status-value">0</span>
+    </span>
+    <span class="bottom-status-item">
+      <span class="bottom-status-label">Dead</span>
+      <span id="deadCellsCountValue" class="bottom-status-value">0</span>
+    </span>
+    <span class="bottom-status-item">
+      <span class="bottom-status-label">Food</span>
+      <span id="foodCountValue" class="bottom-status-value">0</span>
+    </span>
+    <span class="bottom-status-item">
+      <span class="bottom-status-label">Diameter</span>
+      <span id="diameterValue" class="bottom-status-value">0</span>
+    </span>
+  </div>
+</div>
+
 <!-- Панели органелл — вне sidebar, JS перенесёт их в organellePanelHost -->
 <div th:replace="~{fragments/tab-creation-organelle :: organelle-panels}"></div>
 

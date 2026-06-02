@@ -81,8 +81,11 @@ export function preparePreviewCanvas(previewCtx, previewCanvas) {
 }
 
 export function setText(element, value) {
-    if (element) {
-        element.textContent = value;
+    if (!element) return;
+
+    const nextText = String(value ?? "");
+    if (element.textContent !== nextText) {
+        element.textContent = nextText;
     }
 }
 

@@ -1,3 +1,4 @@
+
 /* ═══════════════════════════════════════════════════════
    cell.css — инфо о клетке, превью, силы, размещение,
               считыватель курсора, пустое состояние
@@ -42,38 +43,23 @@
     cursor: help;
     border-bottom: 1px dashed var(--c-text-muted);
 }
-.cell-info-tooltip-host:hover { color: var(--c-accent); border-bottom-color: var(--c-accent); }
+.cell-info-tooltip-host:hover { color: var(--c-text); border-bottom-color: var(--c-text-sub); }
 
 .cell-info-separator { color: var(--c-text-muted); margin: 0 4px; user-select: none; }
 
 .cell-info-tooltip {
-    display: none;
-    position: fixed;
-    z-index: 50;
-    width: max-content;
-    max-width: 320px;
-    padding: 6px 8px;
-    background: var(--c-bg-surface);
-    border: 1px solid var(--c-border-mid);
-    border-radius: var(--radius-sm);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.45), 0 0 0 1px var(--c-accent-dark);
-    color: var(--c-text-sub);
     font-family: var(--font-mono);
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 400;
     letter-spacing: 0.02em;
-    line-height: 1.55;
+    line-height: 1.45;
     text-transform: none;
     white-space: normal;
     overflow-wrap: break-word;
-    pointer-events: none;
 }
 
-.cell-info-tooltip-divider {
-    border: none;
-    border-top: 1px solid var(--c-border-soft);
-    margin: 4px 0;
-    opacity: 0.6;
+.cell-info-tooltip span {
+    display: block;
 }
 
 

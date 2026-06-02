@@ -1,4 +1,3 @@
-
 package com.hellengi.biolab.domain.physics;
 
 import com.hellengi.biolab.config.YamlConfig;
@@ -22,7 +21,9 @@ import java.util.Arrays;
  *   2. buildLightMap() casts angular rays from every source using DDA grid traversal.
  *      This is much cheaper and visually more stable than marching a separate ray
  *      from the source to every light-map cell.
- *   3. sampleLightMap() returns per-cell irradiance by bilinear interpolation.
+ *   3. buildLightMapFromOpacityMap() also accumulates light propagation direction
+ *      maps during the same ray pass, without another source/grid traversal.
+ *   4. sampleLightMap() returns per-cell irradiance by bilinear interpolation.
  */
 @Component
 @RequiredArgsConstructor
@@ -85,6 +86,8 @@ public class Lighting {
     private Integer lastDistributedStartAngle;
 
     private double[] cachedLightMap;
+    private double[] cachedLightDirXMap;
+    private double[] cachedLightDirYMap;
     private double[] cachedOpacityMap;
     private int cachedGridStep;
     private int cachedCols;
@@ -155,6 +158,16 @@ public class Lighting {
         return cachedOpacityMap;
     }
 
+    public double[] getLightDirXMap() {
+        ensureLightCache();
+        return cachedLightDirXMap;
+    }
+
+    public double[] getLightDirYMap() {
+        ensureLightCache();
+        return cachedLightDirYMap;
+    }
+
     public int getLightGridStep() {
         ensureLightCache();
         return cachedGridStep;
@@ -175,6 +188,13 @@ public class Lighting {
         return sampleLightMap(cachedLightMap, cachedCols, cachedRows, cachedGridStep, x, y);
     }
 
+    public LightDirectionSample sampleLightDirectionAt(double x, double y) {
+        ensureLightCache();
+        double dirX = sampleScalarMap(cachedLightDirXMap, cachedCols, cachedRows, cachedGridStep, x, y);
+        double dirY = sampleScalarMap(cachedLightDirYMap, cachedCols, cachedRows, cachedGridStep, x, y);
+        return new LightDirectionSample(dirX, dirY);
+    }
+
     private void ensureLightCache() {
         int diameter = config.getTubeDiameter();
         int gridStep = Math.max(1, config.getLight().getGridStep());
@@ -182,6 +202,8 @@ public class Lighting {
         int rows = (int) Math.ceil(diameter / (double) gridStep);
 
         boolean geometryChanged = cachedLightMap == null
+                || cachedLightDirXMap == null
+                || cachedLightDirYMap == null
                 || cachedOpacityMap == null
                 || cachedGridStep != gridStep
                 || cachedCols != cols
@@ -195,7 +217,7 @@ public class Lighting {
         cachedCols = cols;
         cachedRows = rows;
         cachedOpacityMap = buildOpacityMap(diameter, diameter, gridStep);
-        cachedLightMap = buildLightMapFromOpacityMap(
+        LightMapBuildResult result = buildLightMapFromOpacityMap(
                 diameter,
                 diameter,
                 gridStep,
@@ -203,6 +225,9 @@ public class Lighting {
                 rows,
                 cachedOpacityMap
         );
+        cachedLightMap = result.lightMap();
+        cachedLightDirXMap = result.dirXMap();
+        cachedLightDirYMap = result.dirYMap();
         lightCacheDirty = false;
     }
 
@@ -269,13 +294,22 @@ public class Lighting {
         int cols = (int) Math.ceil(width  / (double) safeGridStep);
         int rows = (int) Math.ceil(height / (double) safeGridStep);
         double[] opacityMap = buildOpacityMap(width, height, safeGridStep);
-        return buildLightMapFromOpacityMap(width, height, safeGridStep, cols, rows, opacityMap);
+        return buildLightMapFromOpacityMap(width, height, safeGridStep, cols, rows, opacityMap).lightMap();
     }
 
     public double sampleLightMap(double[] lightMap, int cols, int rows,
                                  int gridStep, double wx, double wy) {
         if (lightMap == null || lightMap.length == 0 || cols <= 0 || rows <= 0) {
             return world.getGlobalLight().getValue();
+        }
+
+        return Math.max(0.0, sampleScalarMap(lightMap, cols, rows, gridStep, wx, wy));
+    }
+
+    public double sampleScalarMap(double[] map, int cols, int rows,
+                                  int gridStep, double wx, double wy) {
+        if (map == null || map.length == 0 || cols <= 0 || rows <= 0) {
+            return 0.0;
         }
 
         int safeGridStep = Math.max(1, gridStep);
@@ -296,21 +330,21 @@ public class Lighting {
         row0 = Math.max(0, Math.min(rows - 1, row0));
         row1 = Math.max(0, Math.min(rows - 1, row1));
 
-        double v00 = lightMap[row0 * cols + col0];
-        double v10 = lightMap[row0 * cols + col1];
-        double v01 = lightMap[row1 * cols + col0];
-        double v11 = lightMap[row1 * cols + col1];
+        double v00 = map[row0 * cols + col0];
+        double v10 = map[row0 * cols + col1];
+        double v01 = map[row1 * cols + col0];
+        double v11 = map[row1 * cols + col1];
 
         double top    = v00 + (v10 - v00) * tx;
         double bottom = v01 + (v11 - v01) * tx;
-        return Math.max(0.0, top + (bottom - top) * ty);
+        return top + (bottom - top) * ty;
     }
 
     // -------------------------------------------------------------------------
     // Internal helpers
     // -------------------------------------------------------------------------
 
-    private double[] buildLightMapFromOpacityMap(
+    private LightMapBuildResult buildLightMapFromOpacityMap(
             int width,
             int height,
             int gridStep,
@@ -319,12 +353,14 @@ public class Lighting {
             double[] opacityMap
     ) {
         double[] lightMap = new double[cols * rows];
+        double[] dirXMap = new double[cols * rows];
+        double[] dirYMap = new double[cols * rows];
 
         double ambient = world.getGlobalLight().getValue();
         Arrays.fill(lightMap, ambient);
 
         if (world.getLightSources().isEmpty()) {
-            return lightMap;
+            return new LightMapBuildResult(lightMap, dirXMap, dirYMap);
         }
 
         double centerX = config.worldCenterX();
@@ -337,6 +373,8 @@ public class Lighting {
         for (LightSource source : world.getLightSources()) {
             accumulateAreaLight(
                     lightMap,
+                    dirXMap,
+                    dirYMap,
                     opacityMap,
                     cols,
                     rows,
@@ -351,7 +389,7 @@ public class Lighting {
             );
         }
 
-        return lightMap;
+        return new LightMapBuildResult(lightMap, dirXMap, dirYMap);
     }
 
     private int rayCountFor(int cols, int rows) {
@@ -364,6 +402,8 @@ public class Lighting {
 
     private void accumulateAreaLight(
             double[] lightMap,
+            double[] dirXMap,
+            double[] dirYMap,
             double[] opacityMap,
             int cols,
             int rows,
@@ -401,6 +441,8 @@ public class Lighting {
                 : 0.0;
 
         double[] virtualSourceMap = new double[cols * rows];
+        double[] virtualDirXMap = new double[cols * rows];
+        double[] virtualDirYMap = new double[cols * rows];
 
         for (int sampleIndex = 0; sampleIndex < samples.length; sampleIndex++) {
             double[] sample = samples[sampleIndex];
@@ -420,6 +462,8 @@ public class Lighting {
             sampleY = clamp(sampleY, SOURCE_CLAMP_EPSILON, height - SOURCE_CLAMP_EPSILON);
 
             Arrays.fill(virtualSourceMap, 0.0);
+            Arrays.fill(virtualDirXMap, 0.0);
+            Arrays.fill(virtualDirYMap, 0.0);
 
             // A tiny per-sample phase shift reduces angular banding without any blur.
             double phaseShift = angleSpan * sampleIndex / (rayCount * samples.length);
@@ -429,6 +473,8 @@ public class Lighting {
                 double angle = startAngle + phaseShift + angleSpan * (i + 0.5) / rayCount;
                 castLightRay(
                         virtualSourceMap,
+                        virtualDirXMap,
+                        virtualDirYMap,
                         opacityMap,
                         cols,
                         rows,
@@ -444,6 +490,8 @@ public class Lighting {
 
             for (int i = 0; i < lightMap.length; i++) {
                 lightMap[i] += virtualSourceMap[i];
+                dirXMap[i] += virtualDirXMap[i];
+                dirYMap[i] += virtualDirYMap[i];
             }
         }
     }
@@ -454,6 +502,8 @@ public class Lighting {
 
     private void castLightRay(
             double[] sourceMap,
+            double[] sourceDirXMap,
+            double[] sourceDirYMap,
             double[] opacityMap,
             int cols,
             int rows,
@@ -509,6 +559,8 @@ public class Lighting {
             // otherwise brightness depends on ray density.
             if (contribution > sourceMap[idx]) {
                 sourceMap[idx] = contribution;
+                sourceDirXMap[idx] = contribution * dirX;
+                sourceDirYMap[idx] = contribution * dirY;
             }
 
             double segmentLength = Math.max(0.0, nextT - currentT);
@@ -656,4 +708,19 @@ public class Lighting {
         }
         return Math.max(min, Math.min(max, value));
     }
+
+    private record LightMapBuildResult(
+            double[] lightMap,
+            double[] dirXMap,
+            double[] dirYMap
+    ) {
+    }
+
+    public record LightDirectionSample(double x, double y) {
+        public double magnitude() {
+            return Math.hypot(x, y);
+        }
+    }
 }
+
+

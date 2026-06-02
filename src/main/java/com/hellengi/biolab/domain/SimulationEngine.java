@@ -111,8 +111,12 @@ public class SimulationEngine {
     }
 
     public SimulationWorldDto getWorldDto() {
+        return getWorldDto(DisplayLayersDto.off());
+    }
+
+    public SimulationWorldDto getWorldDto(DisplayLayersDto displayLayers) {
         synchronized (world) {
-            return worldMapper.toDto(world);
+            return worldMapper.toDto(world, displayLayers);
         }
     }
 
@@ -129,7 +133,6 @@ public class SimulationEngine {
 
         synchronized (world) {
             int diameter = baseConfig.getTubeDiameter();
-            int gridStep = Math.max(1, baseConfig.getLight().getGridStep());
 
             double clampedX = Math.max(0.0, Math.min(diameter, x));
             double clampedY = Math.max(0.0, Math.min(diameter, y));

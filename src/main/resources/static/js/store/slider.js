@@ -1,6 +1,7 @@
 /**
  * store/slider.js
- * Управляет слайдером времени/температуры: snap-анимация, debounced отправка на сервер.
+ * Управляет слайдером времени/температуры: snap во время перетаскивания,
+ * debounced отправка на сервер.
  */
 
 import { state, sliderState } from "./state.js";
@@ -8,26 +9,24 @@ import { updateConfig } from "../transport/api/simulation.js";
 import { applyDisplayFromConfig, applyPauseButtonState } from "../ui/toolbar.js";
 import { dom } from "../ui/dom.js";
 
-const SNAP_ZONE_DRAG        = 4;    // зона магнитного прилипания во время перетаскивания
-const SNAP_ZONE_RELEASE     = 8;    // зона прилипания при отпускании
-const SNAP_ANIMATE_MS       = 220;  // длительность анимации snap
-const SLIDER_SEND_INTERVAL_MS = 50; // минимальный интервал между отправками на сервер
+const SNAP_TARGETS = [25, 50, 75]; // 0.1×, 1×, 10×
 
-let _snapAnimationId    = null;
-let _timeSendTimer      = null;
-let _timeSendInFlight   = false;
-let _queuedTimeSlider   = null;
+const SNAP_ZONE_DRAG = 2.0;          // половина зоны snap вокруг отметки, в единицах шкалы 0..100
+const SLIDER_SEND_INTERVAL_MS = 50;  // минимальный интервал между отправками на сервер
+
+let _timeSendTimer = null;
+let _timeSendInFlight = false;
+let _queuedTimeSlider = null;
 let _queuedClearPending = false;
 
 // ── Публичные обработчики событий ───────────────────────────────────────────
 
 export function startSliderDrag() {
     sliderState.isDragging = true;
-    _cancelSnapAnimation();
 }
 
 export function updateTimeLocal(rawValue) {
-    const value  = Number(rawValue);
+    const value = Number(rawValue);
     const snapped = _snapDuringDrag(value);
 
     if (snapped !== value) {
@@ -43,71 +42,54 @@ export function endSliderDrag() {
     sliderState.isDragging = false;
 
     const value = Number(dom.timeSlider.value);
-
-    if (Math.abs(value - 50) <= SNAP_ZONE_RELEASE) {
-        _animateSnapToCenter(value);
-    } else {
-        state.pendingTimeSlider = value;
-        _enqueueTimeSend(value, true);
-    }
+    state.pendingTimeSlider = value;
+    _enqueueTimeSend(value, true);
 }
 
 /** Сбрасывает слайдер в нейтральное положение (центр = 20°C, скорость 1×). */
 export function resetTimeToNormal() {
-    _cancelSnapAnimation();
     _cancelQueuedTimeSend();
 
     sliderState.isDragging = false;
-    dom.timeSlider.value   = "50";
+    dom.timeSlider.value = "50";
     state.pendingTimeSlider = 50;
 
     _enqueueTimeSend(50, true);
 }
 
-// ── Snap-анимация ────────────────────────────────────────────────────────────
+// ── Snap только во время движения ───────────────────────────────────────────
 
 function _snapDuringDrag(value) {
-    return Math.abs(value - 50) <= SNAP_ZONE_DRAG ? 50 : value;
+    if (!Number.isFinite(value)) return 50;
+    if (!sliderState.isDragging) return _roundSliderValue(value);
+
+    const target = _nearestSnapTarget(value, SNAP_ZONE_DRAG);
+    return target === null ? _roundSliderValue(value) : target;
 }
 
-function _animateSnapToCenter(fromValue) {
-    _cancelSnapAnimation();
+function _nearestSnapTarget(value, zone) {
+    let nearestTarget = null;
+    let nearestDistance = Number.POSITIVE_INFINITY;
 
-    const startTime = performance.now();
-    const startVal  = fromValue;
-
-    function step(now) {
-        const elapsed = now - startTime;
-        const t       = Math.min(1, elapsed / SNAP_ANIMATE_MS);
-        const eased   = 1 - Math.pow(1 - t, 3);
-        const current = startVal + (50 - startVal) * eased;
-
-        dom.timeSlider.value    = String(current);
-        state.pendingTimeSlider = current;
-
-        if (t < 1) {
-            _snapAnimationId = requestAnimationFrame(step);
-        } else {
-            dom.timeSlider.value    = "50";
-            state.pendingTimeSlider = 50;
-            _enqueueTimeSend(50, true);
+    for (const target of SNAP_TARGETS) {
+        const distance = Math.abs(value - target);
+        if (distance <= zone && distance < nearestDistance) {
+            nearestTarget = target;
+            nearestDistance = distance;
         }
     }
 
-    _snapAnimationId = requestAnimationFrame(step);
+    return nearestTarget;
 }
 
-function _cancelSnapAnimation() {
-    if (_snapAnimationId !== null) {
-        cancelAnimationFrame(_snapAnimationId);
-        _snapAnimationId = null;
-    }
+function _roundSliderValue(value) {
+    return Math.round(value * 10) / 10;
 }
 
 // ── Дросселированная отправка на сервер ─────────────────────────────────────
 
 function _enqueueTimeSend(value, clearPending) {
-    _queuedTimeSlider    = value;
+    _queuedTimeSlider = value;
     _queuedClearPending ||= clearPending;
 
     if (_timeSendInFlight || _timeSendTimer !== null) return;
@@ -134,11 +116,11 @@ function _cancelQueuedTimeSend() {
 async function _flushQueuedTimeSend() {
     if (_queuedTimeSlider === null || _timeSendInFlight) return;
 
-    const value        = _queuedTimeSlider;
+    const value = _queuedTimeSlider;
     const clearPending = _queuedClearPending;
-    _queuedTimeSlider    = null;
-    _queuedClearPending  = false;
-    _timeSendInFlight    = true;
+    _queuedTimeSlider = null;
+    _queuedClearPending = false;
+    _timeSendInFlight = true;
 
     try {
         state.config = await updateConfig({

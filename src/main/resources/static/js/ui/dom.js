@@ -18,9 +18,22 @@ export function bindDom() {
     dom.createCellPreviewCanvas = optionalEl("createCellPreviewCanvas");
     dom.createCellPreviewCtx = optionalEl("createCellPreviewCanvas")?.getContext("2d");
 
-    dom.stats = requireEl("stats");
+    dom.stats = optionalEl("stats");
+    dom.bottomStatusBar = optionalEl("bottomStatusBar");
+    dom.cellsCountValue = optionalEl("cellsCountValue");
+    dom.deadCellsCountValue = optionalEl("deadCellsCountValue");
+    dom.foodCountValue = optionalEl("foodCountValue");
+    dom.diameterValue = optionalEl("diameterValue");
+
     dom.fpsLabel = optionalEl("fpsLabel");
+    dom.fpsValue = optionalEl("fpsValue");
+    dom.tpsValue = optionalEl("tpsValue");
     dom.tempDisplay = requireEl("tempDisplay");
+    dom.timeDisplay = optionalEl("timeDisplay");
+    dom.timeYearsDays = optionalEl("timeYearsDays");
+    dom.timeClock = optionalEl("timeClock");
+    dom.timeTooltip = optionalEl("timeTooltip");
+    dom.timeTooltipTick = optionalEl("timeTooltipTick");
     dom.timeSlider = requireEl("timeSlider");
     dom.pauseBtn = requireEl("pauseBtn");
     dom.temperatureLabel = requireEl("temperatureLabel");
@@ -75,6 +88,11 @@ export function bindDom() {
     dom.lightCycleFields = optionalEl("lightCycleFields");
 
     dom.cursorReadoutDisplay = optionalEl("lightProbeDisplay");
+
+    dom.opacityLayerToggle = optionalEl("opacityLayerToggle");
+    dom.lightDirectionLayerToggle = optionalEl("lightDirectionLayerToggle");
+    dom.quadtreeLayerToggle = optionalEl("quadtreeLayerToggle");
+    dom.cellDirectionsLayerToggle = optionalEl("cellDirectionsLayerToggle");
 
     dom.selectedCellContent = optionalEl("selectedCellContent");
 
@@ -180,3 +198,4 @@ export function bindDom() {
     dom.loadCellDeleteBtn = optionalEl("loadCellDeleteBtn");
     dom.loadCellConfirmBtn = optionalEl("loadCellConfirmBtn");
 }
+

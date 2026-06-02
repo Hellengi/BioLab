@@ -2,7 +2,11 @@
  * Shared renderer for informational values with formula tooltips.
  * Used by Selected Cell and Create Cell panels.
  */
+
+import { attachTooltip, detachTooltip } from "./tooltip.js";
+
 function clearElement(element) {
+    element.querySelectorAll?.(".cell-info-tooltip-host").forEach(detachTooltip);
     element.replaceChildren();
 }
 
@@ -10,7 +14,7 @@ function fillTooltip(tooltip, text) {
     for (const [index, line] of String(text ?? "").split("\n").entries()) {
         if (index > 0) {
             const divider = document.createElement("hr");
-            divider.className = "cell-info-tooltip-divider";
+            divider.className = "app-tooltip-divider";
             tooltip.appendChild(divider);
         }
 
@@ -20,37 +24,24 @@ function fillTooltip(tooltip, text) {
     }
 }
 
-function positionTooltip(host, tooltip) {
-    const rect = host.getBoundingClientRect();
-    const width = Math.min(tooltip.scrollWidth, 320);
-    const left = Math.min(rect.left, window.innerWidth - width - 8);
-
-    tooltip.style.left = `${Math.max(8, left)}px`;
-    tooltip.style.top = `${rect.bottom + 6}px`;
-}
-
 function appendTooltipValue(parent, value, text) {
     const host = document.createElement("span");
     host.className = "cell-info-value cell-info-tooltip-host";
+    host.tabIndex = 0;
 
     const number = document.createElement("span");
     number.className = "cell-info-tooltip-number";
     number.textContent = value;
 
     const tooltip = document.createElement("span");
-    tooltip.className = "cell-info-tooltip";
+    tooltip.className = "app-tooltip cell-info-tooltip";
+    tooltip.setAttribute("role", "tooltip");
+    tooltip.setAttribute("aria-hidden", "true");
     fillTooltip(tooltip, text);
-
-    host.addEventListener("mouseenter", () => {
-        tooltip.style.display = "block";
-        positionTooltip(host, tooltip);
-    });
-    host.addEventListener("mouseleave", () => {
-        tooltip.style.display = "none";
-    });
 
     host.append(number, tooltip);
     parent.appendChild(host);
+    attachTooltip(host, tooltip, { maxWidth: 320 });
     return host;
 }
 

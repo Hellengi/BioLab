@@ -9,6 +9,9 @@ public record LightingDto(
         int gridStep,
         int gridWidth,
         int gridHeight,
-        double[] lightMap
+        double[] lightMap,
+        double[] opacityMap,
+        double[] lightDirectionArrows,
+        List<QuadtreeNodeDto> quadtreeNodes
 ) {
 }

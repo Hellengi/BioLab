@@ -5,6 +5,10 @@ import {getActiveTab, getLastTab, setSelectedTabEnabled, switchTab} from "./_tab
 import {getSelectedCell, state} from "../../store/state.js";
 import { clearTooltipElement, setTooltipPair, setTooltipValue } from "../cell-info.js";
 
+const SELECTION_PANEL_REFRESH_INTERVAL_MS = 120;
+let lastSelectionPanelRefreshMs = 0;
+let lastSelectionPanelCellId = null;
+
 function refreshCollisionImpulseDisplay(cell) {
     if (!dom.selectedCellCollisionImpulse) return;
 
@@ -51,11 +55,18 @@ function getLastCollisionImpulse(cell) {
 
 export function selectCell(cell) {
     if (!cell) throw new Error("Environment cell is required");
+    if (cell.dead) {
+        clearSelection();
+        return;
+    }
+
     if (state.selectedCellId !== cell.id) {
         clearCollisionImpulseDisplay();
     }
     state.selectedCellId = cell.id;
     updateSelectedCellPanel(cell);
+    lastSelectionPanelRefreshMs = performance.now();
+    lastSelectionPanelCellId = cell.id;
     refreshCollisionImpulseDisplay(cell);
     showCellContent(true);
     setSelectedTabEnabled(true);
@@ -65,6 +76,8 @@ export function selectCell(cell) {
 export function clearSelection() {
     state.selectedCellId = null;
     state.selectedStrain = null;
+    lastSelectionPanelCellId = null;
+    lastSelectionPanelRefreshMs = 0;
     clearCollisionImpulseDisplay();
     clearSelectedCellInfo();
     showCellContent(false);
@@ -76,7 +89,7 @@ export function clearSelection() {
     setSelectedTabEnabled(false);
 }
 
-export function refreshSelection() {
+export function refreshSelection(force = false) {
     const cell = getSelectedCell();
 
     if (!cell || cell.dead) {
@@ -84,8 +97,19 @@ export function refreshSelection() {
         return;
     }
 
+    const now = performance.now();
+    const cellChanged = lastSelectionPanelCellId !== cell.id;
+
+    if (!force
+        && !cellChanged
+        && now - lastSelectionPanelRefreshMs < SELECTION_PANEL_REFRESH_INTERVAL_MS) {
+        return;
+    }
+
     updateSelectedCellPanel(cell);
     refreshCollisionImpulseDisplay(cell);
+    lastSelectionPanelRefreshMs = now;
+    lastSelectionPanelCellId = cell.id;
 }
 
 function updateSelectedCellPanel(cell) {

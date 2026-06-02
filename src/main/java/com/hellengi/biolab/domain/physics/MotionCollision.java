@@ -64,7 +64,6 @@ public class MotionCollision {
                 32.0,
                 config.getCell().getBaseRadius()
                         + config.getCell().getEnergyToRadiusFactor()
-                        + config.getCollision().getMaxStepDistance()
         );
         double diameter = config.getTubeDiameter();
         return SpatialBounds.fromMinMax(-margin, -margin, diameter + margin, diameter + margin);

@@ -33,7 +33,7 @@ public class SimulationSettingsMapper {
                 control(runtimeConfig.getLightSourceOrbitRadius(), baseConfig.getControls().getLightSourceOrbitRadius()),
                 control(runtimeConfig.getLightSourceOrbitSpeed(), baseConfig.getControls().getLightSourceOrbitSpeed()),
                 baseConfig.getTubeDiameter(), baseConfig.getTickRateMs(), runtimeConfig.isPaused(),
-                runtimeConfig.getSpeedFactor(), runtimeConfig.getTemperatureCelsius(),
+                runtimeConfig.getConfiguredSpeedFactor(), runtimeConfig.getTemperatureCelsius(),
                 runtimeConfig.getViscosity(), runtimeConfig.getGravity(),
                 baseConfig.getCell().getBaseRadius(), baseConfig.getCell().getEnergyToRadiusFactor(),
                 baseConfig.getFood().getBaseRadius(), baseConfig.getFood().getStart(),

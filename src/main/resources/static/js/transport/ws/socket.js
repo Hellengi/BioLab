@@ -1,6 +1,6 @@
 import { refreshSelection } from "../../ui/tabs/selection.js";
-import {setWorld, setMetrics, resetMetrics} from "../../store/state.js";
-import {updateStats} from "../../store/actions.js";
+import { state, setWorld, setMetrics, resetMetrics } from "../../store/state.js";
+import { updateStats } from "../../store/actions.js";
 
 let socket = null;
 
@@ -9,6 +9,7 @@ export function connectSocket() {
     socket = new WebSocket(`${protocol}://${window.location.host}/ws/simulation`);
     socket.onopen = () => {
         console.log("WebSocket connected");
+        sendDisplayLayers();
     };
     socket.onmessage = (event) => {
         const message = JSON.parse(event.data);
@@ -30,4 +31,15 @@ export function connectSocket() {
         console.error("WebSocket error", error);
         socket.close();
     };
+}
+
+export function sendDisplayLayers() {
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+        return;
+    }
+
+    socket.send(JSON.stringify({
+        type: "displayLayers",
+        ...state.displayLayers,
+    }));
 }

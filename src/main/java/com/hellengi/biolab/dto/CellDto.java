@@ -18,6 +18,7 @@ public record CellDto(
         double density,
         List<CellEventDto> events,
         CellMotionDto motion,
+        CellDisplayDto display,
         double directionAngle // rename to angle
         // add: alive, rotting (for died), spawnTime (ticks at birthday), color, opacity
         // add: name - auto for cells (photos, etc.), if save in db - custom

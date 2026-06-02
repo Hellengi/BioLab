@@ -33,7 +33,9 @@ import { bindInputs, closeModal, bindAsyncClick } from "./panels/_panels.js";
 import { initTabs }                     from "./tabs/_tabs.js";
 import { drawSelectedCellPreview, setForceViewEnabled } from "../render/preview.js";
 import { handleSimulationReset, togglePause } from "../store/actions.js";
-import { state } from "../store/state.js";
+import { state, setDisplayLayer } from "../store/state.js";
+import { sendDisplayLayers } from "../transport/ws/socket.js";
+import { bindToolbarTooltips } from "./toolbar.js";
 import {
     endSliderDrag,
     resetTimeToNormal,
@@ -47,6 +49,7 @@ export function bindEvents() {
     initTabs();
     bindToolbarEvents();
     bindSettingsTabEvents();
+    bindDisplayLayerEvents();
     bindSelectedCellEvents();
     bindCreatePanelEvents();
     bindCreateFormEvents();
@@ -59,6 +62,8 @@ export function bindEvents() {
 // ── Тулбар ────────────────────────────────────────────────────────────────────
 
 function bindToolbarEvents() {
+    bindToolbarTooltips();
+
     dom.timeSlider.addEventListener("pointerdown", () => startSliderDrag());
     dom.timeSlider.addEventListener("input",       () => updateTimeLocal(dom.timeSlider.value));
     dom.timeSlider.addEventListener("pointerup",   () => endSliderDrag());
@@ -97,6 +102,35 @@ function bindSettingsTabEvents() {
     bindAsyncClick(dom.saveWorldConfirmBtn, confirmSaveWorld,  "Save world error",   "Failed to save world");
     bindAsyncClick(dom.loadWorldConfirmBtn, confirmLoadWorld,  "Load world error",   "Failed to load world");
     bindAsyncClick(dom.loadWorldDeleteBtn,  deleteSelectedWorld, "Delete world error", "Failed to delete world");
+}
+
+
+// ── Слои отображения ─────────────────────────────────────────────────────────
+
+function bindDisplayLayerEvents() {
+    const buttons = [
+        dom.opacityLayerToggle,
+        dom.lightDirectionLayerToggle,
+        dom.quadtreeLayerToggle,
+        dom.cellDirectionsLayerToggle,
+    ].filter(Boolean);
+
+    for (const button of buttons) {
+        const layer = button.dataset.layer;
+        syncDisplayLayerButton(button, Boolean(state.displayLayers[layer]));
+
+        button.addEventListener("click", () => {
+            const enabled = !button.classList.contains("active");
+            setDisplayLayer(layer, enabled);
+            syncDisplayLayerButton(button, enabled);
+            sendDisplayLayers();
+        });
+    }
+}
+
+function syncDisplayLayerButton(button, enabled) {
+    button.classList.toggle("active", enabled);
+    button.setAttribute("aria-pressed", String(enabled));
 }
 
 // ── Панель выбранной клетки ───────────────────────────────────────────────────
@@ -269,3 +303,5 @@ function bindSidebarToggle() {
         }
     });
 }
+
+

@@ -5,7 +5,7 @@
 /* Кнопка тоггла sidebar скрыта на десктопе */
 #sidebarToggleBtn {
     display: none;
-    margin-left: auto;
+    margin-left: 0;
 }
 
 /* ── Планшет / узкий десктоп (≤ 900px) ─────────────────── */
@@ -14,7 +14,7 @@
         position: fixed;
         right: 0;
         top: var(--toolbar-h);
-        height: calc(100vh - var(--toolbar-h));
+        height: calc(100vh - var(--toolbar-h) - 28px);
         z-index: var(--z-sidebar);
         box-shadow: -6px 0 30px rgba(0,0,0,0.6);
         transform: translateX(100%);
@@ -48,8 +48,21 @@
         gap: var(--gap-xs);
     }
 
-    .toolbar > * {
+    .toolbar > *,
+    .toolbar-left,
+    .toolbar-center,
+    .toolbar-right {
         flex: 0 0 auto;
+    }
+
+    .toolbar-left,
+    .toolbar-center,
+    .toolbar-right {
+        gap: var(--gap-xs);
+    }
+
+    .toolbar-center {
+        padding: 0 var(--gap-xs);
     }
 
     .toolbar .btn {
@@ -57,18 +70,28 @@
         font-size: var(--font-sm);
     }
 
-    .temp-display,
-    .fps-badge,
-    #stats {
+    .toolbar-display,
+    .fps-badge  {
         display: inline-flex;
         font-size: var(--font-sm);
         white-space: nowrap;
     }
 
-    #stats {
-        max-width: 200px;
-        overflow: hidden;
-        text-overflow: ellipsis;
+    #timeSlider {
+        width: 250px;
+        min-width: 250px;
+    }
+
+    .bottom-status-bar {
+        justify-content: flex-start;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding: 0 var(--gap-sm);
+    }
+
+    .bottom-status-group {
+        flex: 0 0 auto;
+        gap: var(--gap-md);
     }
 
     .temp-value {
@@ -99,10 +122,27 @@
     .time-control  {
         display: flex;
     }
-    .temp-display  {
+    .toolbar-display {
         min-width: 60px;
     }
-    #stats         {
-        max-width: 140px;
+
+    .time-display {
+        min-width: 132px;
+    }
+
+    .fps-badge {
+        width: 96px;
+        min-width: 96px;
+        max-width: 96px;
+    }
+    #timeSlider {
+        width: 170px;
+        min-width: 170px;
+    }
+
+    .time-display {
+        width: 142px;
+        min-width: 142px;
+        max-width: 142px;
     }
 }

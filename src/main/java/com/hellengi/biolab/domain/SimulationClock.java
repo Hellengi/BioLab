@@ -11,6 +11,13 @@ public class SimulationClock {
     private static final long MAX_STEPS_PER_POLL = 100L;
     private static final long NANOS_PER_MILLISECOND = 1_000_000L;
 
+    /**
+     * Between 0.1x and 10x the simulation changes real TPS.
+     * Outside this range TPS stays fixed and tickScale changes instead.
+     */
+    private static final double MIN_REAL_TPS_SPEED = 0.1;
+    private static final double MAX_REAL_TPS_SPEED = 10.0;
+
     private final YamlConfig baseConfig;
 
     private long lastStepTimeNs = System.nanoTime();
@@ -78,23 +85,16 @@ public class SimulationClock {
     }
 
     private long calculateTickIntervalNs(double speedFactor) {
-        if (speedFactor < 1.0 && baseConfig.getTime().isScaleSlowdownInsideTick()) {
-            return baseConfig.getTickRateMs() * NANOS_PER_MILLISECOND;
-        }
-        if (speedFactor > 1.0 && baseConfig.getTime().isScaleSpeedupInsideTick()) {
-            return baseConfig.getTickRateMs() * NANOS_PER_MILLISECOND;
-        }
-        return Math.max(1L, Math.round(baseConfig.getTickRateMs() * NANOS_PER_MILLISECOND / speedFactor));
+        double realTpsScale = calculateRealTpsScale(speedFactor);
+        return Math.max(1L, Math.round(baseConfig.getTickRateMs() * NANOS_PER_MILLISECOND / realTpsScale));
     }
 
     private double calculateTickScale(double speedFactor) {
-        if (speedFactor < 1.0 && baseConfig.getTime().isScaleSlowdownInsideTick()) {
-            return speedFactor;
-        }
-        if (speedFactor > 1.0 && baseConfig.getTime().isScaleSpeedupInsideTick()) {
-            return speedFactor;
-        }
-        return 1.0;
+        return speedFactor / calculateRealTpsScale(speedFactor);
+    }
+
+    private double calculateRealTpsScale(double speedFactor) {
+        return Math.max(MIN_REAL_TPS_SPEED, Math.min(MAX_REAL_TPS_SPEED, speedFactor));
     }
 
     static final class StepBatch {

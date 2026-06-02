@@ -1,5 +1,7 @@
 import { drawDeadCellEffects, updateDeadCellEffects } from "./effects.js";
-import { drawBackground, drawLightSourceBodies } from "./lighting.js";
+import { drawBackground, drawDisplayLayers, drawLightSourceBodies } from "./lighting.js";
+import { organicBrownHsl } from "./colors.js";
+import { cssVar } from "../core/utils.js";
 
 const COLD_FILTER_BASE_ALPHA = 0.03;
 const COLD_FILTER_MAX_ALPHA  = 0.22;
@@ -7,36 +9,118 @@ const HOT_FILTER_BASE_ALPHA  = 0.03;
 const HOT_FILTER_MAX_ALPHA   = 0.18;
 const COLD_FILTER_COLOR = "59, 130, 246";
 const HOT_FILTER_COLOR  = "216, 106, 49";
-const CELL_MIN_LIGHT = 0.5;
-const DIRECTION_VECTOR_LENGTH = 12.0;
+
+// Было 0.50. Значение 0.38 визуально усиливает затемнение в темноте примерно на четверть,
+// но не проваливает клетки и еду в полностью черный цвет.
+const CELL_MIN_LIGHT = 0.38;
+
+const FOOD_SHAPE = Object.freeze({
+    pointCount: 13,
+    radialJitter: 0.24,
+    cacheLimit: 6000,
+});
+
+// Strength and shape of cosmetic cell highlights/shadows.
+// These constants intentionally live in one place, so the visual effect can be tuned
+// without touching the renderer logic. Higher alpha/gradientScale = brighter crescents.
+const CELL_LIGHTING_DETAIL = Object.freeze({
+    gradientScale: 4.85,
+
+    // Highlight stays a crescent, but now it is explicitly bright near the outer
+    // cell edge so it does not look detached from the membrane.
+    maxHighlightAlpha: 0.82,
+    highlightCoreAlpha: 0.54,
+    highlightRimAlpha: 0.24,
+    highlightInnerCircleShift: 0.50,
+    highlightInnerCircleRadius: 1.14,
+    highlightCoreX: 0.86,
+    highlightCoreY: -0.12,
+    highlightGradientOuterRadius: 0.96,
+    highlightCoreRadius: 0.38,
+    highlightSoftOuterRadiusBoost: 0.38,
+    highlightSoftCoreRadiusBoost: 0.30,
+    highlightSoftCoreAlphaFactor: 0.18,
+    highlightSoftRimAlphaFactor: 0.28,
+
+    // Shadow is not a second crescent anymore. It is a broad side gradient,
+    // because real translucent cells usually darken smoothly on the unlit side.
+    maxShadowAlpha: 0.70,
+    shadowEdgeAlpha: 0.50,
+    shadowMidAlpha: 0.34,
+    shadowReach: 0.64,
+});
+
+const CELL_DIRECTION_VECTOR = Object.freeze({
+    length: 12.0,
+    strokeStyle: "#ff8c42",
+    lineWidth: 1.5,
+    headLength: 5.2,
+    headWidth: 4.2,
+    shaftHeadOverlap: 1.35,
+});
+const selectionStrokeColorCache = new Map();
+const foodPathCache = new Map();
+
+const OPTICAL_DENSITY_BG_DARK = Object.freeze({ r: 34, g: 38, b: 46 });
+const OPTICAL_DENSITY_BG_MAX = Object.freeze({ r: 255, g: 255, b: 255 });
+const LIGHT_OVEREXPOSURE_YELLOW = Object.freeze({ r: 255, g: 238, b: 120 });
+const OPTICAL_DENSITY_LOW_LIGHT_GAMMA = 0.8;
+const OPTICAL_DENSITY_LOW_LIGHT_TOE = 0.08;
+const OPTICAL_DENSITY_OVEREXPOSURE_MAX = 2.0;
+
+const SELECTED_CELL_RING = Object.freeze({
+    padding: 4.0,
+    width: 1.35,
+    dashFraction: 0.56,
+    targetSegmentLength: 38.0,
+    minSegments: 8,
+    rotationsPerSecond: 0.09,
+    darkBackgroundThreshold: 105,
+    lightBackgroundThreshold: 165,
+    darkStrokeVar: "--c-accent-dark",
+    midStrokeVar: "--c-accent-dark",
+    lightStrokeVar: "--c-accent",
+});
 
 export function render(ctx, state) {
     if (!state.world || !state.config) return;
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     ctx.save();
     clipTube(ctx);
-    drawBackground(ctx, state.world.lighting);
+
+    const opticalDensityLayerEnabled = hasOpticalDensityLayer(state);
+
+    drawBackground(ctx, state.world.lighting, {
+        opticalDensityMode: opticalDensityLayerEnabled,
+    });
+
     for (const food of state.world.foods) {
-        drawFood(ctx, food);
+        drawFood(ctx, food, state.world.lighting, opticalDensityLayerEnabled);
     }
-    for (const cell of state.world.cells.filter(cell => !cell.dead)) {
-        drawCell(ctx, cell, state.world.lighting);
-        drawDirectionVector(ctx, cell, DIRECTION_VECTOR_LENGTH);
-    }
-    for (const deadCell of state.world.cells.filter(cell => cell.dead)) {
-        drawDeadCell(ctx, deadCell, state.world.lighting);
-    }
-    if (state.selectedCellId) {
-        const selectedCell = state.cellById.get(state.selectedCellId);
-        if (selectedCell) {
-            drawSelectedCellOutline(ctx, selectedCell);
+
+    // Light & Density view already visualizes cells through the optical-density map.
+    // Do not draw the cell bodies over it, otherwise the actual density layer is harder to read.
+    if (!opticalDensityLayerEnabled) {
+        for (const cell of state.world.cells) {
+            if (cell.dead) continue;
+            drawCell(ctx, cell, state.world.lighting, false);
         }
+        for (const deadCell of state.world.cells) {
+            if (!deadCell.dead) continue;
+            drawDeadCell(ctx, deadCell, state.world.lighting, false);
+        }
+        updateDeadCellEffects();
+        drawDeadCellEffects(ctx, false);
+    } else {
+        updateDeadCellEffects();
     }
-    updateDeadCellEffects();
-    drawDeadCellEffects(ctx);
 
     const sliderValue = state.pendingTimeSlider ?? state.config.timeSlider?.value ?? 50;
     applyEnvironmentTint(ctx, sliderValue);
+
+    drawDisplayLayers(ctx, state.world.lighting, state.displayLayers);
+    drawCellDirectionLayer(ctx, state);
+
     ctx.restore();
 
     drawTubeBorder(ctx);
@@ -44,6 +128,10 @@ export function render(ctx, state) {
     if (state.world.lighting) {
         drawLightSourceBodies(ctx, state.world.lighting);
     }
+
+    // Selection ring is an interaction overlay, so it stays visible even when
+    // Light & Density view hides the cell bodies.
+    drawSelectedCellOverlay(ctx, state, opticalDensityLayerEnabled);
 }
 
 function clipTube(ctx) {
@@ -66,55 +154,299 @@ function drawTubeBorder(ctx) {
     ctx.stroke();
 }
 
-function drawFood(ctx, food) {
+function drawFood(ctx, food, lighting, grayscaleMode = false) {
     if (food.consumed) return;
-    fillCircle(ctx, food.x, food.y, food.radius, "hsl(52, 85%, 60%)");
+
+    const illum = objectIlluminance(food, lighting);
+    const l = modulateLightness(33, illum);
+    const fill = grayscaleMode ? `hsl(0, 0%, ${l}%)` : organicBrownHsl(l);
+
+    fillFoodShape(ctx, food, fill);
 }
 
-function drawCell(ctx, cell, lighting) {
+function drawCell(ctx, cell, lighting, grayscaleMode = false) {
     const illum = cellIlluminance(cell, lighting);
     const l = modulateLightness(cell.genome.lightness, illum);
+    const saturation = grayscaleMode ? 0 : cell.genome.saturation;
+    const hue = grayscaleMode ? 0 : cell.genome.colorHue;
+
     fillCircle(
         ctx,
         cell.x,
         cell.y,
         cell.radius,
-        `hsl(${cell.genome.colorHue}, ${cell.genome.saturation}%, ${l}%)`
+        `hsl(${hue}, ${saturation}%, ${l}%)`
     );
+    drawCellLightCrescents(ctx, cell);
 }
 
-function drawDeadCell(ctx, deadCell, lighting) {
+function drawDeadCell(ctx, deadCell, lighting, grayscaleMode = false) {
     const illum = cellIlluminance(deadCell, lighting);
     const l = modulateLightness(33, illum);
-    fillCircle(ctx, deadCell.x, deadCell.y, deadCell.radius,
-        `hsl(22, 43%, ${l}%)`);
+    const fill = grayscaleMode ? `hsl(0, 0%, ${l}%)` : organicBrownHsl(l);
+
+    fillCircle(ctx, deadCell.x, deadCell.y, deadCell.radius, fill);
+    drawCellLightCrescents(ctx, deadCell);
 }
 
 function cellIlluminance(cell, lighting) {
-    const rawLight = typeof cell.localLight === 'number'
+    const rawLight = typeof cell.localLight === "number"
         ? cell.localLight
-        : lighting?.globalLight ?? 0.75;
+        : objectRawLight(cell, lighting, lighting?.globalLight ?? 0.75);
 
+    return lightMultiplier(rawLight);
+}
+
+function objectIlluminance(object, lighting) {
+    return lightMultiplier(objectRawLight(object, lighting, lighting?.globalLight ?? 0.75));
+}
+
+function objectRawLight(object, lighting, fallback) {
+    return sampleLightingGrid(lighting?.lightMap, lighting, object.x, object.y, fallback);
+}
+
+function lightMultiplier(rawLight) {
     const clampedLight = Math.max(0, Math.min(1, rawLight));
     return CELL_MIN_LIGHT + clampedLight * (1 - CELL_MIN_LIGHT);
 }
 
-function modulateLightness(genomeLightness, illuminance) {
+function modulateLightness(baseLightness, illuminance) {
     const minL = 5;
-    return Math.round(minL + (genomeLightness - minL) * illuminance);
+    return Math.round(minL + (baseLightness - minL) * illuminance);
 }
 
-function drawDirectionVector(ctx, cell, length) {
+function drawCellLightCrescents(ctx, cell) {
+    const display = cell.display ?? {};
+    const shadowAngleDeg = display.lightDirectionAngle;
+    const rawShadowGradient = display.lightGradient;
+    const highlightAngleDeg = display.highlightDirectionAngle;
+    const rawHighlightStrength = display.highlightStrength;
+    const rawHighlightClarity = display.highlightClarity;
+
+    const cellOpacity = clamp01(cell.display?.opacity ?? cell.opacity ?? 1.0);
+    const shadowStrength = Number.isFinite(rawShadowGradient)
+        ? clamp01(Math.max(0, rawShadowGradient) * CELL_LIGHTING_DETAIL.gradientScale)
+        : 0.0;
+    const highlightStrength = Number.isFinite(rawHighlightStrength)
+        ? clamp01(Math.max(0, rawHighlightStrength))
+        : 0.0;
+    const highlightClarity = Number.isFinite(rawHighlightClarity)
+        ? clamp01(rawHighlightClarity)
+        : 0.0;
+
+    const shadowAlpha = CELL_LIGHTING_DETAIL.maxShadowAlpha * shadowStrength * cellOpacity;
+    const highlightAlpha = CELL_LIGHTING_DETAIL.maxHighlightAlpha * highlightStrength * cellOpacity;
+
+    if (highlightAlpha <= 0.001 && shadowAlpha <= 0.001) return;
+
+    const radius = cell.radius;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cell.x, cell.y, radius, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.translate(cell.x, cell.y);
+
+    if (shadowAlpha > 0.001 && Number.isFinite(shadowAngleDeg)) {
+        ctx.save();
+        ctx.rotate(shadowAngleDeg * Math.PI / 180.0);
+        drawSoftCellSideShadow(ctx, radius, shadowAlpha, shadowStrength * cellOpacity);
+        ctx.restore();
+    }
+
+    if (highlightAlpha > 0.001 && Number.isFinite(highlightAngleDeg)) {
+        ctx.save();
+        ctx.rotate(highlightAngleDeg * Math.PI / 180.0);
+        drawSoftCellHighlightCrescent(
+            ctx,
+            radius,
+            highlightAlpha,
+            highlightStrength * cellOpacity,
+            highlightClarity
+        );
+        ctx.restore();
+    }
+
+    ctx.restore();
+}
+
+function drawSoftCellHighlightCrescent(ctx, radius, alpha, strength, clarity = 1.0) {
+    const crispness = clamp01(clarity);
+    const softness = 1.0 - crispness;
+    const mainAlpha = clamp01(alpha);
+    const coreAlpha = clamp01(
+        CELL_LIGHTING_DETAIL.highlightCoreAlpha
+        * strength
+        * (CELL_LIGHTING_DETAIL.highlightSoftCoreAlphaFactor
+            + (1.0 - CELL_LIGHTING_DETAIL.highlightSoftCoreAlphaFactor) * crispness)
+    );
+    const rimAlpha = clamp01(
+        CELL_LIGHTING_DETAIL.highlightRimAlpha
+        * strength
+        * (CELL_LIGHTING_DETAIL.highlightSoftRimAlphaFactor
+            + (1.0 - CELL_LIGHTING_DETAIL.highlightSoftRimAlphaFactor) * crispness)
+    );
+    if (mainAlpha <= 0.001 && coreAlpha <= 0.001 && rimAlpha <= 0.001) return;
+
+    const outerRadius = CELL_LIGHTING_DETAIL.highlightGradientOuterRadius
+        + softness * CELL_LIGHTING_DETAIL.highlightSoftOuterRadiusBoost;
+    const coreRadius = CELL_LIGHTING_DETAIL.highlightCoreRadius
+        + softness * CELL_LIGHTING_DETAIL.highlightSoftCoreRadiusBoost;
+
+    ctx.save();
+    ctx.globalCompositeOperation = "screen";
+
+    // Main glow is centered close to the outer membrane. Low clarity expands the
+    // gradient and suppresses the core/rim, so the highlight becomes softer and
+    // fades out instead of snapping to a wrong direction.
+    const gradient = ctx.createRadialGradient(
+        radius * CELL_LIGHTING_DETAIL.highlightCoreX,
+        radius * CELL_LIGHTING_DETAIL.highlightCoreY,
+        radius * 0.01,
+        radius * 0.70,
+        0,
+        radius * outerRadius
+    );
+    gradient.addColorStop(0.00, `rgba(255, 255, 255, ${mainAlpha.toFixed(3)})`);
+    gradient.addColorStop(0.28, `rgba(255, 255, 255, ${(mainAlpha * (0.56 + 0.22 * crispness)).toFixed(3)})`);
+    gradient.addColorStop(0.66, `rgba(255, 255, 255, ${(mainAlpha * (0.14 + 0.12 * crispness)).toFixed(3)})`);
+    gradient.addColorStop(1.00, "rgba(255, 255, 255, 0)");
+
+    ctx.fillStyle = gradient;
+    beginRightHighlightCrescentPath(ctx, radius);
+    ctx.fill();
+
+    if (rimAlpha > 0.001) {
+        const rimGradient = ctx.createLinearGradient(radius * 0.10, 0, radius, 0);
+        rimGradient.addColorStop(0.00, "rgba(255, 255, 255, 0)");
+        rimGradient.addColorStop(0.70, `rgba(255, 255, 255, ${(rimAlpha * 0.32).toFixed(3)})`);
+        rimGradient.addColorStop(1.00, `rgba(255, 255, 255, ${rimAlpha.toFixed(3)})`);
+
+        ctx.fillStyle = rimGradient;
+        beginRightHighlightCrescentPath(ctx, radius);
+        ctx.fill();
+    }
+
+    if (coreAlpha > 0.001) {
+        const coreGradient = ctx.createRadialGradient(
+            radius * CELL_LIGHTING_DETAIL.highlightCoreX,
+            radius * CELL_LIGHTING_DETAIL.highlightCoreY,
+            0,
+            radius * CELL_LIGHTING_DETAIL.highlightCoreX,
+            radius * CELL_LIGHTING_DETAIL.highlightCoreY,
+            radius * coreRadius
+        );
+        coreGradient.addColorStop(0.00, `rgba(255, 255, 255, ${coreAlpha.toFixed(3)})`);
+        coreGradient.addColorStop(0.48, `rgba(255, 255, 255, ${(coreAlpha * (0.24 + 0.10 * crispness)).toFixed(3)})`);
+        coreGradient.addColorStop(1.00, "rgba(255, 255, 255, 0)");
+
+        ctx.fillStyle = coreGradient;
+        beginRightHighlightCrescentPath(ctx, radius);
+        ctx.fill();
+    }
+
+    ctx.restore();
+}
+
+function drawSoftCellSideShadow(ctx, radius, alpha, strength) {
+    const edgeAlpha = clamp01(Math.max(
+        alpha * CELL_LIGHTING_DETAIL.shadowEdgeAlpha,
+        CELL_LIGHTING_DETAIL.shadowEdgeAlpha * strength
+    ));
+    const midAlpha = clamp01(CELL_LIGHTING_DETAIL.shadowMidAlpha * strength);
+    if (edgeAlpha <= 0.001 && midAlpha <= 0.001) return;
+
+    ctx.save();
+    ctx.globalCompositeOperation = "multiply";
+
+    const gradient = ctx.createLinearGradient(-radius, 0, radius, 0);
+    gradient.addColorStop(0.00, `rgba(0, 0, 0, ${edgeAlpha.toFixed(3)})`);
+    gradient.addColorStop(0.32, `rgba(0, 0, 0, ${midAlpha.toFixed(3)})`);
+    gradient.addColorStop(CELL_LIGHTING_DETAIL.shadowReach, "rgba(0, 0, 0, 0)");
+    gradient.addColorStop(1.00, "rgba(0, 0, 0, 0)");
+
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+}
+
+function beginRightHighlightCrescentPath(ctx, radius) {
+    const innerCenterX = -radius * CELL_LIGHTING_DETAIL.highlightInnerCircleShift;
+    const innerRadius = radius * CELL_LIGHTING_DETAIL.highlightInnerCircleRadius;
+    const distance = Math.max(1.0e-6, Math.abs(innerCenterX));
+
+    const intersectionX = clamp(
+        (radius * radius - innerRadius * innerRadius + distance * distance) / (2 * distance),
+        -radius * 0.98,
+        radius * 0.98
+    );
+    const intersectionY = Math.sqrt(Math.max(0.0, radius * radius - intersectionX * intersectionX));
+
+    const outerAngle = Math.atan2(intersectionY, intersectionX);
+    const innerTopAngle = Math.atan2(intersectionY, intersectionX - innerCenterX);
+    const innerBottomAngle = Math.atan2(-intersectionY, intersectionX - innerCenterX);
+
+    ctx.beginPath();
+    ctx.moveTo(intersectionX, -intersectionY);
+    ctx.arc(0, 0, radius, -outerAngle, outerAngle, false);
+    ctx.arc(innerCenterX, 0, innerRadius, innerTopAngle, innerBottomAngle, true);
+    ctx.closePath();
+}
+
+function drawCellDirectionLayer(ctx, state) {
+    if (!state.displayLayers?.cellDirections) return;
+
+    for (const cell of state.world.cells) {
+        if (cell.dead) continue;
+        drawDirectionVector(ctx, cell);
+    }
+}
+
+function drawDirectionVector(ctx, cell) {
     const dirX = cell.motion?.speedDirX ?? 0.0;
     const dirY = cell.motion?.speedDirY ?? 0.0;
     if (dirX === 0.0 && dirY === 0.0) return;
 
+    const startX = cell.x;
+    const startY = cell.y;
+    const endX = startX + dirX * CELL_DIRECTION_VECTOR.length;
+    const endY = startY + dirY * CELL_DIRECTION_VECTOR.length;
+    const angle = Math.atan2(dirY, dirX);
+
+    const headLength = Math.min(
+        CELL_DIRECTION_VECTOR.headLength,
+        CELL_DIRECTION_VECTOR.length * 0.48
+    );
+    const headWidth = CELL_DIRECTION_VECTOR.headWidth;
+    const shaftEndX = endX - Math.cos(angle) * Math.max(0.0, headLength - CELL_DIRECTION_VECTOR.shaftHeadOverlap);
+    const shaftEndY = endY - Math.sin(angle) * Math.max(0.0, headLength - CELL_DIRECTION_VECTOR.shaftHeadOverlap);
+
+    ctx.strokeStyle = CELL_DIRECTION_VECTOR.strokeStyle;
+    ctx.fillStyle = CELL_DIRECTION_VECTOR.strokeStyle;
+    ctx.lineWidth = CELL_DIRECTION_VECTOR.lineWidth;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
     ctx.beginPath();
-    ctx.moveTo(cell.x, cell.y);
-    ctx.lineTo(cell.x + dirX * length, cell.y + dirY * length);
-    ctx.strokeStyle = "#ff8c42";
-    ctx.lineWidth = 1.5;
+    ctx.moveTo(startX, startY);
+    ctx.lineTo(shaftEndX, shaftEndY);
     ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(endX, endY);
+    ctx.lineTo(
+        endX - Math.cos(angle) * headLength + Math.sin(angle) * headWidth * 0.5,
+        endY - Math.sin(angle) * headLength - Math.cos(angle) * headWidth * 0.5
+    );
+    ctx.lineTo(
+        endX - Math.cos(angle) * headLength - Math.sin(angle) * headWidth * 0.5,
+        endY - Math.sin(angle) * headLength + Math.cos(angle) * headWidth * 0.5
+    );
+    ctx.closePath();
+    ctx.fill();
 }
 
 function fillCircle(targetCtx, x, y, radius, fillStyle) {
@@ -124,12 +456,235 @@ function fillCircle(targetCtx, x, y, radius, fillStyle) {
     targetCtx.fill();
 }
 
-function drawSelectedCellOutline(ctx, selectedCell) {
+function fillFoodShape(ctx, food, fillStyle) {
+    const path = foodPath(food.id);
+
+    ctx.save();
+    ctx.translate(food.x, food.y);
+    ctx.scale(food.radius, food.radius);
+    ctx.fillStyle = fillStyle;
+    ctx.fill(path);
+    ctx.restore();
+}
+
+function foodPath(foodId) {
+    if (foodPathCache.has(foodId)) {
+        return foodPathCache.get(foodId);
+    }
+
+    if (foodPathCache.size > FOOD_SHAPE.cacheLimit) {
+        foodPathCache.clear();
+    }
+
+    const path = createFoodPath(foodId);
+    foodPathCache.set(foodId, path);
+    return path;
+}
+
+function createFoodPath(foodId) {
+    const random = seededRandom(Number(foodId) || 1);
+    const points = [];
+
+    for (let i = 0; i < FOOD_SHAPE.pointCount; i++) {
+        const angle = i / FOOD_SHAPE.pointCount * Math.PI * 2;
+        const noise = (random() * 2 - 1) * FOOD_SHAPE.radialJitter;
+        const secondaryNoise = (random() * 2 - 1) * FOOD_SHAPE.radialJitter * 0.35;
+        const radius = Math.max(0.62, 1.0 + noise + secondaryNoise);
+
+        points.push({
+            x: Math.cos(angle) * radius,
+            y: Math.sin(angle) * radius,
+        });
+    }
+
+    const path = new Path2D();
+    const first = midpoint(points[points.length - 1], points[0]);
+    path.moveTo(first.x, first.y);
+
+    for (let i = 0; i < points.length; i++) {
+        const current = points[i];
+        const next = points[(i + 1) % points.length];
+        const mid = midpoint(current, next);
+        path.quadraticCurveTo(current.x, current.y, mid.x, mid.y);
+    }
+
+    path.closePath();
+    return path;
+}
+
+function midpoint(a, b) {
+    return {
+        x: (a.x + b.x) * 0.5,
+        y: (a.y + b.y) * 0.5,
+    };
+}
+
+function seededRandom(seed) {
+    let value = (seed >>> 0) || 1;
+    return () => {
+        value = (value * 1664525 + 1013904223) >>> 0;
+        return value / 0x100000000;
+    };
+}
+
+function drawSelectedCellOverlay(ctx, state, opticalDensityLayerEnabled) {
+    if (!state.selectedCellId) return;
+
+    const selectedCell = state.cellById.get(state.selectedCellId);
+    if (!selectedCell || selectedCell.dead) return;
+
+    drawSelectedCellOutline(ctx, selectedCell, state.world?.lighting, opticalDensityLayerEnabled);
+}
+
+function drawSelectedCellOutline(ctx, selectedCell, lighting, opticalDensityLayerEnabled) {
+    const radius = selectedCell.radius + SELECTED_CELL_RING.padding;
+    const strokeColor = calculateSelectionStrokeColor(selectedCell, radius, lighting, opticalDensityLayerEnabled);
+    const circumference = Math.PI * 2 * radius;
+    const segmentCount = Math.max(
+        SELECTED_CELL_RING.minSegments,
+        Math.round(circumference / SELECTED_CELL_RING.targetSegmentLength)
+    );
+    const segmentLength = circumference / segmentCount;
+    const dashLength = segmentLength * SELECTED_CELL_RING.dashFraction;
+    const gapLength = Math.max(1.0, segmentLength - dashLength);
+    const offset = -circumference * (performance.now() * 0.001 * SELECTED_CELL_RING.rotationsPerSecond % 1);
+
+    ctx.save();
+    ctx.translate(selectedCell.x, selectedCell.y);
+    ctx.strokeStyle = strokeColor;
+    ctx.lineWidth = SELECTED_CELL_RING.width;
+    ctx.lineCap = "round";
+    ctx.setLineDash([dashLength, gapLength]);
+    ctx.lineDashOffset = offset;
+
     ctx.beginPath();
-    ctx.arc(selectedCell.x, selectedCell.y, selectedCell.radius + 4, 0, Math.PI * 2);
-    ctx.strokeStyle = "#2563EB";
-    ctx.lineWidth = 2;
+    ctx.arc(0, 0, radius, 0, Math.PI * 2);
     ctx.stroke();
+
+    ctx.restore();
+}
+
+function calculateSelectionStrokeColor(selectedCell, radius, lighting, opticalDensityLayerEnabled) {
+    const grayscale = estimateSelectionBackgroundBrightness(selectedCell, radius, lighting, opticalDensityLayerEnabled);
+
+    if (grayscale <= SELECTED_CELL_RING.darkBackgroundThreshold) {
+        return selectionStrokeColor(SELECTED_CELL_RING.lightStrokeVar);
+    }
+    if (grayscale >= SELECTED_CELL_RING.lightBackgroundThreshold) {
+        return selectionStrokeColor(SELECTED_CELL_RING.darkStrokeVar);
+    }
+
+    return selectionStrokeColor(SELECTED_CELL_RING.midStrokeVar);
+}
+
+function selectionStrokeColor(varName) {
+    if (!selectionStrokeColorCache.has(varName)) {
+        selectionStrokeColorCache.set(varName, cssVar(varName));
+    }
+
+    return selectionStrokeColorCache.get(varName);
+}
+
+function estimateSelectionBackgroundBrightness(selectedCell, radius, lighting, opticalDensityLayerEnabled) {
+    const samples = [
+        [selectedCell.x, selectedCell.y - radius],
+        [selectedCell.x + radius, selectedCell.y],
+        [selectedCell.x, selectedCell.y + radius],
+        [selectedCell.x - radius, selectedCell.y],
+    ];
+
+    let sum = 0;
+    let count = 0;
+
+    for (const [x, y] of samples) {
+        sum += estimateBackgroundBrightnessAt(x, y, lighting, opticalDensityLayerEnabled);
+        count++;
+    }
+
+    return count > 0 ? sum / count : 255;
+}
+
+function estimateBackgroundBrightnessAt(x, y, lighting, opticalDensityLayerEnabled) {
+    const light = sampleLightingGrid(lighting?.lightMap, lighting, x, y, lighting?.globalLight ?? 0.75);
+
+    if (!opticalDensityLayerEnabled) {
+        return backgroundBrightness(light);
+    }
+
+    const opacity = sampleLightingGrid(lighting?.opacityMap, lighting, x, y, 0.0);
+    const color = opticalDensityColor(light);
+    const density = Math.max(0.0, Math.min(1.0, opacity * 8.0));
+    const rbScale = 1.0 - density;
+
+    const r = color.r * rbScale;
+    const g = color.g * rbScale;
+    const b = color.b;
+
+    return r * 0.299 + g * 0.587 + b * 0.114;
+}
+
+function sampleLightingGrid(map, lighting, x, y, fallback) {
+    if (!Array.isArray(map) || map.length === 0) {
+        return fallback;
+    }
+
+    const cols = lighting?.gridWidth ?? 0;
+    const rows = lighting?.gridHeight ?? 0;
+    const gridStep = Math.max(1, lighting?.gridStep ?? 1);
+
+    if (cols <= 0 || rows <= 0) {
+        return fallback;
+    }
+
+    const col = Math.max(0, Math.min(cols - 1, Math.floor(x / gridStep)));
+    const row = Math.max(0, Math.min(rows - 1, Math.floor(y / gridStep)));
+    const value = map[row * cols + col];
+
+    return Number.isFinite(value) ? value : fallback;
+}
+
+function backgroundBrightness(illumination) {
+    const illum = Math.max(0, illumination);
+
+    if (illum <= 1) {
+        return Math.round(40 + (200 - 40) * illum);
+    }
+
+    const linearSlope = 200 - 40;
+    const whiteGap = 255 - 200;
+    const k = linearSlope / whiteGap;
+
+    return Math.round(200 + whiteGap * (1 - Math.exp(-k * (illum - 1))));
+}
+
+function opticalDensityColor(illumination) {
+    const illum = Math.max(0, illumination);
+
+    if (illum <= 1) {
+        const t = opticalDensityLowLightTone(illum);
+        return mixRgb(OPTICAL_DENSITY_BG_DARK, OPTICAL_DENSITY_BG_MAX, t);
+    }
+
+    const t = clamp01((illum - 1) / (OPTICAL_DENSITY_OVEREXPOSURE_MAX - 1));
+    return mixRgb(OPTICAL_DENSITY_BG_MAX, LIGHT_OVEREXPOSURE_YELLOW, t);
+}
+
+function opticalDensityLowLightTone(illumination) {
+    const illum = clamp01(illumination);
+    const toe = OPTICAL_DENSITY_LOW_LIGHT_TOE;
+    const gamma = OPTICAL_DENSITY_LOW_LIGHT_GAMMA;
+    const min = Math.pow(toe, gamma);
+    const max = Math.pow(1.0 + toe, gamma);
+
+    return clamp01((Math.pow(illum + toe, gamma) - min) / Math.max(1.0e-9, max - min));
+}
+
+function mixRgb(from, to, t) {
+    return {
+        r: Math.round(from.r + (to.r - from.r) * t),
+        g: Math.round(from.g + (to.g - from.g) * t),
+        b: Math.round(from.b + (to.b - from.b) * t),
+    };
 }
 
 function applyEnvironmentTint(ctx, timeSlider) {
@@ -153,3 +708,25 @@ function applyEnvironmentTint(ctx, timeSlider) {
     ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     ctx.restore();
 }
+
+function hasOpticalDensityLayer(state) {
+    const lighting = state.world?.lighting;
+
+    return Boolean(
+        state.displayLayers?.opacityMap
+        && Array.isArray(lighting?.opacityMap)
+        && lighting.opacityMap.length > 0
+    );
+}
+
+function clamp(value, min, max) {
+    if (!Number.isFinite(value)) return min;
+    return Math.max(min, Math.min(max, value));
+}
+
+function clamp01(value) {
+    if (!Number.isFinite(value)) return 0;
+    return Math.max(0, Math.min(1, value));
+}
+
+

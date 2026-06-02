@@ -1,4 +1,5 @@
 
+
 /* ═══════════════════════════════════════════════════════
    panels.css — компоненты панелей: заголовки, настройки,
    аккордеон, локаль, placeholder, лог, чекбоксы, тики
@@ -376,4 +377,112 @@
 .cursor-readout-value.cursor-readout--active {
     color: var(--c-accent);
     text-shadow: 0 0 12px var(--c-accent-glow);
+}
+/* ── Stable sidebar scrollbar ────────────────────────────── */
+.cell-sidebar {
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+}
+
+.cell-sidebar::-webkit-scrollbar {
+    width: 8px;
+}
+
+.cell-sidebar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.cell-sidebar::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.28);
+    border-radius: 999px;
+}
+
+.cell-sidebar::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.45);
+}
+
+
+/* ── Display layers ─────────────────────────────────────── */
+.display-layer-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-xs);
+}
+
+.display-layer-toggle {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-height: 48px;
+    gap: var(--gap-sm);
+    padding: 8px 10px;
+    border: 1px solid var(--c-border-soft);
+    border-radius: var(--radius-sm);
+    background: var(--c-bg-deep);
+    color: var(--c-text-sub);
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
+}
+
+.display-layer-toggle:hover {
+    border-color: var(--c-border-mid);
+    background: var(--c-bg-inner);
+    color: var(--c-text);
+}
+
+.display-layer-toggle.active {
+    border-color: var(--c-accent);
+    background: rgba(12,74,110,0.25);
+    color: var(--c-text);
+    box-shadow: 0 0 8px rgba(56,189,248,0.12);
+}
+
+.display-layer-checkbox {
+    width: 18px;
+    height: 18px;
+    flex: 0 0 18px;
+    border: 1px solid var(--c-border-mid);
+    border-radius: 4px;
+    background: var(--c-bg-surface);
+    box-shadow: var(--shadow-inset);
+    position: relative;
+}
+
+.display-layer-toggle.active .display-layer-checkbox {
+    border-color: var(--c-accent);
+    background: var(--c-accent-dark);
+}
+
+.display-layer-toggle.active .display-layer-checkbox::after {
+    content: '';
+    position: absolute;
+    left: 5px;
+    top: 2px;
+    width: 5px;
+    height: 10px;
+    border: solid var(--c-accent);
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+.display-layer-copy {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    gap: 2px;
+}
+
+.display-layer-title {
+    font-size: var(--font-sm);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.045em;
+}
+
+.display-layer-subtitle {
+    font-size: 10px;
+    color: var(--c-text-muted);
+    line-height: 1.35;
 }

@@ -19,18 +19,24 @@ public class StateBroadcaster {
     @Scheduled(fixedRate = SCHEDULER_POLL_INTERVAL_MS)
     public void simulationTick() {
         if (simulationEngine.poll()) {
-            broadcast(simulationEngine.getWorldDto());
+            broadcastWorld();
             broadcast(simulationEngine.getMetricsDto());
         }
     }
 
+    private void broadcastWorld() {
+        socketHandler.broadcastWorld(displayLayers -> toMessage(simulationEngine.getWorldDto(displayLayers)));
+    }
+
     public void broadcast(Object dto) {
+        socketHandler.broadcastToAll(toMessage(dto));
+    }
+
+    private TextMessage toMessage(Object dto) {
         try {
-            String json = objectMapper.writeValueAsString(dto);
-            TextMessage message = new TextMessage(json);
-            socketHandler.broadcastToAll(message);
+            return new TextMessage(objectMapper.writeValueAsString(dto));
         } catch (Exception e) {
-            throw new RuntimeException("Failed to broadcast simulation world", e);
+            throw new RuntimeException("Failed to broadcast simulation payload", e);
         }
     }
 }

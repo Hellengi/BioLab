@@ -45,10 +45,35 @@
     <details class="accordion-item">
       <summary class="accordion-header">Display layers</summary>
       <div class="accordion-body">
-        <div class="placeholder-block">
-          <div class="placeholder-icon">&#x1F527;</div>
-          <div class="placeholder-text">Layer toggles coming soon</div>
-          <div class="placeholder-sub">Gas concentration, temperature field, energy gradient and more</div>
+        <div class="display-layer-list">
+          <button id="opacityLayerToggle" class="display-layer-toggle" type="button" data-layer="opacityMap" aria-pressed="false">
+            <span class="display-layer-checkbox" aria-hidden="true"></span>
+            <span class="display-layer-copy">
+              <span class="display-layer-title">Optical density & light</span>
+              <span class="display-layer-subtitle">Shows computed illumination and optical density</span>
+            </span>
+          </button>
+          <button id="lightDirectionLayerToggle" class="display-layer-toggle" type="button" data-layer="lightDirection" aria-pressed="false">
+            <span class="display-layer-checkbox" aria-hidden="true"></span>
+            <span class="display-layer-copy">
+              <span class="display-layer-title">Light direction</span>
+              <span class="display-layer-subtitle">Shows dominant light propagation direction</span>
+            </span>
+          </button>
+          <button id="quadtreeLayerToggle" class="display-layer-toggle" type="button" data-layer="quadtree" aria-pressed="false">
+            <span class="display-layer-checkbox" aria-hidden="true"></span>
+            <span class="display-layer-copy">
+              <span class="display-layer-title">Quadtree grid</span>
+              <span class="display-layer-subtitle">Shows spatial partitions used for collision lookup</span>
+            </span>
+          </button>
+          <button id="cellDirectionsLayerToggle" class="display-layer-toggle" type="button" data-layer="cellDirections" aria-pressed="false">
+            <span class="display-layer-checkbox" aria-hidden="true"></span>
+            <span class="display-layer-copy">
+              <span class="display-layer-title">Cell directions</span>
+              <span class="display-layer-subtitle">Shows where cells are facing</span>
+            </span>
+          </button>
         </div>
       </div>
     </details>
@@ -84,3 +109,5 @@
 </div>
 </body>
 </html>
+
+

@@ -11,7 +11,12 @@ import { drawCreateCellPreview } from "../render/preview.js";
 import { dom } from "../ui/dom.js";
 import { resetCreatePanelFromConfig, setPlaceMode } from "../ui/tabs/creation.js";
 import { clearSelection } from "../ui/tabs/selection.js";
-import { applyDisplayFromConfig, applyPauseButtonState } from "../ui/toolbar.js";
+import {
+    applyDisplayFromConfig,
+    applyPauseButtonState,
+    updateMetricsDisplay,
+    updateTimeDisplay,
+} from "../ui/toolbar.js";
 
 // ── Конфигурация ─────────────────────────────────────────────────────────────
 
@@ -40,26 +45,43 @@ export function applySimulationConfig() {
 
     applyDisplayFromConfig(state.config.temperatureCelsius, state.config.speedFactor);
     applyPauseButtonState(state.config.paused);
+    updateMetricsDisplay(state.fps, state.tps, state.config.paused);
 }
 
 // ── Статистика ───────────────────────────────────────────────────────────────
 
-/** Обновляет строку статистики и FPS/TPS в тулбаре. */
+/** Обновляет нижнюю статистику среды, время и FPS/TPS. */
 export function updateStats() {
     if (!state.world || !state.config) return;
 
+    const cells = state.world.cells ?? [];
+    const foods = state.world.foods ?? [];
+    const deadCount = cells.filter(cell => cell.dead).length;
+
+    if (dom.cellsCountValue) {
+        dom.cellsCountValue.textContent = String(cells.length);
+    }
+    if (dom.deadCellsCountValue) {
+        dom.deadCellsCountValue.textContent = String(deadCount);
+    }
+    if (dom.foodCountValue) {
+        dom.foodCountValue.textContent = String(foods.length);
+    }
+    if (dom.diameterValue) {
+        dom.diameterValue.textContent = String(state.config.tubeDiameter);
+    }
+
+    // Fallback для старой разметки, если проект временно запущен без нижней панели.
     if (dom.stats) {
         dom.stats.textContent =
-            `Tick: ${state.world.tick} | ` +
-            `Cells: ${state.world.cells.length} | ` +
-            `Dead: ${state.world.cells.filter(cell => cell.dead).length} | ` +
-            `Food: ${state.world.foods.length} | ` +
+            `Cells: ${cells.length} | ` +
+            `Dead: ${deadCount} | ` +
+            `Food: ${foods.length} | ` +
             `Diameter: ${state.config.tubeDiameter}`;
     }
 
-    if (dom.fpsLabel) {
-        dom.fpsLabel.textContent = `FPS/TPS = ${state.fps}/${state.tps}`;
-    }
+    updateTimeDisplay(state.world.time, state.world.tick);
+    updateMetricsDisplay(state.fps, state.tps, state.config.paused);
 }
 
 // ── Жизненный цикл симуляции ─────────────────────────────────────────────────

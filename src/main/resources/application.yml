@@ -14,12 +14,10 @@ simulation:
 
   time:
     min-speed-factor: 0.01
-    max-speed-factor: 10.0
+    max-speed-factor: 100.0
     min-temperature-celsius: -20.0
     normal-temperature-celsius: 20.0
     max-temperature-celsius: 60.0
-    scale-slowdown-inside-tick: true
-    scale-speedup-inside-tick: false
 
   environment:
     max-viscosity: 4.0
@@ -40,8 +38,6 @@ simulation:
   collision:
     cell-restitution: 1.0
     dead-cell-restitution: 0.05
-    max-substeps: 4
-    max-step-distance: 4.0
     position-slop: 0.01
     correction-percent: 0.8
 
@@ -128,7 +124,7 @@ simulation:
     light-source-brightness:
       initial: 100
       min: 0
-      max: 100
+      max: 200
       step: 1
     light-source-orbit-radius:
       initial: 100

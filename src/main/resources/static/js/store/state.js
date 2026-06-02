@@ -16,10 +16,25 @@ export const state = {
     tps: 0,
 
     cursorLight: null,
+
+    displayLayers: {
+        opacityMap: false,
+        lightDirection: false,
+        quadtree: false,
+        cellDirections: false,
+    },
 };
 
 export function setCursorLight(value) {
     state.cursorLight = value;
+}
+
+export function setDisplayLayer(layer, enabled) {
+    if (!Object.hasOwn(state.displayLayers, layer)) return;
+    state.displayLayers = {
+        ...state.displayLayers,
+        [layer]: Boolean(enabled),
+    };
 }
 
 export const sliderState = {
@@ -36,6 +51,8 @@ export function findCellAt(x, y) {
     if (!state.world?.cells) return null;
     for (let i = state.world.cells.length - 1; i >= 0; i--) {
         const cell = state.world.cells[i];
+        if (cell.dead) continue;
+
         const dx = x - cell.x;
         const dy = y - cell.y;
         if (dx * dx + dy * dy <= cell.radius * cell.radius) return cell;
@@ -61,3 +78,5 @@ function rebuildCellIndex() {
         (state.world?.cells ?? []).map(cell => [cell.id, cell])
     );
 }
+
+

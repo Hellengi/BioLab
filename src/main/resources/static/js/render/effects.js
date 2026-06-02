@@ -1,4 +1,5 @@
 import {state} from "../store/state.js";
+import { organicBrownHsl } from "./colors.js";
 
 const DEAD_CELL_DISAPPEAR_EFFECT_DURATION_MS = 500;
 const DEAD_CELL_DISAPPEAR_EFFECT_MAX_BLUR_PX = 12;
@@ -19,7 +20,7 @@ export function updateDeadCellEffects() {
     state.prevDeadCellsById = currentDeadCellsById;
 }
 
-export function drawDeadCellEffects(ctx) {
+export function drawDeadCellEffects(ctx, grayscaleMode = false) {
     const now = performance.now();
 
     state.deadCellDisappearEffects = state.deadCellDisappearEffects.filter(effect => {
@@ -35,7 +36,7 @@ export function drawDeadCellEffects(ctx) {
         ctx.globalAlpha = alpha;
         ctx.beginPath();
         ctx.arc(effect.x, effect.y, radius, 0, Math.PI * 2);
-        ctx.fillStyle = "#7a4b2f";
+        ctx.fillStyle = grayscaleMode ? "#5f5f5f" : organicBrownHsl();
         ctx.fill();
         ctx.restore();
 

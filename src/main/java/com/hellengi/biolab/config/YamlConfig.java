@@ -41,12 +41,10 @@ public class YamlConfig {
     @Getter @Setter
     public static class TimeProperties {
         private double minSpeedFactor = 0.01;
-        private double maxSpeedFactor = 10.0;
+        private double maxSpeedFactor = 100.0;
         private double minTemperatureCelsius = -20.0;
         private double normalTemperatureCelsius = 20.0;
         private double maxTemperatureCelsius = 60.0;
-        private boolean scaleSlowdownInsideTick = true;
-        private boolean scaleSpeedupInsideTick = false;
     }
 
     @Getter @Setter
@@ -73,8 +71,6 @@ public class YamlConfig {
     public static class CollisionProperties {
         private double cellRestitution = 1.0;
         private double deadCellRestitution = 0.05;
-        private int maxSubsteps = 8;
-        private double maxStepDistance = 4.0;
         private double positionSlop = 0.01;
         private double correctionPercent = 0.8;
     }

@@ -7,6 +7,11 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class RuntimeOverrides {
+    private static final double TIME_SLIDER_MIN = 0.0;
+    private static final double TIME_SLIDER_CENTER = 50.0;
+    private static final double TIME_SLIDER_MAX = 100.0;
+    private static final double TIME_SLIDER_LOG_STEP = 25.0;
+
     private final YamlConfig baseConfig;
 
     private Double timeSlider;
@@ -44,23 +49,25 @@ public class RuntimeOverrides {
 
     public double getSpeedFactor() {
         if (isPaused()) return 0.0;
+        return getConfiguredSpeedFactor();
+    }
+
+    public double getConfiguredSpeedFactor() {
         return getSliderSpeedFactor();
     }
 
     public double getTemperatureCelsius() {
-        double speed = getSliderSpeedFactor();
-        double minSpeed = safeMinSpeed();
-        double maxSpeed = safeMaxSpeed();
+        double slider = normalizedTimeSlider();
         double minTemperature = baseConfig.getTime().getMinTemperatureCelsius();
         double normalTemperature = baseConfig.getTime().getNormalTemperatureCelsius();
         double maxTemperature = baseConfig.getTime().getMaxTemperatureCelsius();
 
-        if (speed <= 1.0) {
-            double t = (speed - minSpeed) / (1.0 - minSpeed);
+        if (slider <= TIME_SLIDER_CENTER) {
+            double t = slider / TIME_SLIDER_CENTER;
             return minTemperature + t * (normalTemperature - minTemperature);
         }
 
-        double t = (speed - 1.0) / (maxSpeed - 1.0);
+        double t = (slider - TIME_SLIDER_CENTER) / (TIME_SLIDER_MAX - TIME_SLIDER_CENTER);
         return normalTemperature + t * (maxTemperature - normalTemperature);
     }
 
@@ -295,17 +302,13 @@ public class RuntimeOverrides {
 
 
     private double getSliderSpeedFactor() {
-        double value = Math.max(0.0, Math.min(100.0, getTimeSlider()));
+        double exponent = (normalizedTimeSlider() - TIME_SLIDER_CENTER) / TIME_SLIDER_LOG_STEP;
+        double speed = Math.pow(10.0, exponent);
+        return clampDouble(speed, safeMinSpeed(), safeMaxSpeed());
+    }
 
-        if (value <= 50.0) {
-            double t = value / 50.0;
-            double minSpeed = safeMinSpeed();
-            return minSpeed + t * (1.0 - minSpeed);
-        }
-
-        double t = (value - 50.0) / 50.0;
-        double maxSpeed = safeMaxSpeed();
-        return 1.0 + t + (maxSpeed - 2.0) * t * t;
+    private double normalizedTimeSlider() {
+        return Math.max(TIME_SLIDER_MIN, Math.min(TIME_SLIDER_MAX, getTimeSlider()));
     }
 
     private int normalizeStartAngle(int value) {
