@@ -1,3 +1,4 @@
+
 function requireEl(id) {
     const el = document.getElementById(id);
     if (!el) throw new Error(`Required DOM element not found: #${id}`);
@@ -104,6 +105,8 @@ export function bindDom() {
     dom.selectedCellDivisionImpulse = optionalEl("selectedCellDivisionImpulse");
     dom.selectedCellDivisionAngle = optionalEl("selectedCellDivisionAngle");
     dom.selectedCellElasticity = optionalEl("selectedCellElasticity");
+    dom.selectedCellGfp = optionalEl("selectedCellGfp");
+    dom.selectedCellOpacity = optionalEl("selectedCellOpacity");
     dom.selectedCellRgb = optionalEl("selectedCellRgb");
     dom.selectedCellCode = optionalEl("selectedCellCode");
     dom.selectedCellPreviewCanvas = optionalEl("selectedCellPreviewCanvas");
@@ -155,6 +158,9 @@ export function bindDom() {
     dom.createElasticitySlider = optionalEl("createElasticitySlider");
     dom.createElasticityInput = optionalEl("createElasticityInput");
 
+    dom.createGfpSlider = optionalEl("createGfpSlider");
+    dom.createGfpInput = optionalEl("createGfpInput");
+
     dom.createChloroplastAmountSlider = optionalEl("createChloroplastAmountSlider");
     dom.createChloroplastAmountInput =  optionalEl("createChloroplastAmountInput");
 
@@ -198,4 +204,5 @@ export function bindDom() {
     dom.loadCellDeleteBtn = optionalEl("loadCellDeleteBtn");
     dom.loadCellConfirmBtn = optionalEl("loadCellConfirmBtn");
 }
+
 

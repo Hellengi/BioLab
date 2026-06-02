@@ -13,6 +13,12 @@ import java.util.List;
 @Setter
 @Getter
 public class Cell {
+    /**
+     * Physical optical opacity used by the lighting system.
+     * The frontend maps this real value to a stronger display alpha using its own
+     * REAL_CELL_OPACITY_TO_RENDER_ALPHA constant, so cells stay biologically
+     * transparent but still readable on canvas.
+     */
     public static final double CELL_OPACITY = 0.1;
     private static final int MAX_EVENTS = 20;
 
@@ -99,6 +105,15 @@ public class Cell {
 
     public double getOpacity() {
         return CELL_OPACITY;
+    }
+
+    public double getFluorescenceBrightness() {
+        if (!isAlive() || genome == null) {
+            return 0.0;
+        }
+
+        double expression = Math.max(0.0, Math.min(100.0, genome.getGfp())) / 100.0;
+        return expression * Math.max(0.0, config.getLight().getCellFluorescenceMaxBrightness());
     }
 
     public void addEvent(Event event) {

@@ -15,7 +15,8 @@ public class GenomeEntityMapper {
         return new GenomeEmbeddable(
                 dto.divisionThreshold(), dto.divisionImpulse(), dto.divisionAngle(),
                 dto.colorHue(), dto.saturation(), dto.lightness(), dto.maxEnergy(),
-                dryMassOrDefault(dto.dryMass()), elasticityOrDefault(dto.elasticity())
+                dryMassOrDefault(dto.dryMass()), elasticityOrDefault(dto.elasticity()),
+                gfpOrDefault(dto.gfp())
         );
     }
 
@@ -23,7 +24,7 @@ public class GenomeEntityMapper {
         return new GenomeDto(
                 genome.getDivisionThreshold(), genome.getDivisionImpulse(), genome.getDivisionAngle(),
                 genome.getColorHue(), genome.getSaturation(), genome.getLightness(), genome.getMaxEnergy(),
-                genome.getDryMass(), genome.getElasticity(), null
+                genome.getDryMass(), genome.getElasticity(), genome.getGfp(), null
         );
     }
 
@@ -33,5 +34,9 @@ public class GenomeEntityMapper {
 
     private double elasticityOrDefault(Double elasticity) {
         return elasticity != null ? elasticity : config.getGenome().getElasticity().getInitial();
+    }
+
+    private double gfpOrDefault(Double gfp) {
+        return gfp != null ? gfp : config.getGenome().getGfp().getInitial();
     }
 }

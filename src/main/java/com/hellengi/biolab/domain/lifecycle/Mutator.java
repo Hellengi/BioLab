@@ -28,6 +28,7 @@ public class Mutator {
         mutated |= mutateMaxEnergy(genome, mutationChance);
         mutated |= mutateDryMass(genome, mutationChance);
         mutated |= mutateElasticity(genome, mutationChance);
+        mutated |= mutateGfp(genome, mutationChance);
 
         if (!mutated) return genome;
 
@@ -126,6 +127,21 @@ public class Mutator {
                         config.getGenome().getMutation().getElasticity(),
                         config.getGenome().getElasticity().getMin(),
                         config.getGenome().getElasticity().getMax()
+                )
+        );
+
+        return true;
+    }
+
+    private boolean mutateGfp(Genome genome, double chance) {
+        if (!shouldMutate(chance)) return false;
+
+        genome.setGfp(
+                mutateValue(
+                        genome.getGfp(),
+                        config.getGenome().getMutation().getGfp(),
+                        config.getGenome().getGfp().getMin(),
+                        config.getGenome().getGfp().getMax()
                 )
         );
 

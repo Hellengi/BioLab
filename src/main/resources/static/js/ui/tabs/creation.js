@@ -30,6 +30,7 @@ export function getCreateCellFields() {
         { key: "maxEnergy",         range: dom.createMaxEnergySlider,         input: dom.createMaxEnergyInput },
         { key: "dryMass",           range: dom.createDryMassSlider,           input: dom.createDryMassInput },
         { key: "elasticity",        range: dom.createElasticitySlider,        input: dom.createElasticityInput },
+        { key: "gfp",               range: dom.createGfpSlider,               input: dom.createGfpInput },
     ];
 }
 
@@ -73,7 +74,7 @@ function createDraft() {
     if (!state.config?.initialGenome) throw new Error("Config not loaded");
 
     const genome = Object.fromEntries(
-        getCreateCellFields().map(({ key }) => [key, state.config.initialGenome[key].value])
+        getCreateCellFields().map(({ key }) => [key, state.config.initialGenome?.[key]?.value ?? 0])
     );
     genome.code = state.config.initialGenome.code;
 
@@ -90,7 +91,9 @@ export function syncDraftToForm() {
     if (!state.cellDraft?.genome) return;
 
     for (const { key, range, input } of getCreateCellFields()) {
-        const v = String(state.cellDraft.genome[key]);
+        const value = state.cellDraft.genome[key] ?? state.config?.initialGenome?.[key]?.value ?? 0;
+        state.cellDraft.genome[key] = value;
+        const v = String(value);
         if (range) range.value = v;
         if (input) input.value = v;
     }
@@ -113,7 +116,7 @@ export function readDraftFromForm() {
         const raw = input ? Number(input.value) : NaN;
         draft.genome[key] = _clampGenomeValue(
             key,
-            Number.isFinite(raw) ? raw : state.cellDraft.genome[key]
+            Number.isFinite(raw) ? raw : (state.cellDraft.genome[key] ?? state.config?.initialGenome?.[key]?.value ?? 0)
         );
     }
     for (const { key, input } of getCreateChloroplastFields()) {
@@ -223,6 +226,7 @@ function _syncInfoPane() {
     );
 
     _setPlainText("createInfoElasticity",        formatTwoDecimals(g.elasticity));
+    _setPlainText("createInfoGfp",               formatTwoDecimals(g.gfp ?? 0));
     _setPlainText("createInfoDivisionThreshold", formatTwoDecimals(g.divisionThreshold));
     _setPlainText("createInfoDivisionImpulse",   formatTwoDecimals(g.divisionImpulse));
     _setPlainText("createInfoDivisionAngle",     formatTwoDecimals(g.divisionAngle ?? 0) + "°");

@@ -36,6 +36,9 @@ public class GenomeEmbeddable {
     @Column(nullable = false)
     private double elasticity;
 
+    @Column(nullable = false, columnDefinition = "double precision default 0.0")
+    private double gfp;
+
     public GenomeEmbeddable() {
     }
 
@@ -48,7 +51,8 @@ public class GenomeEmbeddable {
             double lightness,
             double maxEnergy,
             double dryMass,
-            double elasticity
+            double elasticity,
+            double gfp
     ) {
         this.divisionThreshold = divisionThreshold;
         this.divisionImpulse = divisionImpulse;
@@ -59,5 +63,6 @@ public class GenomeEmbeddable {
         this.maxEnergy = maxEnergy;
         this.dryMass = dryMass;
         this.elasticity = elasticity;
+        this.gfp = gfp;
     }
 }

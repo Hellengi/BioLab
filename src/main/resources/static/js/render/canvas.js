@@ -1,6 +1,6 @@
 import { drawDeadCellEffects, updateDeadCellEffects } from "./effects.js";
 import { drawBackground, drawDisplayLayers, drawLightSourceBodies } from "./lighting.js";
-import { organicBrownHsl } from "./colors.js";
+import { ORGANIC_BROWN_COLOR, organicBrownHsl } from "./colors.js";
 import { cssVar } from "../core/utils.js";
 
 const COLD_FILTER_BASE_ALPHA = 0.03;
@@ -14,10 +14,50 @@ const HOT_FILTER_COLOR  = "216, 106, 49";
 // но не проваливает клетки и еду в полностью черный цвет.
 const CELL_MIN_LIGHT = 0.38;
 
+// Backend sends the physical optical opacity of the cell. This multiplier maps
+// that real opacity to canvas alpha, so cells are genuinely translucent while
+// still readable on screen.
+const REAL_CELL_OPACITY_TO_RENDER_ALPHA = 9.6;
+const MIN_CELL_RENDER_ALPHA = 0.18;
+const MAX_CELL_RENDER_ALPHA = 0.82;
+
+const CELL_RADIAL_ALPHA = Object.freeze({
+    centerFactor: 0.52,
+    midFactor: 0.76,
+    edgeFactor: 1.06,
+    edgeStop: 0.92,
+});
+
+const GFP_FLUORESCENCE_COLOR = Object.freeze({
+    hue: 132,
+    saturation: 98,
+    lightness: 70,
+});
+
+const GFP_GLOW = Object.freeze({
+    internalCoreAlpha: 1.00,
+    internalMidAlpha: 0.72,
+    internalEdgeAlpha: 0.20,
+    bodyLightnessBoost: 18,
+    bodySaturationBoost: 24,
+});
+
 const FOOD_SHAPE = Object.freeze({
     pointCount: 13,
     radialJitter: 0.24,
     cacheLimit: 6000,
+});
+
+// Food color is still the same organic-brown hue and the edge still uses the
+// same light-dependent darkening as before. Only the fill is now radial:
+// the center remains readable in darkness while the rim keeps the physical
+// light/shadow response. The gradient is built in normalized food-local
+// coordinates, so it stays cheap even with many food particles.
+const FOOD_INNER_BODY = Object.freeze({
+    scale: 0.52,
+    mainAlpha: 0.92,
+    innerAlpha: 0.88,
+    darkeningFactor: 0.50,
 });
 
 // Strength and shape of cosmetic cell highlights/shadows.
@@ -28,9 +68,9 @@ const CELL_LIGHTING_DETAIL = Object.freeze({
 
     // Highlight stays a crescent, but now it is explicitly bright near the outer
     // cell edge so it does not look detached from the membrane.
-    maxHighlightAlpha: 0.82,
-    highlightCoreAlpha: 0.54,
-    highlightRimAlpha: 0.24,
+    maxHighlightAlpha: 0.68,
+    highlightCoreAlpha: 0.44,
+    highlightRimAlpha: 0.19,
     highlightInnerCircleShift: 0.50,
     highlightInnerCircleRadius: 1.14,
     highlightCoreX: 0.86,
@@ -60,6 +100,8 @@ const CELL_DIRECTION_VECTOR = Object.freeze({
 });
 const selectionStrokeColorCache = new Map();
 const foodPathCache = new Map();
+let cellScratchCanvas = null;
+let cellScratchCtx = null;
 
 const OPTICAL_DENSITY_BG_DARK = Object.freeze({ r: 34, g: 38, b: 46 });
 const OPTICAL_DENSITY_BG_MAX = Object.freeze({ r: 255, g: 255, b: 255 });
@@ -157,35 +199,66 @@ function drawTubeBorder(ctx) {
 function drawFood(ctx, food, lighting, grayscaleMode = false) {
     if (food.consumed) return;
 
+    const baseLightness = 33;
     const illum = objectIlluminance(food, lighting);
-    const l = modulateLightness(33, illum);
-    const fill = grayscaleMode ? `hsl(0, 0%, ${l}%)` : organicBrownHsl(l);
+    const shadedLightness = modulateLightness(baseLightness, illum);
 
-    fillFoodShape(ctx, food, fill);
+    // Inner body is not unshaded. It keeps the same food color, but receives only
+    // half of the visual darkening. This makes food readable in darkness without
+    // breaking the main light/shadow response of the full-size body.
+    const innerLightness = Math.round(
+        baseLightness - (baseLightness - shadedLightness) * FOOD_INNER_BODY.darkeningFactor
+    );
+
+    const mainFill = grayscaleMode
+        ? `hsla(0, 0%, ${shadedLightness}%, ${FOOD_INNER_BODY.mainAlpha})`
+        : organicBrownHsla(shadedLightness, FOOD_INNER_BODY.mainAlpha);
+
+    const innerFill = grayscaleMode
+        ? `hsla(0, 0%, ${innerLightness}%, ${FOOD_INNER_BODY.innerAlpha})`
+        : organicBrownHsla(innerLightness, FOOD_INNER_BODY.innerAlpha);
+
+    fillFoodShape(ctx, food, mainFill, 1.0);
+    fillFoodShape(ctx, food, innerFill, FOOD_INNER_BODY.scale);
 }
 
 function drawCell(ctx, cell, lighting, grayscaleMode = false) {
     const illum = cellIlluminance(cell, lighting);
-    const l = modulateLightness(cell.genome.lightness, illum);
-    const saturation = grayscaleMode ? 0 : cell.genome.saturation;
+    const gfp = grayscaleMode ? 0.0 : normalizedGfp(cell);
+    const l = fluorescentLightnessBoost(modulateLightness(cell.genome.lightness, illum), gfp);
+    const saturation = grayscaleMode
+        ? 0
+        : fluorescentSaturationBoost(cell.genome.saturation, gfp);
     const hue = grayscaleMode ? 0 : cell.genome.colorHue;
 
-    fillCircle(
-        ctx,
-        cell.x,
-        cell.y,
-        cell.radius,
-        `hsl(${hue}, ${saturation}%, ${l}%)`
-    );
+    const alpha = cellRenderAlpha(cell);
+    if (gfp > 0.001) {
+        drawFluorescentCellBody(ctx, cell, hue, saturation, l, alpha, gfp);
+    } else {
+        fillCellRadialHsl(ctx, cell.x, cell.y, cell.radius, hue, saturation, l, alpha);
+    }
     drawCellLightCrescents(ctx, cell);
 }
 
 function drawDeadCell(ctx, deadCell, lighting, grayscaleMode = false) {
     const illum = cellIlluminance(deadCell, lighting);
-    const l = modulateLightness(33, illum);
-    const fill = grayscaleMode ? `hsl(0, 0%, ${l}%)` : organicBrownHsl(l);
+    const l = modulateLightness(ORGANIC_BROWN_COLOR.l, illum);
 
-    fillCircle(ctx, deadCell.x, deadCell.y, deadCell.radius, fill);
+    if (grayscaleMode) {
+        fillCellRadialHsl(ctx, deadCell.x, deadCell.y, deadCell.radius, 0, 0, l, cellRenderAlpha(deadCell));
+    } else {
+        fillCellRadialHsl(
+            ctx,
+            deadCell.x,
+            deadCell.y,
+            deadCell.radius,
+            ORGANIC_BROWN_COLOR.h,
+            ORGANIC_BROWN_COLOR.s,
+            l,
+            cellRenderAlpha(deadCell)
+        );
+    }
+
     drawCellLightCrescents(ctx, deadCell);
 }
 
@@ -223,7 +296,7 @@ function drawCellLightCrescents(ctx, cell) {
     const rawHighlightStrength = display.highlightStrength;
     const rawHighlightClarity = display.highlightClarity;
 
-    const cellOpacity = clamp01(cell.display?.opacity ?? cell.opacity ?? 1.0);
+    const cellOpacity = cellRenderAlpha(cell);
     const shadowStrength = Number.isFinite(rawShadowGradient)
         ? clamp01(Math.max(0, rawShadowGradient) * CELL_LIGHTING_DETAIL.gradientScale)
         : 0.0;
@@ -449,19 +522,172 @@ function drawDirectionVector(ctx, cell) {
     ctx.fill();
 }
 
-function fillCircle(targetCtx, x, y, radius, fillStyle) {
+function fillCellRadialHsl(targetCtx, x, y, radius, hue, saturation, lightness, alpha = 1.0) {
+    const baseAlpha = clamp01(alpha);
+    if (baseAlpha <= 0.0) return;
+
+    const centerAlpha = clamp01(baseAlpha * CELL_RADIAL_ALPHA.centerFactor);
+    const midAlpha = clamp01(baseAlpha * CELL_RADIAL_ALPHA.midFactor);
+    const edgeAlpha = clamp01(baseAlpha * CELL_RADIAL_ALPHA.edgeFactor);
+
+    const gradient = targetCtx.createRadialGradient(
+        x,
+        y,
+        Math.max(0.0, radius * 0.04),
+        x,
+        y,
+        radius
+    );
+    gradient.addColorStop(0.0, hsla(hue, saturation, lightness, centerAlpha));
+    gradient.addColorStop(0.55, hsla(hue, saturation, lightness, midAlpha));
+    gradient.addColorStop(CELL_RADIAL_ALPHA.edgeStop, hsla(hue, saturation, lightness, edgeAlpha));
+    gradient.addColorStop(1.0, hsla(hue, saturation, lightness, edgeAlpha));
+
+    targetCtx.save();
     targetCtx.beginPath();
     targetCtx.arc(x, y, radius, 0, Math.PI * 2);
-    targetCtx.fillStyle = fillStyle;
+    targetCtx.fillStyle = gradient;
     targetCtx.fill();
+    targetCtx.restore();
 }
 
-function fillFoodShape(ctx, food, fillStyle) {
+function cellRenderAlpha(cell) {
+    const realOpacity = Math.max(0.0, Number(cell?.opacity ?? 1.0));
+    if (realOpacity <= 0.0) {
+        return 0.0;
+    }
+    return clamp(realOpacity * REAL_CELL_OPACITY_TO_RENDER_ALPHA, MIN_CELL_RENDER_ALPHA, MAX_CELL_RENDER_ALPHA);
+}
+
+function normalizedGfp(cell) {
+    return clamp01((cell?.genome?.gfp ?? 0) / 100.0);
+}
+
+function fluorescentLightnessBoost(lightness, gfp) {
+    const strength = Math.pow(clamp01(gfp), 0.50);
+    return clamp(lightness + GFP_GLOW.bodyLightnessBoost * strength, 0, 96);
+}
+
+function fluorescentSaturationBoost(saturation, gfp) {
+    return clamp(saturation + GFP_GLOW.bodySaturationBoost * clamp01(gfp), 0, 100);
+}
+
+function drawFluorescentCellBody(ctx, cell, hue, saturation, lightness, alpha, gfp) {
+    const padding = Math.ceil(Math.max(3, cell.radius * 0.08));
+    const size = Math.ceil(cell.radius * 2 + padding * 2);
+    const scratch = cellScratch(size);
+    if (!scratch?.ctx) {
+        fillCellRadialHsl(ctx, cell.x, cell.y, cell.radius, hue, saturation, lightness, alpha);
+        return;
+    }
+
+    const localCtx = scratch.ctx;
+    const center = size * 0.5;
+    localCtx.clearRect(0, 0, size, size);
+
+    fillCellRadialHsl(localCtx, center, center, cell.radius, hue, saturation, lightness, alpha);
+    drawCellInternalFluorescenceGlow(localCtx, center, center, cell.radius, alpha, gfp);
+
+    ctx.drawImage(cellScratchCanvas, cell.x - center, cell.y - center);
+}
+
+function cellScratch(size) {
+    if (!Number.isFinite(size) || size <= 0) {
+        return null;
+    }
+
+    if (!cellScratchCanvas) {
+        cellScratchCanvas = document.createElement("canvas");
+        cellScratchCtx = cellScratchCanvas.getContext("2d");
+    }
+
+    if (!cellScratchCtx) {
+        return null;
+    }
+
+    if (cellScratchCanvas.width !== size || cellScratchCanvas.height !== size) {
+        cellScratchCanvas.width = size;
+        cellScratchCanvas.height = size;
+    }
+
+    return { ctx: cellScratchCtx };
+}
+
+function drawCellInternalFluorescenceGlow(ctx, x, y, radius, baseAlpha, gfp) {
+    if (gfp <= 0.001) {
+        return;
+    }
+
+    // The source-atop blend is applied on a transparent scratch cell layer.
+    // It preserves the existing radial alpha mask, so GFP brightens only the
+    // visible cell body and never creates an opaque green disk.
+    const alpha = clamp01(Math.pow(gfp, 0.46) * (0.92 + 0.08 * baseAlpha));
+    const glow = ctx.createRadialGradient(
+        x,
+        y,
+        0,
+        x,
+        y,
+        radius
+    );
+    glow.addColorStop(
+        0.00,
+        hsla(
+            GFP_FLUORESCENCE_COLOR.hue,
+            GFP_FLUORESCENCE_COLOR.saturation,
+            GFP_FLUORESCENCE_COLOR.lightness,
+            GFP_GLOW.internalCoreAlpha * alpha
+        )
+    );
+    glow.addColorStop(
+        0.38,
+        hsla(
+            GFP_FLUORESCENCE_COLOR.hue,
+            GFP_FLUORESCENCE_COLOR.saturation,
+            GFP_FLUORESCENCE_COLOR.lightness,
+            GFP_GLOW.internalMidAlpha * alpha
+        )
+    );
+    glow.addColorStop(
+        0.82,
+        hsla(
+            GFP_FLUORESCENCE_COLOR.hue,
+            GFP_FLUORESCENCE_COLOR.saturation,
+            GFP_FLUORESCENCE_COLOR.lightness,
+            GFP_GLOW.internalEdgeAlpha * alpha
+        )
+    );
+    glow.addColorStop(
+        1.00,
+        hsla(GFP_FLUORESCENCE_COLOR.hue, GFP_FLUORESCENCE_COLOR.saturation, GFP_FLUORESCENCE_COLOR.lightness, 0)
+    );
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.globalCompositeOperation = "source-atop";
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+}
+
+function hsla(hue, saturation, lightness, alpha) {
+    return `hsla(${hue}, ${saturation}%, ${lightness}%, ${clamp01(alpha).toFixed(3)})`;
+}
+
+function organicBrownHsla(lightness, alpha) {
+    return hsla(ORGANIC_BROWN_COLOR.h, ORGANIC_BROWN_COLOR.s, lightness, alpha);
+}
+
+function fillFoodShape(ctx, food, fillStyle, scale = 1.0) {
     const path = foodPath(food.id);
 
     ctx.save();
     ctx.translate(food.x, food.y);
-    ctx.scale(food.radius, food.radius);
+    ctx.scale(food.radius * scale, food.radius * scale);
     ctx.fillStyle = fillStyle;
     ctx.fill(path);
     ctx.restore();
@@ -728,5 +954,3 @@ function clamp01(value) {
     if (!Number.isFinite(value)) return 0;
     return Math.max(0, Math.min(1, value));
 }
-
-

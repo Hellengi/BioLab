@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public final class Quadtree<T> {
-    private static final int DEFAULT_NODE_CAPACITY = 12;
+    private static final int DEFAULT_NODE_CAPACITY = 6;
     private static final int DEFAULT_MAX_DEPTH = 10;
 
     private final BoundsProvider<T> boundsProvider;

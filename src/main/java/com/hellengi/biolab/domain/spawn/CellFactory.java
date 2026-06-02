@@ -86,7 +86,8 @@ public class CellFactory {
                 genome.getLightness().getInitial(),
                 genome.getMaxEnergy().getInitial(),
                 genome.getDryMass().getInitial(),
-                genome.getElasticity().getInitial()
+                genome.getElasticity().getInitial(),
+                genome.getGfp().getInitial()
         );
     }
 

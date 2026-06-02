@@ -10,6 +10,7 @@ public record GenomeSettingsDto(
         RangedValueDto maxEnergy,
         RangedValueDto dryMass,
         RangedValueDto elasticity,
+        RangedValueDto gfp,
         String code
 ) {
 }

@@ -1,3 +1,4 @@
+
 package com.hellengi.biolab.dto;
 
 public record DisplayLayersDto(
@@ -10,3 +11,5 @@ public record DisplayLayersDto(
         return new DisplayLayersDto(false, false, false, false);
     }
 }
+
+

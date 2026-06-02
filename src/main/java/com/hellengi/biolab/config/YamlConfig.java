@@ -65,6 +65,7 @@ public class YamlConfig {
         private double orbitSpeedMaxRadiansPerTick = 0.01;
         private double falloffFactor = 300.0;
         private int gridStep = 8;
+        private double cellFluorescenceMaxBrightness = 0.02;
     }
 
     @Getter @Setter
@@ -128,6 +129,7 @@ public class YamlConfig {
         private Control maxEnergy = new Control();
         private Control dryMass = new Control();
         private Control elasticity = new Control();
+        private Control gfp = new Control();
         private MutationDeltas mutation = new MutationDeltas();
 
         @Getter @Setter
@@ -141,6 +143,7 @@ public class YamlConfig {
             private double maxEnergy;
             private double dryMass;
             private double elasticity;
+            private double gfp;
         }
     }
 

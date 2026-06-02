@@ -117,6 +117,7 @@ public class CellMapper {
                 localLight,
                 cell.getMass(),
                 cell.getDensity(),
+                cell.getOpacity(),
                 cellEventMapper.toDtoList(cell.getEvents()),
                 cellMotionMapper.toDto(cell),
                 display,

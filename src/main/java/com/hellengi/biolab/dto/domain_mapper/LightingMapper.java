@@ -1,3 +1,4 @@
+
 package com.hellengi.biolab.dto.domain_mapper;
 
 import com.hellengi.biolab.config.YamlConfig;
@@ -84,7 +85,9 @@ public class LightingMapper {
             int cols,
             int rows
     ) {
-        if (world.getLightSources().isEmpty() || lightMap == null || lightMap.length == 0) {
+        boolean hasLocalSources = !world.getLightSources().isEmpty()
+                || world.getCells().stream().anyMatch(cell -> cell.getFluorescenceBrightness() > LIGHT_DIRECTION_MIN_LOCAL_LIGHT);
+        if (!hasLocalSources || lightMap == null || lightMap.length == 0) {
             return new double[0];
         }
 
@@ -218,3 +221,5 @@ public class LightingMapper {
         return Math.max(0.0, Math.min(1.0, value));
     }
 }
+
+

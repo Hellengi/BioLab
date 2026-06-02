@@ -9,6 +9,8 @@ public final class GenomeCodec {
     private static final String PREFIX = "CELL-";
     private static final int GENE_WIDTH = 3;
     private static final int RADIX = 36;
+    private static final int LEGACY_GENE_COUNT = 9;
+    private static final int CURRENT_GENE_COUNT = 10;
 
     private static final Pattern CODE_PATTERN = Pattern.compile(
             "^CELL-(?<payload>[0-9A-Z]+)$"
@@ -27,7 +29,8 @@ public final class GenomeCodec {
                 + pack(genome.getLightness())
                 + pack(genome.getMaxEnergy())
                 + pack(genome.getDryMass())
-                + pack(genome.getElasticity());
+                + pack(genome.getElasticity())
+                + pack(genome.getGfp());
     }
 
     public static Genome decode(String code) {
@@ -38,8 +41,10 @@ public final class GenomeCodec {
         }
 
         String payload = matcher.group("payload");
+        int geneCount = payload.length() / GENE_WIDTH;
 
-        if (payload.length() != GENE_WIDTH * 8) {
+        if (payload.length() % GENE_WIDTH != 0
+                || (geneCount != LEGACY_GENE_COUNT && geneCount != CURRENT_GENE_COUNT)) {
             throw new IllegalArgumentException("Invalid genome payload length: " + code);
         }
 
@@ -52,16 +57,13 @@ public final class GenomeCodec {
                 unpack(payload, 5),
                 unpack(payload, 6),
                 unpack(payload, 7),
-                unpack(payload, 8)
+                unpack(payload, 8),
+                geneCount >= CURRENT_GENE_COUNT ? unpack(payload, 9) : 0.0
         );
     }
 
     private static int scale(double value) {
         return (int) Math.round(value * 10.0);
-    }
-
-    private static double unscale(String value) {
-        return Integer.parseInt(value) / 10.0;
     }
 
     private static String pack(double value) {

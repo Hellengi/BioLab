@@ -34,6 +34,7 @@ simulation:
     orbit-speed-max-radians-per-tick: 0.01
     falloff-factor: 400.0
     grid-step: 8
+    cell-fluorescence-max-brightness: 0.02
 
   collision:
     cell-restitution: 1.0
@@ -183,6 +184,11 @@ simulation:
       min: 0.05
       max: 1.0
       step: 0.01
+    gfp:
+      initial: 0.0
+      min: 0.0
+      max: 100.0
+      step: 1.0
     mutation:
       division-threshold: 2.0
       division-impulse: 0.25
@@ -193,6 +199,7 @@ simulation:
       max-energy: 4.0
       dry-mass: 20.0
       elasticity: 0.04
+      gfp: 8.0
 
   motion:
     cell-speed:

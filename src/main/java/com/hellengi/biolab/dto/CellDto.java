@@ -16,11 +16,12 @@ public record CellDto(
         double localLight, // rename to irradiance
         double mass,
         double density,
+        Double opacity,
         List<CellEventDto> events,
         CellMotionDto motion,
         CellDisplayDto display,
         double directionAngle // rename to angle
-        // add: alive, rotting (for died), spawnTime (ticks at birthday), color, opacity
+        // add: alive, rotting (for died), spawnTime (ticks at birthday), color
         // add: name - auto for cells (photos, etc.), if save in db - custom
         // add: name - if already saved similar in db - use custom (what names for custom mutated?)
         // cell world (E, R) - CellDto, CellMotionDto

@@ -3,6 +3,33 @@ import { dom } from "../ui/dom.js";
 import {state} from "../store/state.js";
 
 const PREVIEW_RADIUS = 42;
+const REAL_CELL_OPACITY_TO_PREVIEW_ALPHA = 3.6;
+const MIN_CELL_PREVIEW_ALPHA = 0.18;
+const MAX_CELL_PREVIEW_ALPHA = 0.82;
+const PREVIEW_REAL_CELL_OPACITY = 0.1;
+const PREVIEW_CELL_RADIAL_ALPHA = Object.freeze({
+    centerFactor: 0.52,
+    midFactor: 0.76,
+    edgeFactor: 1.06,
+    edgeStop: 0.92,
+});
+const PREVIEW_GFP_FLUORESCENCE_COLOR = Object.freeze({
+    hue: 132,
+    saturation: 98,
+    lightness: 70,
+});
+
+const PREVIEW_GFP_GLOW = Object.freeze({
+    radiusBase: 1.55,
+    radiusBoost: 1.05,
+    externalCoreAlpha: 0.32,
+    externalOuterAlpha: 0.13,
+    internalCoreAlpha: 1.00,
+    internalMidAlpha: 0.72,
+    internalEdgeAlpha: 0.20,
+    bodyLightnessBoost: 18,
+    bodySaturationBoost: 24,
+});
 const IMPULSE_ARROW_SCALE = 0.25;
 const FORCE_ARROW_SCALE = 6.0;
 const DRAG_ARROW_SCALE = 6.0;
@@ -127,10 +154,23 @@ function _updateLegendGravRow(isSinking) {
 }
 
 function _drawNormalMode(ctx, worldCell, strain, cx, cy) {
-    ctx.beginPath();
-    ctx.arc(cx, cy, PREVIEW_RADIUS, 0, Math.PI * 2);
-    ctx.fillStyle = `hsl(${strain.genome.colorHue}, ${strain.genome.saturation}%, ${strain.genome.lightness}%)`;
-    ctx.fill();
+    const alpha = _previewAlpha(worldCell?.opacity);
+    const gfp = _normalizedGfp(strain.genome?.gfp);
+    const lightness = _fluorescentLightnessBoost(strain.genome.lightness, gfp);
+    const saturation = _fluorescentSaturationBoost(strain.genome.saturation, gfp);
+
+    _drawPreviewExternalGfpGlow(ctx, cx, cy, PREVIEW_RADIUS, strain.genome?.gfp, alpha);
+    _fillPreviewCellRadialHsl(
+        ctx,
+        cx,
+        cy,
+        PREVIEW_RADIUS,
+        strain.genome.colorHue,
+        saturation,
+        lightness,
+        alpha
+    );
+    _drawPreviewInternalGfpGlow(ctx, cx, cy, PREVIEW_RADIUS, strain.genome?.gfp, alpha);
 }
 
 function _directionFromDto(x, y) {
@@ -290,6 +330,145 @@ function _drawStyledArrow(ctx, x1, y1, x2, y2, color, lineWidth) {
     ctx.restore();
 }
 
+function _previewAlpha(realOpacity = PREVIEW_REAL_CELL_OPACITY) {
+    const opacity = Math.max(0.0, Number(realOpacity ?? PREVIEW_REAL_CELL_OPACITY));
+    if (opacity <= 0.0) {
+        return 0.0;
+    }
+    return Math.max(
+        MIN_CELL_PREVIEW_ALPHA,
+        Math.min(MAX_CELL_PREVIEW_ALPHA, opacity * REAL_CELL_OPACITY_TO_PREVIEW_ALPHA)
+    );
+}
+
+function _clamp(value, min, max) {
+    if (!Number.isFinite(value)) return min;
+    return Math.max(min, Math.min(max, value));
+}
+
+function _clamp01(value) {
+    if (!Number.isFinite(value)) return 0;
+    return Math.max(0, Math.min(1, value));
+}
+
+function _fillPreviewCellRadialHsl(ctx, cx, cy, radius, hue, saturation, lightness, alpha) {
+    const baseAlpha = _clamp01(alpha);
+    if (baseAlpha <= 0.0) return;
+
+    const centerAlpha = _clamp01(baseAlpha * PREVIEW_CELL_RADIAL_ALPHA.centerFactor);
+    const midAlpha = _clamp01(baseAlpha * PREVIEW_CELL_RADIAL_ALPHA.midFactor);
+    const edgeAlpha = _clamp01(baseAlpha * PREVIEW_CELL_RADIAL_ALPHA.edgeFactor);
+
+    const gradient = ctx.createRadialGradient(
+        cx,
+        cy,
+        Math.max(0.0, radius * 0.04),
+        cx,
+        cy,
+        radius
+    );
+    gradient.addColorStop(0.0, _hsla(hue, saturation, lightness, centerAlpha));
+    gradient.addColorStop(0.55, _hsla(hue, saturation, lightness, midAlpha));
+    gradient.addColorStop(PREVIEW_CELL_RADIAL_ALPHA.edgeStop, _hsla(hue, saturation, lightness, edgeAlpha));
+    gradient.addColorStop(1.0, _hsla(hue, saturation, lightness, edgeAlpha));
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.fillStyle = gradient;
+    ctx.fill();
+    ctx.restore();
+}
+
+function _drawPreviewExternalGfpGlow(ctx, cx, cy, radius, gfpValue, baseAlpha) {
+    const gfp = _normalizedGfp(gfpValue);
+    if (gfp <= 0.001) {
+        return;
+    }
+
+    const glowRadius = radius * (PREVIEW_GFP_GLOW.radiusBase + PREVIEW_GFP_GLOW.radiusBoost * gfp);
+    const glow = ctx.createRadialGradient(
+        cx,
+        cy,
+        Math.max(1.0, radius * 0.35),
+        cx,
+        cy,
+        glowRadius
+    );
+    const alpha = _clamp01(Math.pow(gfp, 0.62) * Math.max(baseAlpha, 0.62));
+
+    glow.addColorStop(
+        0.0,
+        _hsla(PREVIEW_GFP_FLUORESCENCE_COLOR.hue, PREVIEW_GFP_FLUORESCENCE_COLOR.saturation, PREVIEW_GFP_FLUORESCENCE_COLOR.lightness, PREVIEW_GFP_GLOW.externalCoreAlpha * alpha)
+    );
+    glow.addColorStop(
+        0.45,
+        _hsla(PREVIEW_GFP_FLUORESCENCE_COLOR.hue, PREVIEW_GFP_FLUORESCENCE_COLOR.saturation, PREVIEW_GFP_FLUORESCENCE_COLOR.lightness, PREVIEW_GFP_GLOW.externalOuterAlpha * alpha)
+    );
+    glow.addColorStop(1.0, _hsla(PREVIEW_GFP_FLUORESCENCE_COLOR.hue, PREVIEW_GFP_FLUORESCENCE_COLOR.saturation, PREVIEW_GFP_FLUORESCENCE_COLOR.lightness, 0));
+
+    ctx.save();
+    ctx.globalCompositeOperation = "screen";
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(cx, cy, glowRadius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+}
+
+function _drawPreviewInternalGfpGlow(ctx, cx, cy, radius, gfpValue, baseAlpha) {
+    const gfp = _normalizedGfp(gfpValue);
+    if (gfp <= 0.001) {
+        return;
+    }
+
+    // source-atop preserves the radial body alpha: preview glow changes the
+    // perceived color and brightness but does not turn the cell opaque.
+    const alpha = _clamp01(Math.pow(gfp, 0.46) * (0.92 + 0.08 * baseAlpha));
+    const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+    glow.addColorStop(
+        0.00,
+        _hsla(PREVIEW_GFP_FLUORESCENCE_COLOR.hue, PREVIEW_GFP_FLUORESCENCE_COLOR.saturation, PREVIEW_GFP_FLUORESCENCE_COLOR.lightness, PREVIEW_GFP_GLOW.internalCoreAlpha * alpha)
+    );
+    glow.addColorStop(
+        0.38,
+        _hsla(PREVIEW_GFP_FLUORESCENCE_COLOR.hue, PREVIEW_GFP_FLUORESCENCE_COLOR.saturation, PREVIEW_GFP_FLUORESCENCE_COLOR.lightness, PREVIEW_GFP_GLOW.internalMidAlpha * alpha)
+    );
+    glow.addColorStop(
+        0.82,
+        _hsla(PREVIEW_GFP_FLUORESCENCE_COLOR.hue, PREVIEW_GFP_FLUORESCENCE_COLOR.saturation, PREVIEW_GFP_FLUORESCENCE_COLOR.lightness, PREVIEW_GFP_GLOW.internalEdgeAlpha * alpha)
+    );
+    glow.addColorStop(1.00, _hsla(PREVIEW_GFP_FLUORESCENCE_COLOR.hue, PREVIEW_GFP_FLUORESCENCE_COLOR.saturation, PREVIEW_GFP_FLUORESCENCE_COLOR.lightness, 0));
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.globalCompositeOperation = "source-atop";
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+}
+
+function _normalizedGfp(gfpValue) {
+    return _clamp01(Number(gfpValue ?? 0) / 100.0);
+}
+
+function _fluorescentLightnessBoost(lightness, gfp) {
+    const strength = Math.pow(_clamp01(gfp), 0.50);
+    return _clamp(lightness + PREVIEW_GFP_GLOW.bodyLightnessBoost * strength, 0, 96);
+}
+
+function _fluorescentSaturationBoost(saturation, gfp) {
+    return _clamp(saturation + PREVIEW_GFP_GLOW.bodySaturationBoost * _clamp01(gfp), 0, 100);
+}
+
+function _hsla(hue, saturation, lightness, alpha) {
+    return `hsla(${hue}, ${saturation}%, ${lightness}%, ${_clamp01(alpha).toFixed(3)})`;
+}
+
 function _drawDashedArrow(ctx, x1, y1, x2, y2, color, lineWidth) {
     const angle = Math.atan2(y2 - y1, x2 - x1);
     const headSize = 5;
@@ -332,10 +511,22 @@ export function drawCreateCellPreview() {
     const centerY = height / 2;
     const previewRadius = 42;
 
-    ctx2.beginPath();
-    ctx2.arc(centerX, centerY, previewRadius, 0, Math.PI * 2);
-    ctx2.fillStyle = `hsl(${state.cellDraft.genome.colorHue}, ${state.cellDraft.genome.saturation}%, ${state.cellDraft.genome.lightness}%)`;
-    ctx2.fill();
+    const alpha = _previewAlpha(PREVIEW_REAL_CELL_OPACITY);
+    const gfp = _normalizedGfp(state.cellDraft.genome.gfp);
+    const lightness = _fluorescentLightnessBoost(state.cellDraft.genome.lightness, gfp);
+    const saturation = _fluorescentSaturationBoost(state.cellDraft.genome.saturation, gfp);
+    _drawPreviewExternalGfpGlow(ctx2, centerX, centerY, previewRadius, state.cellDraft.genome.gfp, alpha);
+    _fillPreviewCellRadialHsl(
+        ctx2,
+        centerX,
+        centerY,
+        previewRadius,
+        state.cellDraft.genome.colorHue,
+        saturation,
+        lightness,
+        alpha
+    );
+    _drawPreviewInternalGfpGlow(ctx2, centerX, centerY, previewRadius, state.cellDraft.genome.gfp, alpha);
 
     const divisionAngleDeg = state.cellDraft.genome.divisionAngle ?? 0;
     const axisRad = (divisionAngleDeg - 90) * Math.PI / 180;

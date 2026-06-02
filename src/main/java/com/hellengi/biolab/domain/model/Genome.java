@@ -16,6 +16,7 @@ public class Genome {
     private double maxEnergy;
     private double dryMass;
     private double elasticity;
+    private double gfp;
 
     public Genome(
             double divisionThreshold,
@@ -26,7 +27,8 @@ public class Genome {
             double lightness,
             double maxEnergy,
             double dryMass,
-            double elasticity
+            double elasticity,
+            double gfp
     ) {
         this.divisionThreshold = divisionThreshold;
         this.divisionImpulse = divisionImpulse;
@@ -37,6 +39,7 @@ public class Genome {
         this.maxEnergy = maxEnergy;
         this.dryMass = dryMass;
         this.elasticity = elasticity;
+        this.gfp = gfp;
     }
 
     public String getCode() {
@@ -53,7 +56,8 @@ public class Genome {
                 lightness,
                 maxEnergy,
                 dryMass,
-                elasticity
+                elasticity,
+                gfp
         );
     }
 }

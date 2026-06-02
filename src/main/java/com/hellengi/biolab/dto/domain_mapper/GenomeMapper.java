@@ -24,6 +24,7 @@ public class GenomeMapper {
                 genome.getMaxEnergy(),
                 genome.getDryMass(),
                 genome.getElasticity(),
+                genome.getGfp(),
                 genome.getCode()
         );
     }
@@ -35,7 +36,8 @@ public class GenomeMapper {
         return new Genome(
                 dto.divisionThreshold(), dto.divisionImpulse(), dto.divisionAngle(),
                 dto.colorHue(), dto.saturation(), dto.lightness(), dto.maxEnergy(),
-                dryMassOrDefault(dto.dryMass()), elasticityOrDefault(dto.elasticity())
+                dryMassOrDefault(dto.dryMass()), elasticityOrDefault(dto.elasticity()),
+                gfpOrDefault(dto.gfp())
         );
     }
 
@@ -45,7 +47,7 @@ public class GenomeMapper {
                 control(genome.getDivisionAngle()), control(genome.getColorHue()),
                 control(genome.getSaturation()), control(genome.getLightness()),
                 control(genome.getMaxEnergy()), control(genome.getDryMass()),
-                control(genome.getElasticity()), null
+                control(genome.getElasticity()), control(genome.getGfp()), null
         );
     }
 
@@ -61,5 +63,9 @@ public class GenomeMapper {
 
     private double elasticityOrDefault(Double elasticity) {
         return elasticity != null ? elasticity : config.getGenome().getElasticity().getInitial();
+    }
+
+    private double gfpOrDefault(Double gfp) {
+        return gfp != null ? gfp : config.getGenome().getGfp().getInitial();
     }
 }

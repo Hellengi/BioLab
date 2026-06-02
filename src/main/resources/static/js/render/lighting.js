@@ -1,3 +1,4 @@
+
 import { cssVar } from "../core/utils.js";
 
 const BG_DARK = 40;
@@ -24,6 +25,7 @@ const OPTICAL_DENSITY_FILTER = Object.freeze({
     alphaMax: 0.76,
     blue: Object.freeze({ r: 35, g: 95, b: 255 }),
 });
+
 
 const LIGHT_DIRECTION_LAYER = Object.freeze({
     stroke: "#4ade80",
@@ -171,6 +173,7 @@ export function drawDisplayLayers(ctx, lighting, displayLayers) {
     if (hasOpacityMap) {
         applyOpticalDensityFilter(ctx, lighting);
     }
+
 
     if (displayLayers.lightDirection) {
         drawLightDirectionLayer(ctx, lighting);
@@ -710,4 +713,5 @@ function drawTrapezoidSource(ctx, source) {
     ctx.strokeStyle = 'rgba(255,255,255,0.9)';
     ctx.stroke();
 }
+
 

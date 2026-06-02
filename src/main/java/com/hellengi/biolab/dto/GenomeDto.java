@@ -10,6 +10,7 @@ public record GenomeDto(
         double maxEnergy,
         Double dryMass,
         Double elasticity,
+        Double gfp,
         String code
 ) {
 }

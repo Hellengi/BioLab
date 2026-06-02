@@ -123,6 +123,8 @@ function updateSelectedCellPanel(cell) {
     setText(dom.selectedCellDivisionImpulse, formatTwoDecimals(genome.divisionImpulse));
     setText(dom.selectedCellDivisionAngle, formatTwoDecimals(genome.divisionAngle ?? 0) + "°");
     setText(dom.selectedCellElasticity, formatTwoDecimals(cell.genome?.elasticity));
+    setText(dom.selectedCellOpacity, formatTwoDecimals(cell.opacity ?? 0));
+    setText(dom.selectedCellGfp, formatTwoDecimals(cell.genome?.gfp ?? 0));
     setText(dom.selectedCellRgb, getCellRgbString(state.selectedStrain));
 
     setTooltipPair(
@@ -193,6 +195,7 @@ function mapWorldCellToTemplate(cell) {
             maxEnergy: cell.genome.maxEnergy,
             dryMass: cell.genome.dryMass,
             elasticity: cell.genome.elasticity,
+            gfp: cell.genome.gfp ?? 0,
             code: cell.genome.code,
         }
     };
@@ -213,6 +216,8 @@ function clearSelectedCellInfo() {
     setText(dom.selectedCellDivisionImpulse, "");
     setText(dom.selectedCellDivisionAngle, "");
     setText(dom.selectedCellRgb, "");
+    setText(dom.selectedCellOpacity, "");
+    setText(dom.selectedCellGfp, "");
 
     setText(dom.selectedCellSpeed, "");
     if (dom.selectedCellGravBuoyLabel) {
