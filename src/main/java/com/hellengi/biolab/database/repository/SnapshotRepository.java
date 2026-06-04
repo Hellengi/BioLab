@@ -9,3 +9,5 @@ public interface SnapshotRepository extends JpaRepository<SnapshotEntity, Long> 
 
     List<SnapshotEntity> findAllByOrderByCreatedAtDesc();
 }
+
+

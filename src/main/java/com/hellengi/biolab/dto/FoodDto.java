@@ -9,6 +9,8 @@ public record FoodDto(
         boolean consumed,
         Long capturedByCellId,
         int digestionSlotIndex,
-        boolean insideLysosome
+        boolean insideLysosome,
+        Double capturedCellAnchorX,
+        Double capturedCellAnchorY
 ) {
 }

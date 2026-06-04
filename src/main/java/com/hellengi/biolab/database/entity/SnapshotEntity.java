@@ -1,17 +1,20 @@
 package com.hellengi.biolab.database.entity;
 
+import com.hellengi.biolab.database.entity.settings.SnapshotSettingsEntity;
+import com.hellengi.biolab.database.entity.snapshot.*;
 import jakarta.persistence.*;
-import lombok.Setter;
 import lombok.Getter;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
-@Setter
 @Getter
+@Setter
 @Entity
 @Table(name = "environment_snapshot")
 public class SnapshotEntity {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -22,22 +25,39 @@ public class SnapshotEntity {
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
-    @Lob
-    @Column(nullable = false, columnDefinition = "TEXT")
-    private String worldJson;
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true, optional = false)
+    @JoinColumn(name = "world_state_id", nullable = false)
+    private SnapshotWorldStateEntity worldState = new SnapshotWorldStateEntity();
 
-    @Lob
-    @Column(nullable = false, columnDefinition = "TEXT")
-    private String configJson;
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true, optional = false)
+    @JoinColumn(name = "settings_id", nullable = false)
+    private SnapshotSettingsEntity settings = new SnapshotSettingsEntity();
 
-    public SnapshotEntity() {
+    @OneToMany(mappedBy = "snapshot", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("positionInSnapshot ASC")
+    private List<SnapshotCellEntity> cells = new ArrayList<>();
+
+    @OneToMany(mappedBy = "snapshot", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("positionInSnapshot ASC")
+    private List<SnapshotFoodEntity> foods = new ArrayList<>();
+
+    @OneToOne(mappedBy = "snapshot", cascade = CascadeType.ALL, orphanRemoval = true, optional = false)
+    private SnapshotLightingEntity lighting = new SnapshotLightingEntity();
+
+    public void addCell(SnapshotCellEntity cell) {
+        cells.add(cell);
+        cell.setSnapshot(this);
     }
 
-    public SnapshotEntity(String name, LocalDateTime createdAt, String worldJson, String configJson) {
-        this.name = name;
-        this.createdAt = createdAt;
-        this.worldJson = worldJson;
-        this.configJson = configJson;
+    public void addFood(SnapshotFoodEntity food) {
+        foods.add(food);
+        food.setSnapshot(this);
     }
 
+    public void setLighting(SnapshotLightingEntity lighting) {
+        this.lighting = lighting;
+        if (lighting != null) {
+            lighting.setSnapshot(this);
+        }
+    }
 }

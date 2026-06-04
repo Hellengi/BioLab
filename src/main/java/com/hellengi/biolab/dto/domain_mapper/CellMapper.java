@@ -106,13 +106,17 @@ public class CellMapper {
         return toDto(cell, DisplayLayersDto.off());
     }
 
+    public CellDto toSnapshotDto(Cell cell) {
+        return toDto(cell, null);
+    }
+
     public CellDto toDto(Cell cell, DisplayLayersDto viewState) {
         if (!cell.hasInternalLayoutInitialized()) {
             cell.ensureInternalLayoutInitialized();
         }
         double localLight = samplePreparedLight(cell.getX(), cell.getY());
         CellVisualDto visual = calculateVisual(cell);
-        boolean includeForces = viewState != null && viewState.selectedForcesEnabled(cell.getId());
+        boolean includeForces = viewState == null || viewState.selectedForcesEnabled(cell.getId());
 
         return new CellDto(
                 cell.getId(),
@@ -125,6 +129,8 @@ public class CellMapper {
                 cell.getNucleusLayoutX(),
                 cell.getNucleusLayoutY(),
                 cell.getNucleusRadius(),
+                cell.getNucleusLayoutTargetX(),
+                cell.getNucleusLayoutTargetY(),
                 !cell.isAlive(),
                 genomeMapper.toDto(cell.getGenome()),
                 Math.round(cell.getLifetimeTicks()),
@@ -167,12 +173,26 @@ public class CellMapper {
         cell.setGenome(genomeMapper.toDomain(dto.genome()));
         cell.setNucleusLayoutX(dto.nucleusOffsetX());
         cell.setNucleusLayoutY(dto.nucleusOffsetY());
+        cell.setNucleusLayoutTargetX(dto.nucleusTargetOffsetX());
+        cell.setNucleusLayoutTargetY(dto.nucleusTargetOffsetY());
         cell.setAlive(!dto.dead());
         cell.setDirectionAngle(dto.directionAngle());
         cell.setLifetimeTicks(dto.lifetimeTicks());
         cell.setMass(dto.mass());
         cell.setCellDamage(dto.cellDamage());
         cell.setCpDamage(dto.cpDamage());
+        cell.setLastEnergyProduction(dto.energyProduction());
+        cell.setLastDigestionEnergyProduction(dto.digestionEnergyProduction());
+        cell.setLastEnergyConsumption(dto.energyConsumption() - dto.digestionEnergyCostRate());
+        cell.setLastDigestionEnergyCostRate(dto.digestionEnergyCostRate());
+        cell.setLastCpPhotoDamageRate(dto.cpPhotoDamageRate());
+        cell.setLastCellDamageRate(dto.cellDamageRate());
+        cell.setLastLysosomeDamageRate(dto.lysosomeDamageRate());
+        cell.setLastCpRepairRate(dto.cpRepairRate());
+        cell.setLastCellRepairRate(dto.cellRepairRate());
+        cell.setLastLysosomeRepairRate(dto.lysosomeRepairRate());
+        cell.setLastRepairEnergyCostRate(dto.repairEnergyCostRate());
+        cell.setLastLysosomeRepairEnergyCostRate(dto.lysosomeRepairEnergyCostRate());
         cell.setLysosomeSlots(lysosomeSlotsToDomain(dto.lysosomeSlots()));
         cell.setEvents(cellEventMapper.toDomainList(dto.events()));
         cell.ensureInternalLayoutInitialized();
@@ -190,10 +210,15 @@ public class CellMapper {
                         slot.getFoodEnergy(),
                         slot.getFoodRadius(),
                         slot.isFoodInsideLysosome(),
+                        slot.getTargetFoodRadius(),
                         slot.getLayoutX(),
                         slot.getLayoutY(),
                         slot.getLayoutRadius(),
                         slot.getLayoutRotation(),
+                        slot.getTargetLayoutX(),
+                        slot.getTargetLayoutY(),
+                        slot.getTargetLayoutRadius(),
+                        slot.getTargetLayoutRotation(),
                         slot.getLastEnergyProductionRate(),
                         slot.getLastEnergyCostRate(),
                         slot.getLastDamageRate(),
@@ -211,7 +236,14 @@ public class CellMapper {
                     domainSlot.setFoodEnergy(slot.foodEnergy());
                     domainSlot.setFoodRadius(slot.foodRadius());
                     domainSlot.setFoodInsideLysosome(slot.foodInsideLysosome());
+                    domainSlot.setTargetFoodRadius(slot.targetFoodRadius());
                     domainSlot.setLayout(slot.layoutX(), slot.layoutY(), slot.layoutRadius(), slot.layoutRotation());
+                    domainSlot.setTargetLayout(slot.targetLayoutX(), slot.targetLayoutY(), slot.targetLayoutRadius(), slot.targetLayoutRotation());
+                    domainSlot.setLastEnergyProductionRate(slot.energyProductionRate());
+                    domainSlot.setLastEnergyCostRate(slot.energyCostRate());
+                    domainSlot.setLastDamageRate(slot.damageRate());
+                    domainSlot.setLastRepairRate(slot.repairRate());
+                    domainSlot.setLastRepairEnergyCostRate(slot.repairEnergyCostRate());
                     return domainSlot;
                 })
                 .toList();
@@ -529,6 +561,8 @@ public class CellMapper {
         return Math.max(0.0, Math.min(1.0, value));
     }
 }
+
+
 
 
 

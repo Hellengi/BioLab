@@ -98,7 +98,7 @@ public class SimulationEngine {
                     null,
                     null,
                     null,
-                    worldMapper.toDto(world),
+                    worldMapper.toSnapshotDto(world),
                     settingsMapper.toDto(runtimeConfig)
             );
         }
@@ -187,3 +187,5 @@ public class SimulationEngine {
         lighting.invalidateLightCache();
     }
 }
+
+

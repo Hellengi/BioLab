@@ -66,4 +66,32 @@ public class SimulationWorldMapper {
                 cells, foods, lightingDto
         );
     }
+    public SimulationWorldDto toSnapshotDto(SimulationWorld world) {
+        int diameter = config.getTubeDiameter();
+        double[] lightMap = lighting.getLightMap();
+        double[] lightDirXMap = lighting.getLightDirXMap();
+        double[] lightDirYMap = lighting.getLightDirYMap();
+        int gridStep = lighting.getLightGridStep();
+        int gridWidth = lighting.getLightGridCols();
+        int gridHeight = lighting.getLightGridRows();
+
+        List<CellDto> cells;
+        cellMapper.useLightMaps(lightMap, lightDirXMap, lightDirYMap, gridWidth, gridHeight, gridStep, world.getGlobalLight().getValue());
+        try {
+            cells = world.getCells().stream().map(cellMapper::toSnapshotDto).toList();
+        } finally {
+            cellMapper.clearLightMap();
+        }
+
+        List<FoodDto> foods = world.getFoods().stream().map(foodMapper::toDto).toList();
+        LightingDto lightingDto = lightingMapper.toDto(world, lightMap, gridStep, gridWidth, gridHeight, DisplayLayersDto.off());
+
+        return new SimulationWorldDto(
+                world.getTick(), world.getTime(), world.getFoodSpawnBudget(), diameter,
+                cells, foods, lightingDto
+        );
+    }
+
 }
+
+

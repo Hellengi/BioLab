@@ -9,3 +9,5 @@ public interface StrainRepository extends JpaRepository<StrainEntity, Long> {
 
     List<StrainEntity> findAllByOrderByCreatedAtDesc();
 }
+
+

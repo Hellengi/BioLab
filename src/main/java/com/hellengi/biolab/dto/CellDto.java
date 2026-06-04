@@ -13,6 +13,8 @@ public record CellDto(
         double nucleusOffsetX,
         double nucleusOffsetY,
         double nucleusRadius,
+        double nucleusTargetOffsetX,
+        double nucleusTargetOffsetY,
         boolean dead,
         GenomeDto genome,
         long lifetimeTicks,
@@ -46,3 +48,5 @@ public record CellDto(
         double directionAngle
 ) {
 }
+
+

@@ -21,7 +21,9 @@ public class FoodMapper {
                 food.isMarkedForRemoval(),
                 food.getCapturedByCellId(),
                 food.getDigestionSlotIndex(),
-                food.isInsideLysosome()
+                food.isInsideLysosome(),
+                Double.isFinite(food.getCapturedCellX()) ? food.getCapturedCellX() : null,
+                Double.isFinite(food.getCapturedCellY()) ? food.getCapturedCellY() : null
         );
     }
 
@@ -33,6 +35,9 @@ public class FoodMapper {
         if (dto.capturedByCellId() != null && dto.digestionSlotIndex() >= 0) {
             food.capture(dto.capturedByCellId(), dto.digestionSlotIndex());
             food.setInsideLysosome(dto.insideLysosome());
+            if (dto.capturedCellAnchorX() != null && dto.capturedCellAnchorY() != null) {
+                food.rememberCapturedCellPosition(dto.capturedCellAnchorX(), dto.capturedCellAnchorY());
+            }
         }
         return food;
     }
