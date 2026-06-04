@@ -1,5 +1,6 @@
 import {preparePreviewCanvas} from "../core/utils.js";
 import {drawInternalGfpGlow} from "./gfp.js";
+import {t} from "../localization/localization.js";
 import {dom} from "../ui/dom.js";
 import {setCreateInfoScope, setSelectedInfoScope, state} from "../store/state.js";
 
@@ -335,6 +336,16 @@ function _hideTooltip() {
     _tooltipEl.classList.remove("visible");
 }
 
+function _previewModeLabel(mode) {
+    const labels = {
+        general: "General",
+        forces: "Forces",
+        health: "Health",
+        energy: "Energy",
+    };
+    return labels[String(mode ?? "general").toLowerCase()] ?? _cap(String(mode ?? "general"));
+}
+
 function _updatePreviewLayout() {
     const mode = state.selectedPreviewMode ?? "general";
     const layerControls = dom.previewLayerControls;
@@ -355,7 +366,7 @@ function _updatePreviewLayout() {
         badge.classList.remove("preview-mode-badge--general", "preview-mode-badge--forces", "preview-mode-badge--health", "preview-mode-badge--energy", "preview-mode-badge--normal");
         badge.classList.add(`preview-mode-badge--${mode}`);
         const text = badge.querySelector(".preview-mode-badge-text");
-        if (text) text.textContent = _cap(mode);
+        if (text) text.textContent = t(_previewModeLabel(mode));
     }
 }
 
@@ -588,7 +599,7 @@ function _drawPreviewBiologyCell(
             type: "circle",
             kind: "organelle",
             id: "cytosol",
-            label: "Cytosol",
+            label: t("Cytosol"),
             tooltip: _organelleTooltip("cytosol", worldCell),
             x: cx,
             y: cy,
@@ -601,7 +612,7 @@ function _drawPreviewBiologyCell(
             type: "ring",
             kind: "organelle",
             id: "membrane",
-            label: "Membrane",
+            label: t("Membrane"),
             tooltip: _organelleTooltip("membrane", worldCell),
             x: cx,
             y: cy,
@@ -804,12 +815,12 @@ function _rangePct(range) {
     return `${_pct(range.min)}–${_pct(range.max)}`;
 }
 function _organelleTooltip(id, cell) {
-    const name = id === "nucleus" || id === "nucleoid" ? "Nucleus" : _cap(id);
+    const name = id === "nucleus" || id === "nucleoid" ? t("Nucleus") : t(_cap(id));
     const title = `<div class="preview-tooltip-title">${name}</div>`;
     if (!cell) return title;
 
     if (state.selectedPreviewMode === "energy") {
-        return `${title}<div>Production: ${_fmt(_energyProductionFor(cell, id))}</div><div>Consumption: ${_fmt(_energyConsumptionFor(cell, id))}</div>`;
+        return `${title}<div>${t("Production: {value}", { value: _fmt(_energyProductionFor(cell, id)) })}</div><div>${t("Consumption: {value}", { value: _fmt(_energyConsumptionFor(cell, id)) })}</div>`;
     }
 
     if (state.selectedPreviewMode === "health") {
@@ -819,13 +830,13 @@ function _organelleTooltip(id, cell) {
             const damageRange = _range(slots.map(slot => Number(slot.damage ?? 0)));
             const damageRateRange = _range(slots.map(slot => Number(slot.damageRate ?? 0)));
             const repairRateRange = _range(slots.map(slot => Number(slot.repairRate ?? 0)));
-            return `${title}<div>Performance: ${_rangePct(perfRange)}</div><div>Damage: ${_rangeFmt(damageRange)}</div><div>Damage rate: ${_rangeFmt(damageRateRange)}</div><div>Repair rate: ${_rangeFmt(repairRateRange)}</div>`;
+            return `${title}<div>${t("Performance: {value}", { value: _rangePct(perfRange) })}</div><div>${t("Damage: {value}", { value: _rangeFmt(damageRange) })}</div><div>${t("Damage rate: {value}", { value: _rangeFmt(damageRateRange) })}</div><div>${t("Repair rate: {value}", { value: _rangeFmt(repairRateRange) })}</div>`;
         }
         const cp = id === "chloroplast";
         const damage = cp ? cell.cpDamage : cell.cellDamage;
         const rate = cp ? cell.cpPhotoDamageRate : cell.cellDamageRate;
         const repair = cp ? cell.cpRepairRate : cell.cellRepairRate;
-        return `${title}<div>Performance: ${_pct(_damagePerformance(damage))}</div><div>Damage: ${_fmt(damage)}</div><div>Damage rate: ${_fmt(rate)}</div><div>Repair rate: ${_fmt(repair)}</div>`;
+        return `${title}<div>${t("Performance: {value}", { value: _pct(_damagePerformance(damage)) })}</div><div>${t("Damage: {value}", { value: _fmt(damage) })}</div><div>${t("Damage rate: {value}", { value: _fmt(rate) })}</div><div>${t("Repair rate: {value}", { value: _fmt(repair) })}</div>`;
     }
 
     return title;
@@ -859,7 +870,7 @@ function _drawPreviewNucleoid(ctx, cx, cy, radius, color, opacity, worldCell, hi
         ctx.stroke();
     }
     ctx.restore();
-    hitTargets?.push({type: "circle", kind: "organelle", id: "nucleus", label: "Nucleus", tooltip: _organelleTooltip("nucleus", worldCell), x: nx, y: ny, radius: r + 4});
+    hitTargets?.push({type: "circle", kind: "organelle", id: "nucleus", label: t("Nucleus"), tooltip: _organelleTooltip("nucleus", worldCell), x: nx, y: ny, radius: r + 4});
 }
 
 function _drawPreviewChloroplasts(ctx, cx, cy, radius, color, opacity, amount, worldCell = null, hitTargets = [], hover = null, cellRotation = 0, mode = "general") {
@@ -895,7 +906,7 @@ function _drawPreviewChloroplasts(ctx, cx, cy, radius, color, opacity, amount, w
             ctx.stroke();
         }
         ctx.restore();
-        hitTargets?.push({type: "circle", kind: "organelle", id: "chloroplast", index: i, label: "Chloroplast", tooltip: _organelleTooltip("chloroplast", worldCell), x, y, radius: organelleRadius * 1.34});
+        hitTargets?.push({type: "circle", kind: "organelle", id: "chloroplast", index: i, label: t("Chloroplast"), tooltip: _organelleTooltip("chloroplast", worldCell), x, y, radius: organelleRadius * 1.34});
     }
     ctx.restore();
 }
@@ -996,7 +1007,7 @@ function _drawPreviewLysosomes(ctx, cx, cy, radius, color, opacity, amount, glow
 
         }
 
-        hitTargets?.push({type: "circle", kind: "organelle", id: "lysosome", index: i, label: "Lysosome", tooltip: _organelleTooltip("lysosome", worldCell), x, y, radius: r * 1.8});
+        hitTargets?.push({type: "circle", kind: "organelle", id: "lysosome", index: i, label: t("Lysosome"), tooltip: _organelleTooltip("lysosome", worldCell), x, y, radius: r * 1.8});
     }
     ctx.restore();
 }
@@ -1478,26 +1489,26 @@ function _drawMotionArrows(ctx, cell, cx, cy, hitTargets, hover) {
             const x1 = x2 - dir.x * mag;
             const y1 = y2 - dir.y * mag;
             _drawDoubleHeadArrow(ctx, x1, y1, x2, y2, colors.impulse, 2, alpha, hover?.id === "collision-impulse");
-            hitTargets.push({type:"segment", kind:"force", id:"collision-impulse", tooltip:"Collision impulse", x1, y1, x2, y2, hitRadius: FORCE_ARROW_HIT_RADIUS});
+            hitTargets.push({type:"segment", kind:"force", id:"collision-impulse", tooltip: t("Collision impulse"), x1, y1, x2, y2, hitRadius: FORCE_ARROW_HIT_RADIUS});
         }
     }
     if (Math.abs(gravForce) > 0.05 && gravityDirection) {
         const mag = Math.min(MAX_FORCE_ARROW, Math.sqrt(Math.abs(gravForce)) * 6.0);
         const x2 = cx + gravityDirection.x * mag, y2 = cy + gravityDirection.y * mag;
         _drawArrow(ctx, cx, cy, x2, y2, gravColor, 2.5, 1, hover?.id === "gravity");
-        hitTargets.push({type:"segment", kind:"force", id:"gravity", tooltip: gravForce >= 0 ? "Gravity force" : "Buoyancy force", x1:cx, y1:cy, x2, y2});
+        hitTargets.push({type:"segment", kind:"force", id:"gravity", tooltip: gravForce >= 0 ? t("Gravity force") : t("Buoyancy force"), x1:cx, y1:cy, x2, y2});
     }
     if (Math.abs(dragForce) > 0.05 && dragDirection) {
         const mag = Math.min(MAX_FORCE_ARROW, Math.log1p(Math.abs(dragForce)) * 6.0);
         const x2 = cx + dragDirection.x * mag, y2 = cy + dragDirection.y * mag;
         _drawArrow(ctx, cx, cy, x2, y2, colors.drag, 2.5, 1, hover?.id === "drag");
-        hitTargets.push({type:"segment", kind:"force", id:"drag", tooltip:"Drag force", x1:cx, y1:cy, x2, y2});
+        hitTargets.push({type:"segment", kind:"force", id:"drag", tooltip: t("Drag force"), x1:cx, y1:cy, x2, y2});
     }
     if (speed > 0.001 && speedDirection) {
         const mag = Math.min(MAX_FORCE_ARROW, Math.max(4, Math.sqrt(speed) * 36));
         const x2 = cx + speedDirection.x * mag, y2 = cy + speedDirection.y * mag;
         _drawDashedArrow(ctx, cx, cy, x2, y2, colors.speed, 1.5, hover?.id === "speed");
-        hitTargets.push({type:"segment", kind:"force", id:"speed", tooltip:"Speed", x1:cx, y1:cy, x2, y2});
+        hitTargets.push({type:"segment", kind:"force", id:"speed", tooltip: t("Speed"), x1:cx, y1:cy, x2, y2});
     }
 }
 
@@ -1570,7 +1581,7 @@ function _drawLightArrow(ctx, sx, sy, ex, ey, color, hitTargets, active) {
         type: "segment",
         kind: "force",
         id: "light-direction",
-        tooltip: "Light direction",
+        tooltip: t("Light direction"),
         x1: sx,
         y1: sy,
         x2: ex,
@@ -1773,7 +1784,7 @@ function _activeSelectedPreviewNotice(worldCell) {
     if (worldCell?.dead) {
         return {
             type: "dead",
-            label: "DEAD",
+            label: t("DEAD"),
             alpha: 1,
         };
     }
@@ -1786,7 +1797,7 @@ function _activeSelectedPreviewNotice(worldCell) {
     if (!Number.isFinite(currentTime) || !Number.isFinite(startTime)) {
         return {
             type: "divided",
-            label: "DIVIDED",
+            label: t("DIVIDED"),
             alpha: 1,
         };
     }
@@ -1805,7 +1816,7 @@ function _activeSelectedPreviewNotice(worldCell) {
 
     return {
         type: "divided",
-        label: "DIVIDED",
+        label: t("DIVIDED"),
         alpha: 1 - smoothFade,
     };
 }
@@ -2111,3 +2122,5 @@ function _clamp01(value) {
     if (!Number.isFinite(Number(value))) return 0;
     return Math.max(0, Math.min(1, Number(value)));
 }
+
+

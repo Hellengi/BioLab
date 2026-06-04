@@ -1,4 +1,3 @@
-
 package com.hellengi.biolab.domain;
 
 import com.hellengi.biolab.domain.model.Cell;

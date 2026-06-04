@@ -5,13 +5,8 @@ import {GFP_GLOW, drawInternalGfpGlow} from "./gfp.js";
 import { cssVar } from "../core/utils.js";
 
 
-// Было 0.50. Значение 0.38 визуально усиливает затемнение в темноте примерно на четверть,
-// но не проваливает клетки и еду в полностью черный цвет.
 const CELL_MIN_LIGHT = 0.38;
 
-// Backend sends the physical optical opacity of the cell. This multiplier maps
-// that real opacity to canvas alpha, so cells are genuinely translucent while
-// still readable on screen.
 const REAL_CELL_OPACITY_TO_RENDER_ALPHA = 9.6;
 const MIN_CELL_RENDER_ALPHA = 0.18;
 const MAX_CELL_RENDER_ALPHA = 0.82;

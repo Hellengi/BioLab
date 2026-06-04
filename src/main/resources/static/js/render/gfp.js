@@ -1,6 +1,3 @@
-// Shared GFP rendering parameters and helper.
-// Both simulation canvas and preview use this module, so GFP glow stays visually consistent.
-
 export const GFP_GLOW = Object.freeze({
     internalCoreAlpha: 1.00,
     internalMidAlpha: 0.74,

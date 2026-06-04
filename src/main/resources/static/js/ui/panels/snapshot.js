@@ -1,10 +1,10 @@
-
 import { dom } from "../dom.js";
 import { deleteWorld, getConfig, getWorlds, loadWorld, saveWorld } from "../../transport/api/simulation.js";
 import { render } from "../../render/canvas.js";
 import { openModal, closeModal } from "./_panels.js";
 import {state} from "../../store/state.js";
 import {applySimulationConfig, resetClientState, updateStats} from "../../store/actions.js";
+import { currentDateLocale, t } from "../../localization/localization.js";
 
 async function refreshWorldList() {
     const worlds = await getWorlds();
@@ -31,7 +31,7 @@ export async function openLoadWorldModal() {
 
 export async function confirmSaveWorld() {
     const name = dom.saveWorldNameInput?.value.trim();
-    if (!name) { alert("Enter world name"); return; }
+    if (!name) { alert(t("Enter world name")); return; }
 
     await saveWorld(name);
     closeModal(dom.saveWorldModal);
@@ -39,7 +39,7 @@ export async function confirmSaveWorld() {
 
 export async function confirmLoadWorld() {
     const selectedId = dom.worldSnapshotsList?.value;
-    if (!selectedId) { alert("Select a saved world"); return; }
+    if (!selectedId) { alert(t("Select a saved world")); return; }
 
     await loadWorld(selectedId);
     state.config = await getConfig();
@@ -52,13 +52,15 @@ export async function confirmLoadWorld() {
 
 export async function deleteSelectedWorld() {
     const selectedId = dom.worldSnapshotsList?.value;
-    if (!selectedId) { alert("Select a world to delete"); return; }
-    if (!confirm("Delete the selected world?")) return;
+    if (!selectedId) { alert(t("Select a world to delete")); return; }
+    if (!confirm(t("Delete the selected world?"))) return;
 
     await deleteWorld(selectedId);
     await refreshWorldList();
 }
 
 function formatDate(value) {
-    return new Date(value).toLocaleString();
+    return new Date(value).toLocaleString(currentDateLocale());
 }
+
+

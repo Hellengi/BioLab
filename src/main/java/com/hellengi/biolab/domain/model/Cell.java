@@ -1,4 +1,3 @@
-
 package com.hellengi.biolab.domain.model;
 
 import com.hellengi.biolab.config.YamlConfig;

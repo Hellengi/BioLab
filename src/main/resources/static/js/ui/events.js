@@ -1,9 +1,3 @@
-/**
- * ui/events.js
- * Точка привязки всех событий UI.
- * Каждая группа обработчиков делегируется соответствующему модулю.
- */
-
 import { dom } from "./dom.js";
 import { bindSettingsForm, resetSettings } from "./tabs/settings.js";
 import {
@@ -52,6 +46,7 @@ import { handleSimulationReset, togglePause } from "../store/actions.js";
 import { setCreateInfoScope, setDisplayLayer, setSelectedInfoScope, state } from "../store/state.js";
 import { sendDisplayLayers } from "../transport/ws/socket.js";
 import { bindToolbarTooltips } from "./toolbar.js";
+import { t } from "../localization/localization.js";
 import {
     closeActiveOrganellePanel,
     hasActiveOrganellePanel,
@@ -111,7 +106,7 @@ function bindSettingsTabEvents() {
     dom.importWorldBtn?.addEventListener("click", () =>
         openLoadWorldModal().catch(err => {
             console.error("Open load world modal error", err);
-            alert("Failed to load worlds list");
+            alert(t("Failed to load worlds list"));
         })
     );
 
@@ -243,7 +238,7 @@ function bindCreatePanelEvents() {
     dom.placeCellModeBtn?.addEventListener("click", () => {
         void toggleCellPlacement().catch(err => {
             console.error("Failed to toggle cell placement mode", err);
-            alert("Failed to toggle placement mode");
+            alert(t("Failed to toggle placement mode"));
         });
     });
 
@@ -255,7 +250,7 @@ function bindCreatePanelEvents() {
     dom.importCellBtn?.addEventListener("click", () =>
         openLoadCellModal().catch(err => {
             console.error("Open load cell modal error", err);
-            alert("Failed to load templates list");
+            alert(t("Failed to load templates list"));
         })
     );
 
@@ -407,3 +402,5 @@ function bindSidebarToggle() {
         }
     });
 }
+
+

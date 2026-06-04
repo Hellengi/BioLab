@@ -1,12 +1,6 @@
-
-
-/**
- * toolbar.js
- * Controls the top toolbar: simulation speed, pause state, time display and FPS/TPS.
- */
-
 import { dom } from "./dom.js";
 import { attachTooltip } from "./tooltip.js";
+import { t } from "../localization/localization.js";
 
 const TIME_COLOR_COLD   = "#60a5fa";
 const TIME_COLOR_NORMAL = "#f1f5f9";
@@ -40,7 +34,7 @@ export function applyDisplayFromConfig(tempCelsius, speedFactor) {
 
 export function applyPauseButtonState(paused) {
     if (!dom.pauseBtn) return;
-    dom.pauseBtn.textContent = paused ? "Resume" : "Pause";
+    dom.pauseBtn.textContent = paused ? t("Resume") : t("Pause");
     dom.pauseBtn.classList.toggle("paused", paused);
 }
 
@@ -51,7 +45,7 @@ export function updateTimeDisplay(seconds, tick) {
     const safeTick = Number.isFinite(Number(tick)) ? Number(tick) : 0;
     const formatted = _formatFullSimulationTime(safeSeconds);
 
-    dom.timeYearsDays.textContent = `${formatted.years}y ${formatted.days}d`;
+    dom.timeYearsDays.textContent = t("time.yearsDays", { years: formatted.years, days: formatted.days });
     dom.timeClock.textContent = `${_pad2(formatted.hours)}:${_pad2(formatted.minutes)}:${_pad2(formatted.seconds)}.${_pad3(formatted.milliseconds)}`;
 
     if (dom.timeTooltipTick) {
@@ -168,3 +162,5 @@ function _hexToRgb(hex) {
         ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) }
         : { r: 0, g: 0, b: 0 };
 }
+
+

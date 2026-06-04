@@ -1,5 +1,3 @@
-
-
 package com.hellengi.biolab.domain.spawn;
 
 import com.hellengi.biolab.config.YamlConfig;

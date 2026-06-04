@@ -1,4 +1,3 @@
-
 package com.hellengi.biolab.util;
 
 import java.util.concurrent.atomic.AtomicLong;

@@ -1,10 +1,10 @@
-
 import { dom } from "../dom.js";
 import { deleteTemplate, getTemplate, getTemplates, saveTemplate } from "../../transport/api/cell.js";
 import { openModal, closeModal } from "./_panels.js";
 import { readDraftFromForm, syncDraftToForm } from "../tabs/creation.js";
 import { switchTab } from "../tabs/_tabs.js";
 import {state} from "../../store/state.js";
+import { t } from "../../localization/localization.js";
 
 async function refreshTemplateList() {
     const templates = await getTemplates();
@@ -24,7 +24,7 @@ export async function confirmSaveSelectedCell() {
     if (!state.selectedStrain) return;
 
     const name = dom.saveSelectedCellNameInput?.value.trim();
-    if (!name) { alert("Enter template name"); return; }
+    if (!name) { alert(t("Enter template name")); return; }
 
     await saveTemplate(name, state.selectedStrain);
     closeModal(dom.saveSelectedCellModal);
@@ -35,12 +35,12 @@ export async function confirmSaveDraftCell() {
     try {
         draft = readDraftFromForm();
     } catch (err) {
-        alert("Check the values in the cell creation form");
+        alert(t("Check the values in the cell creation form"));
         return;
     }
 
     const name = dom.saveCellNameInput?.value.trim();
-    if (!name) { alert("Enter template name"); return; }
+    if (!name) { alert(t("Enter template name")); return; }
 
     await saveTemplate(name, draft);
     closeModal(dom.saveCellModal);
@@ -53,7 +53,7 @@ export async function openLoadCellModal() {
 
 export async function confirmLoadCell() {
     const selectedId = dom.strainsList?.value;
-    if (!selectedId) { alert("Select a cell template"); return; }
+    if (!selectedId) { alert(t("Select a cell template")); return; }
 
     state.cellDraft = await getTemplate(selectedId);
     syncDraftToForm();
@@ -63,9 +63,11 @@ export async function confirmLoadCell() {
 
 export async function deleteSelectedTemplate() {
     const selectedId = dom.strainsList?.value;
-    if (!selectedId) { alert("Select a template to delete"); return; }
-    if (!confirm("Delete the selected template?")) return;
+    if (!selectedId) { alert(t("Select a template to delete")); return; }
+    if (!confirm(t("Delete the selected template?"))) return;
 
     await deleteTemplate(selectedId);
     await refreshTemplateList();
 }
+
+

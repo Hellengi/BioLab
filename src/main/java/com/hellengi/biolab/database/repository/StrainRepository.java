@@ -1,4 +1,3 @@
-
 package com.hellengi.biolab.database.repository;
 
 import com.hellengi.biolab.database.entity.StrainEntity;

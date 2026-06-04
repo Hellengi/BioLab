@@ -1,4 +1,3 @@
-
 package com.hellengi.biolab;
 
 import org.springframework.boot.SpringApplication;

@@ -1,4 +1,3 @@
-
 /**
  * ui/tabs/_settings-helpers.js
  * Внутренние вспомогательные модули для settings.js.

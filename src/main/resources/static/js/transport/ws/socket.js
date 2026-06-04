@@ -1,5 +1,3 @@
-
-
 import { refreshSelection } from "../../ui/tabs/selection.js";
 import { state, setWorld, setMetrics, resetMetrics } from "../../store/state.js";
 import { updateStats } from "../../store/actions.js";

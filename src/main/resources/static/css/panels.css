@@ -1,6 +1,3 @@
-
-
-
 /* ═══════════════════════════════════════════════════════
    panels.css — компоненты панелей: заголовки, настройки,
    аккордеон, локаль, placeholder, лог, чекбоксы, тики
@@ -118,7 +115,24 @@
 .locale-option input   { display: none; }
 .locale-option.active  { border-color: var(--c-accent); background: var(--c-accent-dark); color: var(--c-accent); }
 .locale-option.disabled { opacity: 0.4; cursor: not-allowed; }
-.locale-flag { font-size: 16px; line-height: 1; }
+.locale-flag {
+    width: 24px;
+    height: 16px;
+    display: inline-flex;
+    flex: 0 0 24px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 2px;
+    overflow: hidden;
+    background: var(--c-bg-soft);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.14), 0 1px 3px rgba(0, 0, 0, 0.30);
+    line-height: 1;
+}
+.locale-flag svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
 
 .locale-soon {
     margin-left: auto;
@@ -487,3 +501,5 @@
     color: var(--c-text-muted);
     line-height: 1.35;
 }
+
+

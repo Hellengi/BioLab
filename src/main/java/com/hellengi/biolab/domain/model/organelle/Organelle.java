@@ -1,4 +1,3 @@
-
 package com.hellengi.biolab.domain.model.organelle;
 
 import com.hellengi.biolab.config.YamlConfig;

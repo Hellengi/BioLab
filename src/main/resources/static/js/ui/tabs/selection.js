@@ -5,6 +5,7 @@ import { getActiveTab, getLastTab, setSelectedTabEnabled, switchTab } from "./_t
 import { getSelectedCell, setSelectedInfoScope, state } from "../../store/state.js";
 import { clearTooltipElement, setTooltipValue } from "../cell-info.js";
 import { sendDisplayLayers } from "../../transport/ws/socket.js";
+import { t } from "../../localization/localization.js";
 
 const SELECTION_PANEL_REFRESH_INTERVAL_MS = 120;
 let lastSelectionPanelRefreshMs = 0;
@@ -55,7 +56,7 @@ export function refreshSelection(force = false) {
 
 function syncSelectedCellTitle() {
     if (!dom.selectedCellTitle) return;
-    dom.selectedCellTitle.textContent = "Cell Selection";
+    dom.selectedCellTitle.textContent = t("Cell Selection");
 }
 
 function isSelectedInfoTooltipActive() {
@@ -119,13 +120,13 @@ function renderGeneralInfo(grid, cell, scope) {
     }
     if (scope === "membrane") {
         row(grid, "Elasticity", formatTwoDecimals(genome.elasticity), "Restitution = baseRestitution × √(elasticity₁ × elasticity₂)");
-        row(grid, "Melanin", `${genome.melaninEnabled ? "on" : "off"} / ${formatTwoDecimals(genome.melaninPercent ?? 0)}%`, "MembraneOpacity = BaseOpacity + MelaninOpacityFactor × MelaninPercent");
+        row(grid, "Melanin", `${genome.melaninEnabled ? t("on") : t("off")} / ${formatTwoDecimals(genome.melaninPercent ?? 0)}%`, "MembraneOpacity = BaseOpacity + MelaninOpacityFactor × MelaninPercent");
         row(grid, "Light transmittance", formatTwoDecimals(cell.membraneLightTransmittance ?? 0), "MembraneLightTransmittance = exp(−MembraneOpacity)");
         row(grid, "Color / opacity", rgbaString(visual.membraneColor), "MembraneColor = mix(BaseMembraneColor, MelaninColor, MelaninPercent)");
         return;
     }
     if (scope === "chloroplast") {
-        row(grid, "Enabled", String(Boolean(genome.chloroplastEnabled)), "CpEnabled controls the presence of chloroplasts");
+        row(grid, "Enabled", t(String(Boolean(genome.chloroplastEnabled))), "CpEnabled controls the presence of chloroplasts");
         row(grid, "Amount", formatTwoDecimals(genome.chloroplastAmount ?? 0), "CpTotalArea = CpAmount × CpArea; this no longer increases CellArea");
         row(grid, "Chlorophyll", `${formatTwoDecimals(genome.chlorophyll ?? 0)}%`, "Chlorophyll increases green pigment and captured light");
         row(grid, "Carotenoids", `${formatTwoDecimals(genome.carotenoids ?? 0)}%`, "CarotProtection = 1 − exp(−CarotProtectionFactor × CarotPercent / ChlorPercent)");
@@ -135,7 +136,7 @@ function renderGeneralInfo(grid, cell, scope) {
     }
 
     if (scope === "lysosome") {
-        row(grid, "Enabled", String(Boolean(genome.lysosomeEnabled)), "LysosomeEnabled controls food capture and digestion");
+        row(grid, "Enabled", t(String(Boolean(genome.lysosomeEnabled))), "LysosomeEnabled controls food capture and digestion");
         row(grid, "Amount", formatTwoDecimals(genome.lysosomeAmount ?? 0), "LysosomeCapacity = LysosomeAmount; one food piece per lysosome");
         row(grid, "Enzyme activity", `${formatTwoDecimals(genome.lysosomeEnzymeActivity ?? 0)}%`, "Higher activity digests faster, but increases energy cost and damage risk");
         row(grid, "Food slots", `${cell.lysosomeOccupiedSlots ?? 0} / ${cell.lysosomeCapacity ?? 0}`, "Captured food occupies a lysosome slot immediately on contact");
@@ -144,7 +145,7 @@ function renderGeneralInfo(grid, cell, scope) {
         return;
     }
 
-    row(grid, "Status", cell.dead ? "Dead" : "Alive", "Dead cells can be inspected like living cells until they decay");
+    row(grid, "Status", cell.dead ? t("Dead") : t("Alive"), "Dead cells can be inspected like living cells until they decay");
     row(grid, "Code", genome.code ?? "", "Genome code");
     row(grid, "Energy", `${formatTwoDecimals(cell.energy)} / ${formatTwoDecimals(genome.maxEnergy)}`, "CellEnergy += Production − Consumption − RepairCost");
     row(grid, "Mass", formatTwoDecimals(cell.mass), "CellMass = NcMass + CtMass + MbMass + CpTotalMass + LyTotalMass");
@@ -226,41 +227,83 @@ function energyConsumptionFor(cell, scope) {
 
 function healthRateComponents(cell, scope) {
     if (scope === "lysosome") {
-        return `Ly damage ${formatTwoDecimals(cell.lysosomeDamageRate ?? 0)}; occupied slots ${cell.lysosomeOccupiedSlots ?? 0}/${cell.lysosomeCapacity ?? 0}; Ly repair ${formatTwoDecimals(cell.lysosomeRepairRate ?? 0)}`;
+        return t("Ly damage {damage}; occupied slots {occupied}/{capacity}; Ly repair {repair}", {
+            damage: formatTwoDecimals(cell.lysosomeDamageRate ?? 0),
+            occupied: cell.lysosomeOccupiedSlots ?? 0,
+            capacity: cell.lysosomeCapacity ?? 0,
+            repair: formatTwoDecimals(cell.lysosomeRepairRate ?? 0),
+        });
     }
     if (scope === "chloroplast") {
-        return `Photo damage ${formatTwoDecimals(cell.cpPhotoDamageRate ?? 0)}; carotenoid protection ${formatTwoDecimals(cell.carotProtection ?? 0)}; CP repair ${formatTwoDecimals(cell.cpRepairRate ?? 0)}`;
+        return t("Photo damage {damage}; carotenoid protection {protection}; CP repair {repair}", {
+            damage: formatTwoDecimals(cell.cpPhotoDamageRate ?? 0),
+            protection: formatTwoDecimals(cell.carotProtection ?? 0),
+            repair: formatTwoDecimals(cell.cpRepairRate ?? 0),
+        });
     }
     if (scope === "membrane") {
-        return `Light transmittance ${formatTwoDecimals(cell.membraneLightTransmittance ?? 0)}; direct cell damage ${formatTwoDecimals(cell.cellDamageRate ?? 0)}; melanin protection affects direct damage`;
+        return t("Light transmittance {transmittance}; direct cell damage {damage}; melanin protection affects direct damage", {
+            transmittance: formatTwoDecimals(cell.membraneLightTransmittance ?? 0),
+            damage: formatTwoDecimals(cell.cellDamageRate ?? 0),
+        });
     }
     if (scope === "cytosol") {
-        return `Repair capacity from cytosol mass; cell repair ${formatTwoDecimals(cell.cellRepairRate ?? 0)}; repair energy ${formatTwoDecimals(cell.repairEnergyCostRate ?? 0)}`;
+        return t("Repair capacity from cytosol mass; cell repair {repair}; repair energy {energy}", {
+            repair: formatTwoDecimals(cell.cellRepairRate ?? 0),
+            energy: formatTwoDecimals(cell.repairEnergyCostRate ?? 0),
+        });
     }
     if (scope === "nucleus") {
-        return `Cell damage ${formatTwoDecimals(cell.cellDamage ?? 0)}; cell damage rate ${formatTwoDecimals(cell.cellDamageRate ?? 0)}; division blocked only by CellDivDamageMax`;
+        return t("Cell damage {damage}; cell damage rate {rate}; division blocked only by CellDivDamageMax", {
+            damage: formatTwoDecimals(cell.cellDamage ?? 0),
+            rate: formatTwoDecimals(cell.cellDamageRate ?? 0),
+        });
     }
-    return `CP photo damage ${formatTwoDecimals(cell.cpPhotoDamageRate ?? 0)}; Ly damage ${formatTwoDecimals(cell.lysosomeDamageRate ?? 0)}; organelle leaks contribute to cell damage ${formatTwoDecimals(cell.cellDamageRate ?? 0)}; repair cost ${formatTwoDecimals(cell.repairEnergyCostRate ?? 0)}`;
+    return t("CP photo damage {cpDamage}; Ly damage {lyDamage}; organelle leaks contribute to cell damage {cellDamage}; repair cost {repair}", {
+        cpDamage: formatTwoDecimals(cell.cpPhotoDamageRate ?? 0),
+        lyDamage: formatTwoDecimals(cell.lysosomeDamageRate ?? 0),
+        cellDamage: formatTwoDecimals(cell.cellDamageRate ?? 0),
+        repair: formatTwoDecimals(cell.repairEnergyCostRate ?? 0),
+    });
 }
 
 function energyRateComponents(cell, scope) {
     const repair = Math.max(0, cell.repairEnergyCostRate ?? 0);
     if (scope === "lysosome") {
-        return `Digestion gain ${formatTwoDecimals(cell.digestionEnergyProduction ?? 0)}; digestion cost ${formatTwoDecimals(cell.digestionEnergyCostRate ?? 0)}; lysosome repair cost ${formatTwoDecimals(cell.lysosomeRepairEnergyCostRate ?? 0)}`;
+        return t("Digestion gain {gain}; digestion cost {cost}; lysosome repair cost {repair}", {
+            gain: formatTwoDecimals(cell.digestionEnergyProduction ?? 0),
+            cost: formatTwoDecimals(cell.digestionEnergyCostRate ?? 0),
+            repair: formatTwoDecimals(cell.lysosomeRepairEnergyCostRate ?? 0),
+        });
     }
     if (scope === "chloroplast") {
-        return `Photosynthesis ${formatTwoDecimals(cell.energyProduction ?? 0)}; chloroplast upkeep ${formatTwoDecimals(energyConsumptionFor(cell, scope))}; CpDamage reduces capacity`;
+        return t("Photosynthesis {photosynthesis}; chloroplast upkeep {upkeep}; CpDamage reduces capacity", {
+            photosynthesis: formatTwoDecimals(cell.energyProduction ?? 0),
+            upkeep: formatTwoDecimals(energyConsumptionFor(cell, scope)),
+        });
     }
     if (scope === "membrane") {
-        return `Membrane upkeep ${formatTwoDecimals(energyConsumptionFor(cell, scope))}; melanin increases opacity/protection and upkeep`;
+        return t("Membrane upkeep {upkeep}; melanin increases opacity/protection and upkeep", {
+            upkeep: formatTwoDecimals(energyConsumptionFor(cell, scope)),
+        });
     }
     if (scope === "cytosol") {
-        return `Cytosol upkeep ${formatTwoDecimals(Math.max(0, energyConsumptionFor(cell, scope) - repair))}; GFP upkeep; repair energy ${formatTwoDecimals(repair)}`;
+        return t("Cytosol upkeep {upkeep}; GFP upkeep; repair energy {repair}", {
+            upkeep: formatTwoDecimals(Math.max(0, energyConsumptionFor(cell, scope) - repair)),
+            repair: formatTwoDecimals(repair),
+        });
     }
     if (scope === "nucleus") {
-        return `Nucleoid upkeep ${formatTwoDecimals(energyConsumptionFor(cell, scope))}; division impulse cost is paid during division`;
+        return t("Nucleoid upkeep {upkeep}; division impulse cost is paid during division", {
+            upkeep: formatTwoDecimals(energyConsumptionFor(cell, scope)),
+        });
     }
-    return `Photosynthesis ${formatTwoDecimals(cell.energyProduction ?? 0)}; digestion ${formatTwoDecimals(cell.digestionEnergyProduction ?? 0)}; base upkeep ${formatTwoDecimals(Math.max(0, (cell.energyConsumption ?? 0) - repair))}; repair energy ${formatTwoDecimals(repair)}`;
+    return t("Photosynthesis {photosynthesis}; digestion {digestion}; base upkeep {upkeep}; repair energy {repair}", {
+        photosynthesis: formatTwoDecimals(cell.energyProduction ?? 0),
+        digestion: formatTwoDecimals(cell.digestionEnergyProduction ?? 0),
+        upkeep: formatTwoDecimals(Math.max(0, (cell.energyConsumption ?? 0) - repair)),
+        repair: formatTwoDecimals(repair),
+    });
 }
 
 function damagePerformance(damage) {
@@ -270,10 +313,10 @@ function damagePerformance(damage) {
 function row(grid, label, value, tooltip) {
     const labelEl = document.createElement("div");
     labelEl.className = "cell-info-label";
-    labelEl.textContent = label;
+    labelEl.textContent = t(label);
     const valueEl = document.createElement("div");
     grid.append(labelEl, valueEl);
-    setTooltipValue(valueEl, value, tooltip);
+    setTooltipValue(valueEl, t(String(value)), t(tooltip));
 }
 
 function clearGrid(grid) {
@@ -346,6 +389,8 @@ function rgbaString(color) {
     if (!color) return "—";
     return `${Math.round(color.r ?? 0)}, ${Math.round(color.g ?? 0)}, ${Math.round(color.b ?? 0)} / ${formatTwoDecimals(color.opacity ?? 0)}`;
 }
+
+
 
 
 

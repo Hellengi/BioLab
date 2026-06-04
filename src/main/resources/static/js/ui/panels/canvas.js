@@ -3,6 +3,7 @@ import { spawnDraftCell, readDraftFromForm } from "../tabs/creation.js";
 import { selectCell, clearSelection } from "../tabs/selection.js";
 import {findCellAt, state} from "../../store/state.js";
 import { sendDisplayLayers } from "../../transport/ws/socket.js";
+import { t } from "../../localization/localization.js";
 
 export function onCanvasClick(event) {
     const { x, y } = getCanvasCoordinates(event);
@@ -29,14 +30,16 @@ function handlePlaceModeClick(x, y) {
         state.cellDraft = readDraftFromForm();
     } catch (err) {
         console.error("Create cell form error", err);
-        alert("Check the values in the cell creation form");
+        alert(t("Check the values in the cell creation form"));
         return;
     }
 
     spawnDraftCell(x, y).catch(err => {
         console.error("Spawn cell error", err);
-        alert("Failed to create cell");
+        alert(t("Failed to create cell"));
     });
 }
+
+
 
 

@@ -1,5 +1,3 @@
-
-
 package com.hellengi.biolab.dto;
 
 import java.util.List;

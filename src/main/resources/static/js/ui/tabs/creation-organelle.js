@@ -1,7 +1,3 @@
-/**
- * ui/tabs/creation-organelle.js
- */
-
 import { cssVar } from "../../core/utils.js";
 import { setCreateInfoScope } from "../../store/state.js";
 

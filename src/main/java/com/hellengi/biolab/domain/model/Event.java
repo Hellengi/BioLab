@@ -1,4 +1,3 @@
-
 package com.hellengi.biolab.domain.model;
 
 public interface Event {

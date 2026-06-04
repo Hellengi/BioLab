@@ -1,4 +1,3 @@
-
 export const ORGANIC_BROWN_COLOR = Object.freeze({
     h: 22,
     s: 43,

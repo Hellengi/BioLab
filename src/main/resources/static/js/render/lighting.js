@@ -1,5 +1,3 @@
-
-
 import { cssVar } from "../core/utils.js";
 
 const BG_DARK = 40;

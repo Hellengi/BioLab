@@ -1,4 +1,3 @@
-
 package com.hellengi.biolab.api.controller;
 
 import com.hellengi.biolab.database.service.StrainService;

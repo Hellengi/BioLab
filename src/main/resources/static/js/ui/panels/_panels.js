@@ -1,4 +1,3 @@
-
 /**
  * ui/panels/_panels.js
  * Общие UI-утилиты: синхронизация input/range-пар, модальные окна,
@@ -6,6 +5,7 @@
  */
 
 import { dom } from "../dom.js";
+import { t } from "../../localization/localization.js";
 
 // ── Синхронизация слайдер + числовой input ───────────────────────────────────
 
@@ -73,7 +73,7 @@ export function bindAsyncClick(element, asyncHandler, logMessage, alertMessage) 
     element.addEventListener("click", () => {
         asyncHandler().catch(err => {
             console.error(logMessage, err);
-            alert(alertMessage);
+            alert(t(alertMessage));
         });
     });
 }
@@ -92,3 +92,5 @@ export function applyInputBounds(element, { min, max, step }) {
     element.max  = String(max);
     element.step = String(step);
 }
+
+

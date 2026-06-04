@@ -1,4 +1,3 @@
-
 /**
  * ui/panels/cursor.js
  * Всё, что связано с курсором над canvas:

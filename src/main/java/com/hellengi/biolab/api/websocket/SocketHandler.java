@@ -1,5 +1,3 @@
-
-
 package com.hellengi.biolab.api.websocket;
 
 import com.hellengi.biolab.dto.DisplayLayersDto;

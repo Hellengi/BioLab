@@ -1,7 +1,3 @@
-/**
- * ui/tabs/creation.js
- */
-
 import { dom } from "../dom.js";
 import { state } from "../../store/state.js";
 import { drawCreateCellPreview } from "../../render/preview.js";
@@ -10,6 +6,7 @@ import { applyInputBounds } from "../panels/_panels.js";
 import { spawnCell } from "../../transport/api/cell.js";
 import { formatTwoDecimals, setText } from "../../core/utils.js";
 import { clearTooltipElement, setTooltipValue } from "../cell-info.js";
+import { t } from "../../localization/localization.js";
 import {
     initOrganellePanels,
     chloroplastEnabled as _getChloroplastEnabled,
@@ -175,13 +172,13 @@ export function setPlaceMode(active) {
         hint.classList.remove("preview-mode-badge--create-on", "preview-mode-badge--create-off");
         hint.classList.add(active ? "preview-mode-badge--create-on" : "preview-mode-badge--create-off");
         const textEl = hint.querySelector(".preview-mode-badge-text");
-        if (textEl) textEl.textContent = active ? "Placing ON" : "Placing OFF";
-        hint.title = active ? "Placement mode ON" : "Placement mode off";
+        if (textEl) textEl.textContent = active ? t("Placing ON") : t("Placing OFF");
+        hint.title = active ? t("Placement mode ON") : t("Placement mode off");
     }
 
     if (dom.placeCellModeBtn) {
         dom.placeCellModeBtn.classList.toggle("active", active);
-        dom.placeCellModeBtn.title = active ? "Stop placing" : "Place on the field";
+        dom.placeCellModeBtn.title = active ? t("Stop placing") : t("Place on the field");
     }
 
     dom.canvas?.classList.toggle("cell-create-mode-active", active);
@@ -314,22 +311,22 @@ function syncOrganellePanelReadouts(v) {
 function setPanelTooltipValue(id, value, tooltip) {
     const el = document.getElementById(id);
     if (!el) return;
-    setTooltipValue(el, value, tooltip);
+    setTooltipValue(el, t(String(value)), t(tooltip));
 }
 
 function row(grid, label, value, tooltip) {
     const labelEl = document.createElement("div");
     labelEl.className = "cell-info-label";
-    labelEl.textContent = label;
+    labelEl.textContent = t(label);
     const valueEl = document.createElement("div");
     grid.append(labelEl, valueEl);
-    setTooltipValue(valueEl, value, tooltip);
+    setTooltipValue(valueEl, t(String(value)), t(tooltip));
 }
 
 function checkboxRow(grid, label, checked, tooltip, onChange) {
     const labelEl = document.createElement("div");
     labelEl.className = "cell-info-label";
-    labelEl.textContent = label;
+    labelEl.textContent = t(label);
     const valueEl = document.createElement("div");
     const cb = document.createElement("input");
     cb.type = "checkbox";
@@ -337,7 +334,7 @@ function checkboxRow(grid, label, checked, tooltip, onChange) {
     cb.addEventListener("change", () => onChange?.(cb.checked));
     valueEl.appendChild(cb);
     grid.append(labelEl, valueEl);
-    setTooltipValue(valueEl, checked ? "on" : "off", tooltip);
+    setTooltipValue(valueEl, t(checked ? "on" : "off"), t(tooltip));
 }
 
 function _syncInfoPane() {
@@ -478,6 +475,8 @@ function _lysosomeAcidColor(enzyme01) {
     if (activity < 0.5) return _mixRgb(low, mid, activity / 0.5);
     return _mixRgb(mid, high, (activity - 0.5) / 0.5);
 }
+
+
 
 
 

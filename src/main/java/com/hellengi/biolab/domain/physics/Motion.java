@@ -1,4 +1,3 @@
-
 package com.hellengi.biolab.domain.physics;
 
 import com.hellengi.biolab.domain.SimulationWorld;

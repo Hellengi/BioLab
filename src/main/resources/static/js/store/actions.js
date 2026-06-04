@@ -1,4 +1,3 @@
-
 /**
  * store/actions.js
  * Высокоуровневые действия симуляции: загрузка конфига, сброс, пауза.
@@ -18,6 +17,7 @@ import {
     updateMetricsDisplay,
     updateTimeDisplay,
 } from "../ui/toolbar.js";
+import { t } from "../localization/localization.js";
 
 // ── Конфигурация ─────────────────────────────────────────────────────────────
 
@@ -74,11 +74,12 @@ export function updateStats() {
 
     // Fallback для старой разметки, если проект временно запущен без нижней панели.
     if (dom.stats) {
-        dom.stats.textContent =
-            `Cells: ${cells.length} | ` +
-            `Dead: ${deadCount} | ` +
-            `Food: ${foods.length} | ` +
-            `Diameter: ${state.config.tubeDiameter}`;
+        dom.stats.textContent = t("stats.line", {
+            cells: cells.length,
+            dead: deadCount,
+            food: foods.length,
+            diameter: state.config.tubeDiameter,
+        });
     }
 
     updateTimeDisplay(state.world.time, state.world.tick);
@@ -123,3 +124,5 @@ export async function togglePause() {
     updateStats();
     render(dom.ctx, state);
 }
+
+
