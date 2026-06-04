@@ -1,3 +1,6 @@
+
+
+
 /* ==========================================================
    organelle-panel.css — slide-out organelle settings panel
    ========================================================== */
@@ -16,9 +19,9 @@
     position: absolute;
     top: 0;
     right: calc(var(--sidebar-w) + var(--tabs-w));
-    width: var(--organelle-panel-w);
+    width: calc(var(--organelle-panel-w) + var(--tabs-w));
     height: 100%;
-    z-index: var(--z-organelle-panel);
+    z-index: calc(var(--z-sidebar) - 1);
     pointer-events: none;
     overflow: visible;
 }
@@ -29,18 +32,19 @@
     position: absolute;
     top: 0;
     right: 0;
-    width: 100%;
+    width: var(--organelle-panel-w);
     height: 100%;
     display: flex;
     flex-direction: column;
     overflow: hidden;
     background: var(--c-bg-surface);
     border-left: 1px solid var(--c-border);
-    transform: translateX(100%);
+    transform: translateX(calc(100% + var(--tabs-w)));
     opacity: 0;
     transition:
             transform var(--anim-fast) var(--ease-default),
             opacity var(--anim-fast) ease;
+    box-shadow: -18px 0 28px rgba(0, 0, 0, 0.18);
 }
 
 .organelle-panel.panel-open {
@@ -135,3 +139,5 @@
     padding: 2px 5px;
     font-size: 11px;
 }
+
+

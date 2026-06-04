@@ -1,3 +1,4 @@
+
 package com.hellengi.biolab.domain.lifecycle;
 
 import com.hellengi.biolab.domain.model.Cell;

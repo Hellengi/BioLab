@@ -1,3 +1,4 @@
+
 package com.hellengi.biolab.util;
 
 public final class SliderScale {

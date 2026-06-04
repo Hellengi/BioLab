@@ -2,6 +2,7 @@ import { getCanvasCoordinates } from "./_panels.js";
 import { spawnDraftCell, readDraftFromForm } from "../tabs/creation.js";
 import { selectCell, clearSelection } from "../tabs/selection.js";
 import {findCellAt, state} from "../../store/state.js";
+import { sendDisplayLayers } from "../../transport/ws/socket.js";
 
 export function onCanvasClick(event) {
     const { x, y } = getCanvasCoordinates(event);
@@ -15,10 +16,12 @@ export function onCanvasClick(event) {
 
     if (clickedCell) {
         selectCell(clickedCell);
+        sendDisplayLayers();
         return;
     }
 
     clearSelection();
+    sendDisplayLayers();
 }
 
 function handlePlaceModeClick(x, y) {
@@ -35,3 +38,5 @@ function handlePlaceModeClick(x, y) {
         alert("Failed to create cell");
     });
 }
+
+

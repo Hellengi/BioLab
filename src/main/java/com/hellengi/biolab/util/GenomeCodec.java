@@ -9,8 +9,7 @@ public final class GenomeCodec {
     private static final String PREFIX = "CELL-";
     private static final int GENE_WIDTH = 3;
     private static final int RADIX = 36;
-    private static final int LEGACY_GENE_COUNT = 9;
-    private static final int CURRENT_GENE_COUNT = 10;
+    private static final int CURRENT_GENE_COUNT = 16;
 
     private static final Pattern CODE_PATTERN = Pattern.compile(
             "^CELL-(?<payload>[0-9A-Z]+)$"
@@ -24,13 +23,19 @@ public final class GenomeCodec {
                 + pack(genome.getDivisionThreshold())
                 + pack(genome.getDivisionImpulse())
                 + pack(genome.getDivisionAngle())
-                + pack(genome.getColorHue())
-                + pack(genome.getSaturation())
-                + pack(genome.getLightness())
                 + pack(genome.getMaxEnergy())
                 + pack(genome.getDryMass())
                 + pack(genome.getElasticity())
-                + pack(genome.getGfp());
+                + pack(genome.getGfp())
+                + pack(genome.isMelaninEnabled() ? 1.0 : 0.0)
+                + pack(genome.getMelaninPercent())
+                + pack(genome.isChloroplastEnabled() ? 1.0 : 0.0)
+                + pack(genome.getChloroplastAmount())
+                + pack(genome.getChlorophyll())
+                + pack(genome.getCarotenoids())
+                + pack(genome.isLysosomeEnabled() ? 1.0 : 0.0)
+                + pack(genome.getLysosomeAmount())
+                + pack(genome.getLysosomeEnzymeActivity());
     }
 
     public static Genome decode(String code) {
@@ -43,8 +48,7 @@ public final class GenomeCodec {
         String payload = matcher.group("payload");
         int geneCount = payload.length() / GENE_WIDTH;
 
-        if (payload.length() % GENE_WIDTH != 0
-                || (geneCount != LEGACY_GENE_COUNT && geneCount != CURRENT_GENE_COUNT)) {
+        if (payload.length() % GENE_WIDTH != 0 || geneCount != CURRENT_GENE_COUNT) {
             throw new IllegalArgumentException("Invalid genome payload length: " + code);
         }
 
@@ -56,9 +60,15 @@ public final class GenomeCodec {
                 unpack(payload, 4),
                 unpack(payload, 5),
                 unpack(payload, 6),
-                unpack(payload, 7),
+                unpack(payload, 7) >= 0.5,
                 unpack(payload, 8),
-                geneCount >= CURRENT_GENE_COUNT ? unpack(payload, 9) : 0.0
+                unpack(payload, 9) >= 0.5,
+                unpack(payload, 10),
+                unpack(payload, 11),
+                unpack(payload, 12),
+                unpack(payload, 13) >= 0.5,
+                unpack(payload, 14),
+                unpack(payload, 15)
         );
     }
 

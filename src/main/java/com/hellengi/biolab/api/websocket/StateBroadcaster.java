@@ -1,3 +1,4 @@
+
 package com.hellengi.biolab.api.websocket;
 
 import com.hellengi.biolab.domain.SimulationEngine;
@@ -10,7 +11,7 @@ import tools.jackson.databind.json.JsonMapper;
 @Component
 @RequiredArgsConstructor
 public class StateBroadcaster {
-    private static final long SCHEDULER_POLL_INTERVAL_MS = 1L;
+    private static final long SCHEDULER_POLL_INTERVAL_MS = 4L;
 
     private final SimulationEngine simulationEngine;
     private final SocketHandler socketHandler;

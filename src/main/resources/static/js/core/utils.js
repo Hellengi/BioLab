@@ -1,3 +1,4 @@
+
 function roundTo(value, digits) {
     const factor = 10 ** digits;
     return Math.round(value * factor) / factor;
@@ -11,58 +12,23 @@ export function formatTwoDecimals(value) {
     return roundTo(value, 2).toFixed(2);
 }
 
-export function getCellRgbString(cell) {
-    if (!cell?.genome) {
+export function formatPercent(value) {
+    if (!Number.isFinite(value)) {
         return "—";
     }
-
-    const rgb = hslToRgb(
-        cell.genome.colorHue,
-        cell.genome.saturation,
-        cell.genome.lightness
-    );
-
-    return `${rgb.r}, ${rgb.g}, ${rgb.b}`;
+    return `${formatTwoDecimals(value)}%`;
 }
 
-function hslToRgb(h, s, l) {
-    const hue = ((h % 360) + 360) % 360;
-    const sat = Math.max(0, Math.min(100, s)) / 100;
-    const lig = Math.max(0, Math.min(100, l)) / 100;
+export function getCellRgbString(cell) {
+    const rgb = cell?.visual?.cellColor;
+    if (!rgb) return "—";
+    const opacity = Number.isFinite(rgb.opacity) ? ` / opacity ${formatTwoDecimals(rgb.opacity)}` : "";
+    return `${rgb.r}, ${rgb.g}, ${rgb.b}${opacity}`;
+}
 
-    const c = (1 - Math.abs(2 * lig - 1)) * sat;
-    const x = c * (1 - Math.abs((hue / 60) % 2 - 1));
-    const m = lig - c / 2;
-
-    let rPrime = 0;
-    let gPrime = 0;
-    let bPrime = 0;
-
-    if (hue < 60) {
-        rPrime = c;
-        gPrime = x;
-    } else if (hue < 120) {
-        rPrime = x;
-        gPrime = c;
-    } else if (hue < 180) {
-        gPrime = c;
-        bPrime = x;
-    } else if (hue < 240) {
-        gPrime = x;
-        bPrime = c;
-    } else if (hue < 300) {
-        rPrime = x;
-        bPrime = c;
-    } else {
-        rPrime = c;
-        bPrime = x;
-    }
-
-    return {
-        r: Math.round((rPrime + m) * 255),
-        g: Math.round((gPrime + m) * 255),
-        b: Math.round((bPrime + m) * 255)
-    };
+export function rgbString(rgb, alpha = 1.0) {
+    if (!rgb) return `rgba(255,255,255,${clamp01(alpha).toFixed(3)})`;
+    return `rgba(${rgb.r ?? 0}, ${rgb.g ?? 0}, ${rgb.b ?? 0}, ${clamp01(alpha).toFixed(3)})`;
 }
 
 export function preparePreviewCanvas(previewCtx, previewCanvas) {
@@ -91,4 +57,9 @@ export function setText(element, value) {
 
 export function cssVar(name) {
     return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+function clamp01(value) {
+    if (!Number.isFinite(value)) return 0;
+    return Math.max(0, Math.min(1, value));
 }

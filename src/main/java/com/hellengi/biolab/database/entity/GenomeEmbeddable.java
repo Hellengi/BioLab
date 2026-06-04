@@ -19,15 +19,6 @@ public class GenomeEmbeddable {
     private double divisionAngle;
 
     @Column(nullable = false)
-    private double colorHue;
-
-    @Column(nullable = false)
-    private double saturation;
-
-    @Column(nullable = false)
-    private double lightness;
-
-    @Column(nullable = false)
     private double maxEnergy;
 
     @Column(nullable = false)
@@ -36,8 +27,35 @@ public class GenomeEmbeddable {
     @Column(nullable = false)
     private double elasticity;
 
-    @Column(nullable = false, columnDefinition = "double precision default 0.0")
+    @Column(nullable = false)
     private double gfp;
+
+    @Column(nullable = false)
+    private boolean melaninEnabled;
+
+    @Column(nullable = false)
+    private double melaninPercent;
+
+    @Column(nullable = false)
+    private boolean chloroplastEnabled;
+
+    @Column(nullable = false)
+    private double chloroplastAmount;
+
+    @Column(nullable = false)
+    private double chlorophyll;
+
+    @Column(nullable = false)
+    private double carotenoids;
+
+    @Column(nullable = false)
+    private boolean lysosomeEnabled;
+
+    @Column(nullable = false)
+    private double lysosomeAmount;
+
+    @Column(nullable = false)
+    private double lysosomeEnzymeActivity;
 
     public GenomeEmbeddable() {
     }
@@ -46,23 +64,35 @@ public class GenomeEmbeddable {
             double divisionThreshold,
             double divisionImpulse,
             double divisionAngle,
-            double colorHue,
-            double saturation,
-            double lightness,
             double maxEnergy,
             double dryMass,
             double elasticity,
-            double gfp
+            double gfp,
+            boolean melaninEnabled,
+            double melaninPercent,
+            boolean chloroplastEnabled,
+            double chloroplastAmount,
+            double chlorophyll,
+            double carotenoids,
+            boolean lysosomeEnabled,
+            double lysosomeAmount,
+            double lysosomeEnzymeActivity
     ) {
         this.divisionThreshold = divisionThreshold;
         this.divisionImpulse = divisionImpulse;
         this.divisionAngle = divisionAngle;
-        this.colorHue = colorHue;
-        this.saturation = saturation;
-        this.lightness = lightness;
         this.maxEnergy = maxEnergy;
         this.dryMass = dryMass;
         this.elasticity = elasticity;
         this.gfp = gfp;
+        this.melaninEnabled = melaninEnabled;
+        this.melaninPercent = melaninPercent;
+        this.chloroplastEnabled = chloroplastEnabled;
+        this.chloroplastAmount = chloroplastAmount;
+        this.chlorophyll = chlorophyll;
+        this.carotenoids = carotenoids;
+        this.lysosomeEnabled = lysosomeEnabled;
+        this.lysosomeAmount = lysosomeAmount;
+        this.lysosomeEnzymeActivity = lysosomeEnzymeActivity;
     }
 }

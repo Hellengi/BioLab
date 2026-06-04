@@ -1,4 +1,5 @@
 
+
 package com.hellengi.biolab.dto.domain_mapper;
 
 import com.hellengi.biolab.config.YamlConfig;
@@ -221,5 +222,3 @@ public class LightingMapper {
         return Math.max(0.0, Math.min(1.0, value));
     }
 }
-
-

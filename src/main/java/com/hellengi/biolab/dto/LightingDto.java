@@ -1,4 +1,5 @@
 
+
 package com.hellengi.biolab.dto;
 
 import java.util.List;
@@ -16,5 +17,3 @@ public record LightingDto(
         List<QuadtreeNodeDto> quadtreeNodes
 ) {
 }
-
-

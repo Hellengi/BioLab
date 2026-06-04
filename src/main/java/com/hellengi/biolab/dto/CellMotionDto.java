@@ -1,3 +1,5 @@
+
+
 package com.hellengi.biolab.dto;
 
 public record CellMotionDto(
@@ -11,6 +13,13 @@ public record CellMotionDto(
 
         double dragForce,
         double dragDirX,
-        double dragDirY
+        double dragDirY,
+
+        String gravityColor,
+        String buoyancyColor,
+        String dragColor,
+        String impulseColor,
+        String speedColor,
+        String lightColor
 ) {
 }

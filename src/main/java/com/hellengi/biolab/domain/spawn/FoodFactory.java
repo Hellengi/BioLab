@@ -1,7 +1,10 @@
+
+
 package com.hellengi.biolab.domain.spawn;
 
 import com.hellengi.biolab.config.YamlConfig;
 import com.hellengi.biolab.domain.SimulationWorld;
+import com.hellengi.biolab.domain.model.Cell;
 import com.hellengi.biolab.domain.model.Food;
 import com.hellengi.biolab.domain.settings.RuntimeOverrides;
 import com.hellengi.biolab.dto.FoodDto;
@@ -30,6 +33,7 @@ public class FoodFactory {
         world.addFoodSpawnBudget(spawnsPerTick * tickScale);
         int spawnCount = (int) Math.floor(world.getFoodSpawnBudget());
         if (spawnCount <= 0) {
+            world.spendFoodSpawnBudget((int) Math.floor(world.getFoodSpawnBudget()));
             return;
         }
 
@@ -72,10 +76,33 @@ public class FoodFactory {
         return createFoodAtPosition(x, y, energy);
     }
 
+
+    public void scatterDeadCellFood(SimulationWorld world, Cell cell) {
+        YamlConfig.CellProperties c = baseConfig.getCell();
+        int minPieces = Math.max(1, c.getDeadCellFoodMinPieces());
+        int maxPieces = Math.max(minPieces, c.getDeadCellFoodMaxPieces());
+        int pieces = minPieces + random.nextInt(maxPieces - minPieces + 1);
+        if (pieces <= 0) {
+            return;
+        }
+
+        double totalEnergy = Math.max(0.0, cell.getMass() * c.getDeadCellFoodEnergyPerMass() + cell.getEnergy());
+        double energyPerPiece = totalEnergy / pieces;
+        double scatterRadius = Math.max(1.0, cell.getRadius() * c.getDeadCellFoodScatterRadiusFactor());
+
+        for (int i = 0; i < pieces; i++) {
+            double angle = random.nextDouble() * Math.PI * 2.0;
+            double distance = Math.sqrt(random.nextDouble()) * scatterRadius;
+            double x = cell.getX() + Math.cos(angle) * distance;
+            double y = cell.getY() + Math.sin(angle) * distance;
+            world.addFood(createFoodAtPosition(x, y, energyPerPiece));
+        }
+    }
+
     public Food createFoodAtPosition(double x, double y, double energy) {
         Food food = new Food(baseConfig);
         food.setPosition(x, y);
-        food.setEnergy(Math.max(baseConfig.getFood().getMinEnergy(), energy));
+        food.setEnergy(Math.max(0.0, energy));
         return food;
     }
 }

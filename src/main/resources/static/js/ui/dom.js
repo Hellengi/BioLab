@@ -1,4 +1,3 @@
-
 function requireEl(id) {
     const el = document.getElementById(id);
     if (!el) throw new Error(`Required DOM element not found: #${id}`);
@@ -29,7 +28,7 @@ export function bindDom() {
     dom.fpsLabel = optionalEl("fpsLabel");
     dom.fpsValue = optionalEl("fpsValue");
     dom.tpsValue = optionalEl("tpsValue");
-    dom.tempDisplay = requireEl("tempDisplay");
+    dom.environmentScroll = optionalEl("environmentScroll") ?? document.querySelector(".environment-scroll");
     dom.timeDisplay = optionalEl("timeDisplay");
     dom.timeYearsDays = optionalEl("timeYearsDays");
     dom.timeClock = optionalEl("timeClock");
@@ -37,7 +36,6 @@ export function bindDom() {
     dom.timeTooltipTick = optionalEl("timeTooltipTick");
     dom.timeSlider = requireEl("timeSlider");
     dom.pauseBtn = requireEl("pauseBtn");
-    dom.temperatureLabel = requireEl("temperatureLabel");
     dom.speedLabel = requireEl("speedLabel");
     dom.resetBtn = requireEl("resetBtn");
     dom.sidebarToggleBtn = optionalEl("sidebarToggleBtn");
@@ -95,6 +93,7 @@ export function bindDom() {
     dom.quadtreeLayerToggle = optionalEl("quadtreeLayerToggle");
     dom.cellDirectionsLayerToggle = optionalEl("cellDirectionsLayerToggle");
 
+    dom.selectedCellTitle = optionalEl("selectedCellTitle");
     dom.selectedCellContent = optionalEl("selectedCellContent");
 
     dom.selectedCellMass = optionalEl("selectedCellMass");
@@ -107,7 +106,13 @@ export function bindDom() {
     dom.selectedCellElasticity = optionalEl("selectedCellElasticity");
     dom.selectedCellGfp = optionalEl("selectedCellGfp");
     dom.selectedCellOpacity = optionalEl("selectedCellOpacity");
+    dom.selectedCellMembraneOpacity = optionalEl("selectedCellMembraneOpacity");
+    dom.selectedCellDamage = optionalEl("selectedCellDamage");
+    dom.selectedCellCpDamage = optionalEl("selectedCellCpDamage");
     dom.selectedCellRgb = optionalEl("selectedCellRgb");
+    dom.selectedCellEnergyProduction = optionalEl("selectedCellEnergyProduction");
+    dom.selectedCellEnergyConsumption = optionalEl("selectedCellEnergyConsumption");
+    dom.selectedCellCarotProtection = optionalEl("selectedCellCarotProtection");
     dom.selectedCellCode = optionalEl("selectedCellCode");
     dom.selectedCellPreviewCanvas = optionalEl("selectedCellPreviewCanvas");
     dom.selectedCellPreviewCtx = optionalEl("selectedCellPreviewCanvas")?.getContext("2d");
@@ -120,9 +125,17 @@ export function bindDom() {
     dom.selectedCellDragForce = optionalEl("selectedCellDragForce");
     dom.selectedCellCollisionImpulse = optionalEl("selectedCellCollisionImpulse");
 
-    dom.forceViewToggleBtn   = optionalEl("forceViewToggleBtn");
     dom.forceViewIndicator   = optionalEl("forceViewIndicator");
-    dom.forceLegend          = optionalEl("forceLegend");
+    dom.selectedPreviewEventIndicator = optionalEl("selectedPreviewEventIndicator");
+    dom.previewLayerControls = optionalEl("previewLayerControls");
+    dom.createPreviewLayerControls = optionalEl("createPreviewLayerControls");
+    dom.previewLayerButtons  = Array.from(document.querySelectorAll("[data-preview-layer-count]"));
+    dom.selectedPreviewModeControls = optionalEl("selectedPreviewModeControls");
+    dom.selectedPreviewModeButtons = Array.from(document.querySelectorAll("[data-preview-mode]"));
+    dom.selectedInfoScopeControls = optionalEl("selectedInfoScopeControls");
+    dom.selectedInfoGrid = optionalEl("selectedInfoGrid");
+    dom.createInfoScopeControls = optionalEl("createInfoScopeControls");
+    dom.createInfoGrid = optionalEl("createInfoGrid");
 
     dom.organellePanelHost   = optionalEl("organellePanelHost");
 
@@ -140,15 +153,6 @@ export function bindDom() {
     dom.createDivisionAngleSlider = optionalEl("createDivisionAngleSlider");
     dom.createDivisionAngleInput = optionalEl("createDivisionAngleInput");
 
-    dom.createColorHueSlider = optionalEl("createColorHueSlider");
-    dom.createColorHueInput = optionalEl("createColorHueInput");
-
-    dom.createSaturationSlider = optionalEl("createSaturationSlider");
-    dom.createSaturationInput = optionalEl("createSaturationInput");
-
-    dom.createLightnessSlider = optionalEl("createLightnessSlider");
-    dom.createLightnessInput = optionalEl("createLightnessInput");
-
     dom.createMaxEnergySlider = optionalEl("createMaxEnergySlider");
     dom.createMaxEnergyInput = optionalEl("createMaxEnergyInput");
 
@@ -161,6 +165,26 @@ export function bindDom() {
     dom.createGfpSlider = optionalEl("createGfpSlider");
     dom.createGfpInput = optionalEl("createGfpInput");
 
+    dom.melaninEnabled = optionalEl("melaninEnabled");
+    dom.createMelaninPercentSlider = optionalEl("createMelaninPercentSlider");
+    dom.createMelaninPercentInput = optionalEl("createMelaninPercentInput");
+
+    dom.createInfoCellOpacity = optionalEl("createInfoCellOpacity");
+    dom.createInfoMembraneOpacity = optionalEl("createInfoMembraneOpacity");
+    dom.createInfoDamage = optionalEl("createInfoDamage");
+    dom.createInfoCellColor = optionalEl("createInfoCellColor");
+    dom.createNucleusDivisionCost = optionalEl("createNucleusDivisionCost");
+    dom.createNucleusStartDamage = optionalEl("createNucleusStartDamage");
+    dom.createNucleusFormula = optionalEl("createNucleusFormula");
+
+    dom.createStartCellDamageSlider = optionalEl("createStartCellDamageSlider");
+    dom.createStartCellDamageInput = optionalEl("createStartCellDamageInput");
+    dom.createCytosolGfpCost = optionalEl("createCytosolGfpCost");
+    dom.createMembraneOpacity = optionalEl("createMembraneOpacity");
+    dom.createMembraneTransmittance = optionalEl("createMembraneTransmittance");
+    dom.createChloroplastLightCapture = optionalEl("createChloroplastLightCapture");
+    dom.createChloroplastProtection = optionalEl("createChloroplastProtection");
+
     dom.createChloroplastAmountSlider = optionalEl("createChloroplastAmountSlider");
     dom.createChloroplastAmountInput =  optionalEl("createChloroplastAmountInput");
 
@@ -169,6 +193,19 @@ export function bindDom() {
 
     dom.createCarotenoidsSlider = optionalEl("createCarotenoidsSlider");
     dom.createCarotenoidsInput =  optionalEl("createCarotenoidsInput");
+
+    dom.createStartCpDamageSlider = optionalEl("createStartCpDamageSlider");
+    dom.createStartCpDamageInput = optionalEl("createStartCpDamageInput");
+    dom.createChloroplastStartDamage = optionalEl("createChloroplastStartDamage");
+
+    dom.createLysosomeAmountSlider = optionalEl("createLysosomeAmountSlider");
+    dom.createLysosomeAmountInput = optionalEl("createLysosomeAmountInput");
+    dom.createLysosomeEnzymeActivitySlider = optionalEl("createLysosomeEnzymeActivitySlider");
+    dom.createLysosomeEnzymeActivityInput = optionalEl("createLysosomeEnzymeActivityInput");
+    dom.createLysosomeCapacity = optionalEl("createLysosomeCapacity");
+    dom.createLysosomeDigestRate = optionalEl("createLysosomeDigestRate");
+    dom.createLysosomeNetYield = optionalEl("createLysosomeNetYield");
+    dom.createLysosomeLeakRisk = optionalEl("createLysosomeLeakRisk");
 
     dom.exportWorldBtn = optionalEl("exportWorldBtn");
     dom.importWorldBtn = optionalEl("importWorldBtn");
@@ -204,5 +241,6 @@ export function bindDom() {
     dom.loadCellDeleteBtn = optionalEl("loadCellDeleteBtn");
     dom.loadCellConfirmBtn = optionalEl("loadCellConfirmBtn");
 }
+
 
 

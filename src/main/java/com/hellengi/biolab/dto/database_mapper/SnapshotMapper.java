@@ -1,3 +1,4 @@
+
 package com.hellengi.biolab.dto.database_mapper;
 
 import com.hellengi.biolab.database.entity.SnapshotEntity;

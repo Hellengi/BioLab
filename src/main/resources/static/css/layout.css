@@ -92,33 +92,19 @@
     padding: 3px 8px;
     border: 1px solid var(--c-border);
     border-radius: var(--radius-sm);
-    background: linear-gradient(180deg, var(--c-bg-inner), var(--c-bg-deep));
+    background: var(--c-bg-deep);
     line-height: 1;
     flex-shrink: 0;
     box-shadow: var(--shadow-inset);
     cursor: default;
-    transition: border-color var(--anim-fast) var(--ease-default),
-                box-shadow var(--anim-fast) var(--ease-default);
+    transition: border-color 0.08s linear,
+                box-shadow 0.08s linear;
+    transition-delay: 0s;
 }
 
 .toolbar-display:hover {
     border-color: var(--c-accent);
     box-shadow: var(--shadow-inset), 0 0 10px var(--c-accent-glow);
-}
-
-.temp-display {
-    align-items: flex-end;
-    cursor: pointer;
-}
-
-.temp-value {
-    font-family: var(--font-mono);
-    font-size: 19px;
-    font-weight: 700;
-    letter-spacing: -1px;
-    color: var(--c-temp-normal);
-    transition: color 0.4s ease;
-    white-space: nowrap;
 }
 
 .speed-value {
@@ -136,6 +122,12 @@
     min-width: 148px;
     max-width: 148px;
     padding: 4px 8px;
+    cursor: pointer;
+}
+
+.time-display:focus-visible {
+    outline: 1px solid var(--c-accent);
+    outline-offset: 2px;
 }
 
 .time-years-days {
@@ -171,19 +163,18 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
-    width: max-content;
+    width: fit-content;
     max-width: 320px;
     padding: 10px 11px;
     border: 1px solid var(--c-border);
     border-radius: var(--radius-sm);
-    background: linear-gradient(180deg, rgba(18, 24, 33, 0.98), rgba(8, 12, 18, 0.98));
+    background: rgba(12, 18, 26, 0.98);
     box-shadow: var(--shadow-modal);
     color: var(--c-text-sub);
     opacity: 0;
     pointer-events: none;
-    transform: translateY(-4px);
-    transition: opacity var(--anim-fast) var(--ease-default),
-                transform var(--anim-fast) var(--ease-default);
+    transform: none;
+    transition: none;
     z-index: 9999;
 }
 
@@ -234,7 +225,9 @@
 .app-tooltip-row {
     display: flex;
     justify-content: space-between;
+    align-items: baseline;
     gap: var(--gap-md);
+    width: 100%;
     font-family: var(--font-mono);
     font-size: 11px;
     line-height: 1.2;
@@ -245,6 +238,7 @@
     color: var(--c-text);
     font-weight: 700;
     font-variant-numeric: tabular-nums;
+    text-align: right;
 }
 
 .app-tooltip-divider {
@@ -252,6 +246,20 @@
     border-top: 1px solid var(--c-border-soft);
     margin: 3px 0;
     opacity: 0.75;
+}
+
+.app-tooltip--time {
+    width: 148px;
+    min-width: 148px;
+    max-width: 148px;
+}
+
+.app-tooltip--time .app-tooltip-row span:first-child {
+    color: var(--c-text-sub);
+}
+
+.app-tooltip--time .app-tooltip-row span:last-child {
+    min-width: 54px;
 }
 
 #timeSlider {
@@ -275,16 +283,17 @@
     min-height: 36px;
     padding: 4px 6px;
     border-radius: var(--radius-sm);
-    background: linear-gradient(180deg, var(--c-bg-inner), var(--c-bg-deep));
+    background: var(--c-bg-deep);
     border: 1px solid var(--c-border);
     font-family: var(--font-mono);
     color: var(--c-text-sub);
     white-space: nowrap;
     flex-shrink: 0;
     box-shadow: var(--shadow-inset);
-    transition: border-color var(--anim-fast) var(--ease-default),
-                box-shadow var(--anim-fast) var(--ease-default),
-                color var(--anim-fast) var(--ease-default);
+    transition: border-color 0.08s linear,
+                box-shadow 0.08s linear,
+                color 0.08s linear;
+    transition-delay: 0s;
 }
 
 .fps-badge:hover,
@@ -390,7 +399,7 @@
 }
 
 #pauseBtn.paused {
-    background: var(--c-accent-dark);
+    background: var(--c-accent-bg);
     border-color: var(--c-accent);
     color: var(--c-accent);
     box-shadow: 0 0 10px var(--c-accent-glow);
@@ -635,4 +644,32 @@ canvas {
     content: '▸';
     color: var(--c-accent);
     font-size: 11px;
+}
+
+
+/* ── Merged time/speed display ─────────────────────────── */
+.time-display-top {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.time-display .speed-value {
+    margin-top: 0;
+    font-size: 10px;
+    color: var(--c-text-sub);
+    letter-spacing: 0.015em;
+    font-variant-numeric: tabular-nums;
+}
+
+.time-clock {
+    transition: color 0.08s linear;
+}
+
+/* Keep sidebar/menu hover feedback cheap and immediate. */
+.sidebar-tab {
+    transition: background 0.06s linear, border-color 0.06s linear, color 0.06s linear;
 }

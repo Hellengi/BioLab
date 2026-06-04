@@ -1,3 +1,4 @@
+
 package com.hellengi.biolab.database.service;
 
 import com.hellengi.biolab.database.entity.SnapshotEntity;

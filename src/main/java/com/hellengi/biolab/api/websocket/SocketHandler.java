@@ -1,3 +1,5 @@
+
+
 package com.hellengi.biolab.api.websocket;
 
 import com.hellengi.biolab.dto.DisplayLayersDto;
@@ -50,7 +52,9 @@ public class SocketHandler extends TextWebSocketHandler {
                             Boolean.TRUE.equals(payload.get("opacityMap")),
                             Boolean.TRUE.equals(payload.get("lightDirection")),
                             Boolean.TRUE.equals(payload.get("quadtree")),
-                            Boolean.TRUE.equals(payload.get("cellDirections"))
+                            Boolean.TRUE.equals(payload.get("cellDirections")),
+                            selectedCellId(payload.get("selectedCellId")),
+                            String.valueOf(payload.get("selectedCellMode") == null ? "general" : payload.get("selectedCellMode"))
                     )
             );
         } catch (Exception ignored) {
@@ -96,6 +100,20 @@ public class SocketHandler extends TextWebSocketHandler {
         }
     }
 
+    private Long selectedCellId(Object value) {
+        if (value instanceof Number number) {
+            return number.longValue();
+        }
+        if (value instanceof String text && !text.isBlank()) {
+            try {
+                return Long.parseLong(text);
+            } catch (NumberFormatException ignored) {
+                return null;
+            }
+        }
+        return null;
+    }
+
     private DisplayLayersDto displayLayersOf(WebSocketSession session) {
         Object value = session.getAttributes().get(DISPLAY_LAYERS_ATTRIBUTE);
         return value instanceof DisplayLayersDto displayLayers ? displayLayers : DisplayLayersDto.off();
@@ -108,5 +126,3 @@ public class SocketHandler extends TextWebSocketHandler {
         }
     }
 }
-
-

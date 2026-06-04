@@ -10,28 +10,39 @@ public record CellDto(
         double vy,
         double energy,
         double radius,
-        boolean dead, // remove, change to alive
-        GenomeDto genome, // there will be several genomes (nucleus, chloroplast, etc.)
-        long lifetimeTicks, // remove, change to spawnTime/other name
-        double localLight, // rename to irradiance
+        double nucleusOffsetX,
+        double nucleusOffsetY,
+        double nucleusRadius,
+        boolean dead,
+        GenomeDto genome,
+        long lifetimeTicks,
+        double localLight,
         double mass,
         double density,
         Double opacity,
+        double cellDamage,
+        double cpDamage,
+        double lysosomeDamage,
+        double energyProduction,
+        double digestionEnergyProduction,
+        double energyConsumption,
+        double digestionEnergyCostRate,
+        double cpPhotoDamageRate,
+        double cellDamageRate,
+        double lysosomeDamageRate,
+        double cpRepairRate,
+        double cellRepairRate,
+        double lysosomeRepairRate,
+        double repairEnergyCostRate,
+        double lysosomeRepairEnergyCostRate,
+        double carotProtection,
+        double membraneLightTransmittance,
+        int lysosomeCapacity,
+        int lysosomeOccupiedSlots,
+        List<LysosomeSlotDto> lysosomeSlots,
         List<CellEventDto> events,
         CellMotionDto motion,
-        CellDisplayDto display,
-        double directionAngle // rename to angle
-        // add: alive, rotting (for died), spawnTime (ticks at birthday), color
-        // add: name - auto for cells (photos, etc.), if save in db - custom
-        // add: name - if already saved similar in db - use custom (what names for custom mutated?)
-        // cell world (E, R) - CellDto, CellMotionDto
-        //      SpawnCellRequestDto remove; change to CellDto, CellMotionDto
-        //      CellDto rename to CellStateDto?
-        //      CellStateDto for energy, x, y, vx, vy etc. E Inner
-        //      CellParameters/other name for radius, speed etc. R
-        //      third for irradiance, gravForce, dragForce etc. E Outer
-        // cell genome (T) - GenomeDto // StrainDto
-        //      various dtos for various organelles
-        // cell constants (C) - SimulationSettingsDto - everything from yml
+        CellVisualDto visual,
+        double directionAngle
 ) {
 }

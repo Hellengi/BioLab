@@ -13,18 +13,24 @@ public class GenomeEntityMapper {
 
     public GenomeEmbeddable toEntity(GenomeDto dto) {
         return new GenomeEmbeddable(
-                dto.divisionThreshold(), dto.divisionImpulse(), dto.divisionAngle(),
-                dto.colorHue(), dto.saturation(), dto.lightness(), dto.maxEnergy(),
-                dryMassOrDefault(dto.dryMass()), elasticityOrDefault(dto.elasticity()),
-                gfpOrDefault(dto.gfp())
+                dto.divisionThreshold(), dto.divisionImpulse(), dto.divisionAngle(), dto.maxEnergy(),
+                dryMassOrDefault(dto.dryMass()), elasticityOrDefault(dto.elasticity()), gfpOrDefault(dto.gfp()),
+                dto.melaninEnabled(), melaninPercentOrDefault(dto.melaninPercent()),
+                dto.chloroplastEnabled(), chloroplastAmountOrDefault(dto.chloroplastAmount()),
+                chlorophyllOrDefault(dto.chlorophyll()), carotenoidsOrDefault(dto.carotenoids()),
+                dto.lysosomeEnabled(), lysosomeAmountOrDefault(dto.lysosomeAmount()),
+                lysosomeEnzymeActivityOrDefault(dto.lysosomeEnzymeActivity())
         );
     }
 
     public GenomeDto toDto(GenomeEmbeddable genome) {
         return new GenomeDto(
                 genome.getDivisionThreshold(), genome.getDivisionImpulse(), genome.getDivisionAngle(),
-                genome.getColorHue(), genome.getSaturation(), genome.getLightness(), genome.getMaxEnergy(),
-                genome.getDryMass(), genome.getElasticity(), genome.getGfp(), null
+                genome.getMaxEnergy(), genome.getDryMass(), genome.getElasticity(), genome.getGfp(),
+                genome.isMelaninEnabled(), genome.getMelaninPercent(),
+                genome.isChloroplastEnabled(), genome.getChloroplastAmount(), genome.getChlorophyll(),
+                genome.getCarotenoids(), genome.isLysosomeEnabled(), genome.getLysosomeAmount(),
+                genome.getLysosomeEnzymeActivity(), null
         );
     }
 
@@ -39,4 +45,30 @@ public class GenomeEntityMapper {
     private double gfpOrDefault(Double gfp) {
         return gfp != null ? gfp : config.getGenome().getGfp().getInitial();
     }
+
+    private double melaninPercentOrDefault(Double value) {
+        return value != null ? value : config.getGenome().getMelaninPercent().getInitial();
+    }
+
+    private double chloroplastAmountOrDefault(Double value) {
+        return value != null ? value : config.getGenome().getChloroplastAmount().getInitial();
+    }
+
+    private double chlorophyllOrDefault(Double value) {
+        double raw = value != null ? value : config.getGenome().getChlorophyll().getInitial();
+        return Math.max(config.getGenome().getChlorophyll().getMin(), raw);
+    }
+
+    private double carotenoidsOrDefault(Double value) {
+        return value != null ? value : config.getGenome().getCarotenoids().getInitial();
+    }
+
+    private double lysosomeAmountOrDefault(Double value) {
+        return value != null ? value : config.getGenome().getLysosomeAmount().getInitial();
+    }
+
+    private double lysosomeEnzymeActivityOrDefault(Double value) {
+        return value != null ? value : config.getGenome().getLysosomeEnzymeActivity().getInitial();
+    }
 }
+

@@ -6,6 +6,9 @@ public record FoodDto(
         double y,
         double energy,
         double radius,
-        boolean consumed
+        boolean consumed,
+        Long capturedByCellId,
+        int digestionSlotIndex,
+        boolean insideLysosome
 ) {
 }

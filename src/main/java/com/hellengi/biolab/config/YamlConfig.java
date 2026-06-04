@@ -53,6 +53,7 @@ public class YamlConfig {
         private double maxGravity;
         private double baseMutationChance;
         private double maxMutationChance;
+        private double rareMutationChance = 0.006;
         private double mediumDensity = 1.0;
         private double buoyancyStrength = 1.0;
     }
@@ -84,16 +85,82 @@ public class YamlConfig {
         private double energyToRadiusFactor;
         private double energyToDivisionImpulseFactor;
         private double energyDecayPerTick;
-        private double deathEnergy;
         private long deadLifetimeTicks;
         private Control start = new Control();
         private double offsetRange;
+
+        private double nucleoidMassFactor = 45.0;
+        private double nucleoidAreaFactor = 18.0;
+        private double nucleoidEnergyConsumption = 0.012;
+        private double nucleoidDivEnergyCost = 5.0;
+
+        private double cytosolMassFactor = 1.0;
+        private double cytosolAreaFactor = 0.58;
+        private double cytosolEnergyConsumptionFactor = 0.0007;
+        private double cytosolDivEnergyCostFactor = 0.02;
+        private double cytosolGfpConsumptionFactor = 0.0009;
+        private double cytosolColorWeight = 1.0;
+
+        private double membraneMassFactor = 2.2;
+        private double membraneAreaFactor = 0.32;
+        private double membraneEnergyConsumptionFactor = 0.0012;
+        private double membraneDivEnergyCostFactor = 0.025;
+        private double membraneBaseOpacity = 0.095;
+        private double membraneMelaninOpacityFactor = 0.42;
+        private double membraneMelaninProtectionFactor = 3.2;
+        private double membraneMelaninEnergyConsumptionFactor = 0.003;
+
+        private double chloroplastMassFactor = 6.0;
+        private double chloroplastAreaFactor = 4.0;
+        private double chloroplastEnergyConsumptionFactor = 0.0014;
+        private double chloroplastDivEnergyCostFactor = 0.12;
+        private double chlorophyllAbsorbFactor = 2.4;
+        private double carotenoidAbsorbFactor = 0.42;
+        private double carotenoidProtectionFactor = 2.8;
+        private double maxPhotosynthesisFactor = 0.12;
+        private double photosynthesisEnergyYield = 0.82;
+        private double cpPhotoDamageFactor = 0.0015;
+        private double cpDamageLeakThreshold = 0.55;
+        private double cpDamageLeakFactor = 0.006;
+
+        private double lysosomeMassFactor = 4.5;
+        private double lysosomeAreaFactor = 4.7;
+        private double lysosomeEnergyConsumptionFactor = 0.006;
+        private double lysosomeDivEnergyCostFactor = 0.09;
+        private double lysosomeDigestRateFactor = 0.85;
+        private double lysosomeBaseDigestYield = 1.0;
+        private double lysosomeDigestCostFactor = 0.085;
+        private double lysosomeTransportSpeedFactor = 0.78;
+        private double lysosomeDamageFactor = 0.0012;
+        private double lysosomeLeakThreshold = 0.55;
+        private double lysosomeLeakDamageFactor = 0.006;
+        private double lysosomeRuptureThreshold = 0.90;
+        private double lysosomeCaptureDamageThreshold = 0.65;
+        private double lysosomeRepairShare = 0.20;
+        private double lysosomeRepairEnergyCost = 1.2;
+
+        private double baseCellOpacity = 0.12;
+        private double pigmentCellOpacityFactor = 0.22;
+        private double cellPhotoDamageFactor = 0.0007;
+        private double lowEnergyDamageStart = 4.0;
+        private double lowEnergyDamageFactor = 0.012;
+        private double cellDeathDamageThreshold = 1.0;
+        private double cellDivDamageMax = 0.35;
+        private double repairCapacityFactor = 0.004;
+        private double cpRepairShare = 0.62;
+        private double cellRepairShare = 0.38;
+        private double cpRepairEnergyCost = 1.4;
+        private double cellRepairEnergyCost = 2.2;
+        private double divDamageTransferFactor = 0.5;
+        private double deadCellFoodEnergyPerMass = 0.08;
+        private int deadCellFoodMinPieces = 3;
+        private int deadCellFoodMaxPieces = 7;
+        private double deadCellFoodScatterRadiusFactor = 0.8;
     }
 
     @Getter @Setter
     public static class FoodProperties {
         private double baseRadius;
-        private double consumptionRadius;
         private double maxSpawnMultiplier;
         private double minEnergy;
         private double maxEnergy;
@@ -123,13 +190,21 @@ public class YamlConfig {
         private Control divisionThreshold = new Control();
         private Control divisionImpulse = new Control();
         private Control divisionAngle = new Control();
-        private Control colorHue = new Control();
-        private Control saturation = new Control();
-        private Control lightness = new Control();
+        private Control startCellDamage = new Control();
         private Control maxEnergy = new Control();
         private Control dryMass = new Control();
         private Control elasticity = new Control();
         private Control gfp = new Control();
+        private boolean melaninEnabledInitial = false;
+        private Control melaninPercent = new Control();
+        private boolean chloroplastEnabledInitial = true;
+        private Control chloroplastAmount = new Control();
+        private Control chlorophyll = new Control();
+        private Control carotenoids = new Control();
+        private Control startCpDamage = new Control();
+        private boolean lysosomeEnabledInitial = true;
+        private Control lysosomeAmount = new Control();
+        private Control lysosomeEnzymeActivity = new Control();
         private MutationDeltas mutation = new MutationDeltas();
 
         @Getter @Setter
@@ -137,13 +212,16 @@ public class YamlConfig {
             private double divisionThreshold;
             private double divisionImpulse;
             private double divisionAngle;
-            private double colorHue;
-            private double saturation;
-            private double lightness;
             private double maxEnergy;
             private double dryMass;
             private double elasticity;
             private double gfp;
+            private double melaninPercent;
+            private double chloroplastAmount;
+            private double chlorophyll;
+            private double carotenoids;
+            private double lysosomeAmount;
+            private double lysosomeEnzymeActivity;
         }
     }
 
@@ -161,3 +239,7 @@ public class YamlConfig {
         private double step = 1.0;
     }
 }
+
+
+
+

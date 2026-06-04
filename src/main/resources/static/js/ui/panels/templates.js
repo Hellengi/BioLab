@@ -1,3 +1,4 @@
+
 import { dom } from "../dom.js";
 import { deleteTemplate, getTemplate, getTemplates, saveTemplate } from "../../transport/api/cell.js";
 import { openModal, closeModal } from "./_panels.js";

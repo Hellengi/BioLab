@@ -20,6 +20,7 @@ export function attachTooltip(host, tooltip, options = {}) {
     const config = {
         gap: options.gap ?? DEFAULT_GAP,
         maxWidth: options.maxWidth ?? 320,
+        fixedWidth: options.fixedWidth ?? null,
     };
 
     const show = () => showTooltip(host, tooltip, config);
@@ -66,8 +67,10 @@ export function detachTooltip(host) {
 
 function showTooltip(host, tooltip, config) {
     tooltip.style.maxWidth = `${config.maxWidth}px`;
+    tooltip.style.width = config.fixedWidth ? `${config.fixedWidth}px` : "fit-content";
     tooltip.classList.add("app-tooltip--visible");
     tooltip.setAttribute("aria-hidden", "false");
+    tightenTooltipWidth(tooltip, config);
     positionTooltip(host, tooltip, config);
 }
 
@@ -77,10 +80,12 @@ function hideTooltip(tooltip) {
 }
 
 function positionTooltip(host, tooltip, config) {
+    tightenTooltipWidth(tooltip, config);
+
     const hostRect = host.getBoundingClientRect();
     const tooltipRect = tooltip.getBoundingClientRect();
 
-    const tooltipWidth = Math.min(tooltipRect.width || config.maxWidth, config.maxWidth);
+    const tooltipWidth = Math.min(tooltipRect.width || config.maxWidth, config.fixedWidth ?? config.maxWidth);
     const tooltipHeight = tooltipRect.height || tooltip.scrollHeight || 0;
 
     const preferredLeft = hostRect.left + hostRect.width / 2 - tooltipWidth / 2;
@@ -99,6 +104,51 @@ function positionTooltip(host, tooltip, config) {
     const hostCenter = hostRect.left + hostRect.width / 2;
     const arrowLeft = clamp(hostCenter - left, 12, tooltipWidth - 12);
     tooltip.style.setProperty("--tooltip-arrow-left", `${arrowLeft}px`);
+}
+
+function tightenTooltipWidth(tooltip, config) {
+    if (config.fixedWidth) {
+        tooltip.style.width = `${config.fixedWidth}px`;
+        return;
+    }
+
+    tooltip.style.width = "fit-content";
+    tooltip.style.maxWidth = `${config.maxWidth}px`;
+
+    if (!tooltip.classList.contains("cell-info-tooltip")) return;
+
+    const lineWidth = maxRenderedLineWidth(tooltip);
+    if (lineWidth <= 0) return;
+
+    const style = getComputedStyle(tooltip);
+    const horizontal =
+        px(style.paddingLeft) + px(style.paddingRight) +
+        px(style.borderLeftWidth) + px(style.borderRightWidth) + 2;
+    const tightWidth = clamp(Math.ceil(lineWidth + horizontal), 48, config.maxWidth);
+    tooltip.style.width = `${tightWidth}px`;
+}
+
+function maxRenderedLineWidth(root) {
+    let maxWidth = 0;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    let node = walker.nextNode();
+    while (node) {
+        if (node.textContent?.trim()) {
+            const range = document.createRange();
+            range.selectNodeContents(node);
+            for (const rect of range.getClientRects()) {
+                maxWidth = Math.max(maxWidth, rect.width);
+            }
+            range.detach();
+        }
+        node = walker.nextNode();
+    }
+    return maxWidth;
+}
+
+function px(value) {
+    const parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : 0;
 }
 
 function clamp(value, min, max) {

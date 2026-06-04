@@ -26,6 +26,10 @@ export function initTabs() {
 }
 
 export function switchTab(tabKey) {
+    if (tabKey === _activeTab) {
+        return;
+    }
+
     if (tabKey === "selected" && dom.selectedCellTab?.disabled) {
         return;
     }

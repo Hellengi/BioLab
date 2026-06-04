@@ -1,3 +1,5 @@
+
+
 /* ═══════════════════════════════════════════════════════
    controls.css — кнопки, поля ввода, слайдеры, скроллбар
    ═══════════════════════════════════════════════════════ */
@@ -17,7 +19,8 @@
     border: 1px solid transparent;
     cursor: pointer;
     white-space: nowrap;
-    transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, opacity 0.15s;
+    transition: background 0.08s linear, border-color 0.08s linear, color 0.08s linear, box-shadow 0.08s linear, opacity 0.08s linear, transform 0.08s linear;
+    transition-delay: 0s;
     box-shadow: var(--shadow-btn);
     letter-spacing: 0.01em;
     user-select: none;
@@ -31,20 +34,20 @@
 }
 
 .btn-primary {
-    background: linear-gradient(160deg, var(--c-accent) 0%, var(--c-accent-dim) 100%);
-    border-color: var(--c-accent-dim);
+    background: linear-gradient(160deg, var(--c-accent) 0%, var(--c-accent-strong) 100%);
+    border-color: var(--c-accent-strong);
     color: #062637;
     font-weight: 600;
 }
 .btn-primary:hover {
-    background: linear-gradient(160deg, #67d8f8 0%, var(--c-accent) 100%);
+    background: linear-gradient(160deg, var(--c-accent-light) 0%, var(--c-accent) 100%);
     border-color: var(--c-accent);
     color: #041a24;
 }
-.btn-primary:active  { background: var(--c-accent-dim); transform: translateY(1px); }
+.btn-primary:active  { background: var(--c-accent-bg); transform: translateY(1px); }
 
 .btn-primary.active {
-    background: var(--c-accent-dark);
+    background: var(--c-accent-bg);
     border-color: var(--c-accent);
     color: var(--c-accent);
     box-shadow: 0 0 10px var(--c-accent-glow);
@@ -68,7 +71,7 @@
 
 .btn-outline-danger {
     background: transparent;
-    border-color: var(--c-danger-border);
+    border-color: var(--c-danger-dark);
     color: var(--c-danger);
 }
 .btn-outline-danger:hover  { background: var(--c-danger-bg); border-color: var(--c-danger); color: var(--c-danger); }
@@ -89,11 +92,13 @@
     background: transparent;
     color: var(--c-text-sub);
     cursor: pointer;
-    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    transition: background 0.08s linear, border-color 0.08s linear, color 0.08s linear, box-shadow 0.08s linear, transform 0.08s linear;
+    transition-delay: 0s;
+    box-shadow: var(--shadow-btn);
     flex-shrink: 0;
 }
 .icon-btn svg { width: 14px; height: 14px; pointer-events: none; }
-.icon-btn:hover  { background: var(--c-bg-surface); border-color: var(--c-accent); color: var(--c-accent); }
+.icon-btn:hover  { background: var(--c-bg-surface); border-color: var(--c-accent); color: var(--c-accent); box-shadow: 0 0 8px var(--c-accent-glow); }
 .icon-btn:active { transform: translateY(1px); }
 
 /* ── Текстовые и числовые поля ───────────────────────────── */

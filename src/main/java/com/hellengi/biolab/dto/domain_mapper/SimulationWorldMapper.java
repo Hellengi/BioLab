@@ -1,3 +1,5 @@
+
+
 package com.hellengi.biolab.dto.domain_mapper;
 
 import com.hellengi.biolab.config.YamlConfig;
@@ -46,7 +48,7 @@ public class SimulationWorldMapper {
                 world.getGlobalLight().getValue()
         );
         try {
-            cells = world.getCells().stream().map(cellMapper::toDto).toList();
+            cells = world.getCells().stream().map(cell -> cellMapper.toDto(cell, displayLayers)).toList();
         } finally {
             cellMapper.clearLightMap();
         }
@@ -67,5 +69,3 @@ public class SimulationWorldMapper {
         );
     }
 }
-
-

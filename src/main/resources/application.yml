@@ -24,6 +24,7 @@ simulation:
     max-gravity: 0.5
     base-mutation-chance: 0
     max-mutation-chance: 0.25
+    rare-mutation-chance: 0.006
     medium-density: 1.0
     buoyancy-strength: 1.0
 
@@ -49,7 +50,6 @@ simulation:
     energy-to-radius-factor: 4.0
     energy-to-division-impulse-factor: 4.0
     energy-decay-per-tick: 0.05
-    death-energy: 0.0
     dead-lifetime-ticks: 80
     start:
       initial: 20
@@ -57,15 +57,74 @@ simulation:
       max: 100
       step: 1
     offset-range: 20.0
-
+    nucleoid-mass-factor: 45.0
+    nucleoid-area-factor: 18.0
+    nucleoid-energy-consumption: 0.012
+    nucleoid-div-energy-cost: 5.0
+    cytosol-mass-factor: 1.0
+    cytosol-area-factor: 0.58
+    cytosol-energy-consumption-factor: 0.0007
+    cytosol-div-energy-cost-factor: 0.02
+    cytosol-gfp-consumption-factor: 0.0009
+    cytosol-color-weight: 1.0
+    membrane-mass-factor: 2.2
+    membrane-area-factor: 0.32
+    membrane-energy-consumption-factor: 0.0012
+    membrane-div-energy-cost-factor: 0.025
+    membrane-base-opacity: 0.095
+    membrane-melanin-opacity-factor: 0.42
+    membrane-melanin-protection-factor: 3.2
+    membrane-melanin-energy-consumption-factor: 0.003
+    chloroplast-mass-factor: 6.0
+    chloroplast-area-factor: 4.0
+    chloroplast-energy-consumption-factor: 0.0014
+    chloroplast-div-energy-cost-factor: 0.12
+    chlorophyll-absorb-factor: 2.4
+    carotenoid-absorb-factor: 0.42
+    carotenoid-protection-factor: 2.8
+    max-photosynthesis-factor: 0.025
+    photosynthesis-energy-yield: 0.82
+    cp-photo-damage-factor: 0.006
+    cp-damage-leak-threshold: 0.55
+    cp-damage-leak-factor: 0.035
+    lysosome-mass-factor: 4.5
+    lysosome-area-factor: 4.7
+    lysosome-energy-consumption-factor: 0.006
+    lysosome-div-energy-cost-factor: 0.09
+    lysosome-digest-rate-factor: 0.85
+    lysosome-base-digest-yield: 1.0
+    lysosome-digest-cost-factor: 0.085
+    lysosome-transport-speed-factor: 0.78
+    lysosome-damage-factor: 0.0012
+    lysosome-leak-threshold: 0.55
+    lysosome-leak-damage-factor: 0.006
+    lysosome-rupture-threshold: 0.90
+    lysosome-capture-damage-threshold: 0.65
+    lysosome-repair-share: 0.12
+    lysosome-repair-energy-cost: 1.2
+    base-cell-opacity: 0.12
+    pigment-cell-opacity-factor: 0.22
+    cell-photo-damage-factor: 0.00035
+    low-energy-damage-start: 4.0
+    low-energy-damage-factor: 0.012
+    cell-death-damage-threshold: 1.0
+    cell-div-damage-max: 0.35
+    repair-capacity-factor: 0.004
+    cp-repair-share: 0.62
+    cell-repair-share: 0.38
+    cp-repair-energy-cost: 1.4
+    cell-repair-energy-cost: 2.2
+    div-damage-transfer-factor: 0.5
+    dead-cell-food-energy-per-mass: 0.08
+    dead-cell-food-min-pieces: 3
+    dead-cell-food-max-pieces: 7
+    dead-cell-food-scatter-radius-factor: 0.8
   food:
     base-radius: 2.0
-    consumption-radius: 12.0
     max-spawn-multiplier: 20.0
     min-energy: 10.0
     max-energy: 20.0
     start: 300
-
   controls:
     time:
       initial: 50
@@ -154,21 +213,11 @@ simulation:
       min: 0.0
       max: 179.0
       step: 1.0
-    color-hue:
-      initial: 195.0
+    start-cell-damage:
+      initial: 0.0
       min: 0.0
-      max: 359.0
-      step: 1.0
-    saturation:
-      initial: 100.0
-      min: 0.0
-      max: 100.0
-      step: 1.0
-    lightness:
-      initial: 62.0
-      min: 0.0
-      max: 100.0
-      step: 1.0
+      max: 1.0
+      step: 0.01
     max-energy:
       initial: 60.0
       min: 20.0
@@ -189,17 +238,58 @@ simulation:
       min: 0.0
       max: 100.0
       step: 1.0
+    melanin-enabled-initial: false
+    melanin-percent:
+      initial: 0.0
+      min: 0.0
+      max: 100.0
+      step: 1.0
+    chloroplast-enabled-initial: false
+    chloroplast-amount:
+      initial: 8.0
+      min: 1.0
+      max: 24.0
+      step: 1.0
+    chlorophyll:
+      initial: 55.0
+      min: 15.0
+      max: 100.0
+      step: 1.0
+    carotenoids:
+      initial: 22.0
+      min: 0.0
+      max: 100.0
+      step: 1.0
+    start-cp-damage:
+      initial: 0.0
+      min: 0.0
+      max: 1.0
+      step: 0.01
+    lysosome-enabled-initial: true
+    lysosome-amount:
+      initial: 3.0
+      min: 1.0
+      max: 6.0
+      step: 1.0
+    lysosome-enzyme-activity:
+      initial: 30.0
+      min: 15.0
+      max: 100.0
+      step: 1.0
     mutation:
       division-threshold: 2.0
       division-impulse: 0.25
       division-angle: 6.0
-      color-hue: 12.0
-      saturation: 8.0
-      lightness: 6.0
       max-energy: 4.0
       dry-mass: 20.0
       elasticity: 0.04
       gfp: 8.0
+      melanin-percent: 8.0
+      chloroplast-amount: 0.12
+      chlorophyll: 8.0
+      carotenoids: 8.0
+      lysosome-amount: 0.12
+      lysosome-enzyme-activity: 8.0
 
   motion:
     cell-speed:
@@ -212,3 +302,7 @@ simulation:
       min: 0.0
       max: 359.0
       step: 1.0
+
+
+
+

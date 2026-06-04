@@ -13,7 +13,15 @@ public class FoodMapper {
 
     public FoodDto toDto(Food food) {
         return new FoodDto(
-                food.getId(), food.getX(), food.getY(), food.getEnergy(), food.getRadius(), food.isMarkedForRemoval()
+                food.getId(),
+                food.getX(),
+                food.getY(),
+                food.getEnergy(),
+                food.getRadius(),
+                food.isMarkedForRemoval(),
+                food.getCapturedByCellId(),
+                food.getDigestionSlotIndex(),
+                food.isInsideLysosome()
         );
     }
 
@@ -22,6 +30,10 @@ public class FoodMapper {
         food.setPosition(dto.x(), dto.y());
         food.setEnergy(dto.energy());
         food.setMarkedForRemoval(dto.consumed());
+        if (dto.capturedByCellId() != null && dto.digestionSlotIndex() >= 0) {
+            food.capture(dto.capturedByCellId(), dto.digestionSlotIndex());
+            food.setInsideLysosome(dto.insideLysosome());
+        }
         return food;
     }
 }

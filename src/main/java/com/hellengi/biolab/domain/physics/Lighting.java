@@ -1,3 +1,5 @@
+
+
 package com.hellengi.biolab.domain.physics;
 
 import com.hellengi.biolab.config.YamlConfig;
@@ -222,6 +224,43 @@ public class Lighting {
     public double sampleLightAt(double x, double y) {
         ensureLightCache();
         return sampleLightMap(cachedLightMap, cachedCols, cachedRows, cachedGridStep, x, y);
+    }
+
+    /**
+     * Cheap per-tick irradiance for metabolism. It intentionally does not build
+     * the ray-traced light map: biology only needs a stable local light estimate,
+     * while exact shadows/highlights remain a render/DTO concern. This keeps
+     * chloroplast metabolism O(cells × lightSources) instead of forcing a full
+     * light-map rebuild from inside lifecycle processing.
+     */
+    public double sampleMetabolicLightAt(double x, double y) {
+        double light = Math.max(0.0, world.getGlobalLight().getValue());
+        if (world.getLightSources().isEmpty()) {
+            return light;
+        }
+
+        double centerX = config.worldCenterX();
+        double centerY = config.worldCenterY();
+        double r0 = Math.max(1.0, config.getLight().getFalloffFactor());
+        double r0sq = r0 * r0;
+        double turbidity = Math.max(0.0, runtimeConfig.getTurbidityAttenuation());
+
+        for (LightSource source : world.getLightSources()) {
+            double brightness = Math.max(0.0, source.getBrightness());
+            if (brightness <= 0.0) {
+                continue;
+            }
+
+            double dx = x - source.getX(centerX);
+            double dy = y - source.getY(centerY);
+            double distSq = dx * dx + dy * dy;
+            double distance = Math.sqrt(distSq);
+            double falloff = r0sq / (distSq + r0sq);
+            double mediumTransmittance = Math.exp(-turbidity * distance);
+            light += brightness * falloff * mediumTransmittance;
+        }
+
+        return Math.max(0.0, light);
     }
 
     public LightDirectionSample sampleLightDirectionAt(double x, double y) {

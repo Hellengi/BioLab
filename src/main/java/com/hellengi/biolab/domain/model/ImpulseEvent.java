@@ -1,3 +1,4 @@
+
 package com.hellengi.biolab.domain.model;
 
 import lombok.Getter;

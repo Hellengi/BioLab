@@ -1,3 +1,5 @@
+
+
 /**
  * transport/api/cell.js
  * HTTP-клиент для работы с клетками: шаблоны и спавн.
@@ -50,5 +52,7 @@ export function spawnCell(x, y, cell) {
         genome:           cell.genome,
         initialSpeed:     cell.initialSpeed     ?? 0,
         initialDirection: cell.initialDirection ?? 0,
+        startCellDamage:  cell.startCellDamage  ?? 0,
+        startCpDamage:    cell.startCpDamage    ?? 0,
     });
 }

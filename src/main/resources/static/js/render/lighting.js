@@ -1,4 +1,5 @@
 
+
 import { cssVar } from "../core/utils.js";
 
 const BG_DARK = 40;
@@ -713,5 +714,3 @@ function drawTrapezoidSource(ctx, source) {
     ctx.strokeStyle = 'rgba(255,255,255,0.9)';
     ctx.stroke();
 }
-
-

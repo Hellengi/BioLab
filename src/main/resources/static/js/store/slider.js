@@ -1,3 +1,5 @@
+
+
 /**
  * store/slider.js
  * Управляет слайдером времени/температуры: snap во время перетаскивания,
@@ -11,7 +13,7 @@ import { dom } from "../ui/dom.js";
 
 const SNAP_TARGETS = [25, 50, 75]; // 0.1×, 1×, 10×
 
-const SNAP_ZONE_DRAG = 2.0;          // половина зоны snap вокруг отметки, в единицах шкалы 0..100
+const SNAP_ZONE_DRAG = 3.0;          // половина зоны snap вокруг отметки, в единицах шкалы 0..100
 const SLIDER_SEND_INTERVAL_MS = 50;  // минимальный интервал между отправками на сервер
 
 let _timeSendTimer = null;
@@ -34,6 +36,7 @@ export function updateTimeLocal(rawValue) {
     }
 
     state.pendingTimeSlider = snapped;
+    applyDisplayFromConfig(state.config?.temperatureCelsius ?? null, state.config?.speedFactor ?? null);
     _enqueueTimeSend(snapped, false);
 }
 
@@ -43,6 +46,7 @@ export function endSliderDrag() {
 
     const value = Number(dom.timeSlider.value);
     state.pendingTimeSlider = value;
+    applyDisplayFromConfig(state.config?.temperatureCelsius ?? null, state.config?.speedFactor ?? null);
     _enqueueTimeSend(value, true);
 }
 
@@ -53,6 +57,7 @@ export function resetTimeToNormal() {
     sliderState.isDragging = false;
     dom.timeSlider.value = "50";
     state.pendingTimeSlider = 50;
+    applyDisplayFromConfig(state.config?.temperatureCelsius ?? null, 1.0);
 
     _enqueueTimeSend(50, true);
 }

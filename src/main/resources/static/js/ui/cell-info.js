@@ -1,6 +1,6 @@
 /**
  * Shared renderer for informational values with formula tooltips.
- * Used by Selected Cell and Create Cell panels.
+ * Used by Cell Selection and Cell Creation panels.
  */
 
 import { attachTooltip, detachTooltip } from "./tooltip.js";
@@ -38,6 +38,7 @@ function appendTooltipValue(parent, value, text) {
     tooltip.setAttribute("role", "tooltip");
     tooltip.setAttribute("aria-hidden", "true");
     fillTooltip(tooltip, text);
+    host._cellInfoTooltip = tooltip;
 
     host.append(number, tooltip);
     parent.appendChild(host);
@@ -51,7 +52,7 @@ function updateTooltipValue(host, value, text) {
     const number = host.querySelector(".cell-info-tooltip-number");
     if (number) number.textContent = value;
 
-    const tooltip = host.querySelector(".cell-info-tooltip");
+    const tooltip = host._cellInfoTooltip ?? host.querySelector(".cell-info-tooltip");
     if (tooltip) {
         tooltip.replaceChildren();
         fillTooltip(tooltip, text);
@@ -101,3 +102,5 @@ export function setTooltipValue(element, value, tooltipText) {
 
     updateTooltipValue(element._tooltipValue, value, tooltipText);
 }
+
+

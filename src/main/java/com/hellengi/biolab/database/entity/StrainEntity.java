@@ -1,3 +1,4 @@
+
 package com.hellengi.biolab.database.entity;
 
 import jakarta.persistence.*;

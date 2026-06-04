@@ -2,6 +2,11 @@
    preview.css — shared selected/create preview and force view
    ========================================================== */
 
+:root {
+    --preview-side-left-w:  100px;  /* строго равны */
+    --preview-side-right-w: 100px;
+}
+
 .sticky-preview {
     position: sticky;
     top: 0;
@@ -37,15 +42,16 @@
 .selected-cell-preview-wrap::before {
     top: 5px; left: 5px; border-width: 1px 0 0 1px;
 }
-
-.selected-cell-preview-wrap::after  {
+.selected-cell-preview-wrap::after {
     bottom: 5px; right: 5px; border-width: 0 1px 1px 0;
 }
 
 .preview-triptych {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: var(--preview-side-left-w) var(--preview-size) var(--preview-side-right-w);
     align-items: stretch;
+    justify-content: center;
+    gap: 0;
     width: 100%;
     min-height: var(--preview-size);
 }
@@ -53,22 +59,23 @@
 .preview-zone {
     min-width: 0;
     min-height: var(--preview-size);
+    margin: 0;
+    padding: 0;
 }
 
 .preview-zone--left,
 .preview-zone--right {
-    flex: 1 1 0;
     display: flex;
-    justify-content: center;
+    min-width: 0;
+    min-height: var(--preview-size);
 }
 
 .preview-zone--left {
-    align-items: flex-start;
-    padding-top: var(--gap-xs);
+    justify-content: stretch;
+    align-items: stretch;
 }
 
 .preview-zone--center {
-    flex: 0 0 var(--preview-size);
     width: var(--preview-size);
     display: flex;
     align-items: center;
@@ -76,6 +83,7 @@
 }
 
 .preview-zone--right {
+    justify-content: flex-start;
     align-items: center;
 }
 
@@ -90,81 +98,94 @@
     flex-shrink: 0;
 }
 
-
-/* Preview action button; the base visual style comes from .icon-btn in controls.css. */
 .create-preview-wrap {
     position: relative;
 }
 
 .preview-action-btn {
-    position: absolute;
-    bottom: var(--gap-sm);
-    left: var(--gap-sm);
     z-index: 2;
 }
 
 .preview-action-btn.active {
-    background: var(--c-accent-dark);
+    background: var(--c-accent-bg);
     border-color: var(--c-accent);
     color: var(--c-accent);
     box-shadow: 0 0 8px var(--c-accent-glow);
 }
 
-#forceLegend {
-    position: static;
-    width: min(88px, 100%);
-    max-height: var(--preview-size);
-    margin: 0 auto;
-
-    overflow-y: auto;
-    flex-direction: column;
-    gap: 0;
-    display: none;
+.preview-control-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 28px);
+    grid-auto-rows: 28px;
+    gap: 8px;
+    justify-content: center;
+    align-content: end;
+    justify-self: center;
+    align-self: end;
+    margin: 0;
+    padding: 0 0 var(--gap-sm);
 }
 
-#forceLegend:not(.force-legend--hidden) {
-    display: flex;
+.preview-control-grid--modes {
+    grid-template-columns: repeat(2, 28px);
 }
 
-.force-legend--hidden {
-    display: none !important;
+.preview-control-grid--create {
+    width: 62px;
+    min-height: 62px;
 }
 
-/* Строки легенды */
-.force-legend-row {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    padding: 4px 0;
-    min-height: 24px;
+.preview-control-grid--create #placeCellModeBtn {
+    grid-column: 1;
+    grid-row: 2;
 }
 
-.force-legend-row + .force-legend-row {
-    border-top: 1px solid var(--c-border-soft);
+.preview-mode-icon-btn,
+.preview-action-btn--inline {
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+    min-height: 28px;
+    padding: 0;
+    margin: 0;
+    transition: none;
 }
 
-.force-legend-label {
-    font-size: 9px;
+.preview-mode-icon-btn svg,
+.preview-action-btn--inline svg {
+    width: 15px;
+    height: 15px;
+}
+
+.preview-mode-icon-btn {
+    --preview-btn-accent: var(--c-accent);
+    background: transparent;
+    border-color: var(--c-border);
     color: var(--c-text-sub);
-    font-family: inherit;
-    letter-spacing: 0.02em;
-    text-transform: uppercase;
-    font-weight: 500;
-
-    white-space: normal;
-    overflow: visible;
-    text-overflow: unset;
-    line-height: 1.25;
-    word-break: break-word;
+    box-shadow: none;
 }
 
-.force-legend-row svg {
-    align-self: center;
-    flex-shrink: 0;
+.preview-mode-icon-btn[data-preview-mode="general"] { --preview-btn-accent: var(--c-accent);   }
+.preview-mode-icon-btn[data-preview-mode="forces"]  { --preview-btn-accent: var(--c-success);  }
+.preview-mode-icon-btn[data-preview-mode="health"]  { --preview-btn-accent: var(--c-danger);   }
+.preview-mode-icon-btn[data-preview-mode="energy"]  { --preview-btn-accent: var(--c-warning);  }
+
+.preview-mode-icon-btn:hover,
+.preview-mode-icon-btn:focus-visible {
+    background: color-mix(in srgb, var(--preview-btn-accent) 10%, transparent);
+    border-color: var(--preview-btn-accent);
+    color: var(--preview-btn-accent);
+}
+
+.preview-mode-icon-btn.active {
+    background: color-mix(in srgb, var(--preview-btn-accent) 14%, transparent);
+    border-color: var(--preview-btn-accent);
+    color: var(--preview-btn-accent);
+    box-shadow: 0 0 8px color-mix(in srgb, var(--preview-btn-accent) 36%, transparent);
 }
 
 /* ────────────────────────────────────────────────────────────────
-   SELECTED CELL: force-mode badge + legend
+   Preview indicators
    ──────────────────────────────────────────────────────────────── */
 
 .preview-mode-badge {
@@ -213,13 +234,8 @@
     opacity: 0.4;
 }
 
-.preview-mode-badge::before {
-    top: 0;
-}
-
-.preview-mode-badge::after {
-    bottom: 0;
-}
+.preview-mode-badge::before { top: 0; }
+.preview-mode-badge::after  { bottom: 0; }
 
 .preview-mode-badge {
     --preview-mode-bg: transparent;
@@ -239,38 +255,276 @@
     pointer-events: none;
 }
 
-.preview-mode-badge--normal {
-    color: var(--c-success);
-    --preview-mode-bg: var(--c-success-glow);
+.preview-mode-badge--create-off  { color: var(--c-text-muted); --preview-mode-bg: transparent;       }
+.preview-mode-badge--create-on   { color: var(--c-accent);     --preview-mode-bg: var(--c-accent-glow);  }
+.preview-mode-badge--general     { color: var(--c-accent);     --preview-mode-bg: var(--c-accent-glow);  }
+.preview-mode-badge--forces      { color: var(--c-success);    --preview-mode-bg: var(--c-success-glow); }
+.preview-mode-badge--health      { color: var(--c-danger);     --preview-mode-bg: var(--c-danger-glow);  }
+.preview-mode-badge--energy      { color: var(--c-warning);    --preview-mode-bg: var(--c-warning-glow); }
+.preview-mode-badge--event-dead  { color: var(--c-danger);     --preview-mode-bg: var(--c-danger-glow);  }
+.preview-mode-badge--event-divided { color: var(--c-success);  --preview-mode-bg: var(--c-success-glow); }
+
+/* ────────────────────────────────────────────────────────────────
+   Left column: badge абсолютно, кнопки строго по центру
+   ──────────────────────────────────────────────────────────────── */
+
+.preview-zone--modes {
+    flex: 1 1 auto;
+    width: 100%;
+    height: 100%;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    margin: 0;
+    padding: 0 0 var(--gap-sm);
 }
 
-.preview-mode-badge--forces {
-    color: var(--c-danger);
-    --preview-mode-bg: var(--c-danger-glow);
+/* Badge плавает поверх, не влияет на поток */
+.preview-zone--modes .preview-mode-badge {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
 }
 
+/* Кнопки режима строго по центру зоны */
+.preview-zone--modes .preview-control-grid {
+    align-self: center;
+    justify-self: center;
+    padding: 0;
+    margin: 0;
+}
 
-#forceViewToggleBtn:hover {
-    background: var(--c-bg-surface);
-    border-color: var(--c-border-mid);
+/* ────────────────────────────────────────────────────────────────
+   Right column: badge абсолютно, layer-controls строго по центру
+   ──────────────────────────────────────────────────────────────── */
+
+.preview-zone--status {
+    flex: 1 1 auto;
+    width: 100%;
+    height: 100%;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    margin: 0;
+    padding: 0;
+}
+
+.preview-zone--status .preview-mode-badge {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.preview-zone--status .preview-layer-controls {
+    /* центрируется flex-контейнером */
+}
+
+.preview-zone--right .preview-layer-controls {
+    justify-self: start;
+    align-self: center;
+    margin: 0;
+}
+
+/* ────────────────────────────────────────────────────────────────
+   Segmented / layer controls
+   ──────────────────────────────────────────────────────────────── */
+
+.preview-segmented {
+    --preview-segment-h: 26px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin: 0;
+}
+
+.preview-layer-controls {
+    width: 80px;
+    align-self: center;
+    margin: 0;
+}
+
+.preview-layer-controls--hidden {
+    display: none !important;
+}
+
+/* ── Кнопки слоёв ── */
+.preview-layer-btn,
+.preview-mode-btn {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    min-height: var(--preview-segment-h);
+    padding: 4px 12px 4px 6px;  /* правый отступ для полоски */
+    border-top:    1px solid rgba(71, 85, 105, 0.62);
+    border-bottom: 1px solid rgba(71, 85, 105, 0.62);
+    border-left:   none;   /* открыто к canvas */
+    border-right:  2px solid var(--c-border-soft);  /* полоска через border */
+    border-radius: 0;
+    background: var(--c-bg-deep);
+    color: color-mix(in srgb, var(--c-text-sub) 66%, transparent);
+    font-size: 8.5px;
+    line-height: 1.05;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    text-align: left;
+    box-shadow: none;
+    transition:
+            color           var(--anim-fast),
+            background      var(--anim-fast),
+            border-color    var(--anim-fast);
+}
+
+.preview-layer-btn + .preview-layer-btn,
+.preview-mode-btn  + .preview-mode-btn {
+    margin-top: -1px;
+}
+
+/* Без скруглений — полоска и рамка прямоугольные */
+
+/* ── Inactive hover ── */
+.preview-layer-btn:not(.active):hover,
+.preview-mode-btn:not(.active):hover {
+    background: color-mix(in srgb, var(--c-accent) 4%, var(--c-bg-deep));
+    border-top-color:    var(--c-border);
+    border-bottom-color: var(--c-border);
+    color: var(--c-text-sub);
+    border-right-color: var(--c-border-mid);
+}
+
+/* ── Active ── */
+.preview-layer-btn.active,
+.preview-mode-btn.active {
+    background: var(--c-accent-bg);
+    border-top-color:    var(--c-accent-dark);
+    border-bottom-color: var(--c-accent-dark);
+    color: var(--c-accent);
+    border-right-color: var(--c-accent);
+    box-shadow: -1px 0 6px 0 var(--c-accent-glow);
+}
+
+/* ── Locked / disabled ── */
+.preview-layer-controls--locked .preview-layer-btn,
+.preview-layer-controls--locked .preview-mode-btn {
+    opacity: 0.34;
+    pointer-events: none;
+    filter: saturate(0.3);
+}
+
+/* ────────────────────────────────────────────────────────────────
+   Tooltip
+   ──────────────────────────────────────────────────────────────── */
+
+.preview-canvas-tooltip {
+    position: fixed;
+    z-index: 9999;
+    pointer-events: none;
+    max-width: 240px;
+    padding: 6px 8px;
+    border: 1px solid var(--c-border-mid);
+    border-radius: var(--radius-xs);
+    background: rgba(15, 23, 42, 0.96);
     color: var(--c-text);
+    font-size: 11px;
+    line-height: 1.35;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.28);
+    opacity: 0;
+    transform: translate(-50%, calc(-100% - 8px));
+    transition: opacity 0.04s linear;
+}
+.preview-canvas-tooltip.visible { opacity: 1; }
+
+.preview-tooltip-title {
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 4px;
+}
+
+/* ────────────────────────────────────────────────────────────────
+   Info scope controls
+   ──────────────────────────────────────────────────────────────── */
+
+.info-scope-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--gap-xs);
+    margin: 0 0 var(--gap-sm);
+}
+
+.info-scope-btn {
+    flex: 1 1 calc(50% - var(--gap-xs));
+    min-height: 26px;
+    padding: 5px 8px;
+    border: 1px solid var(--c-border-soft);
+    border-radius: var(--radius-xs);
+    background: var(--c-bg-deep);
+    color: var(--c-text-muted);
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    transition: border-color var(--anim-fast), color var(--anim-fast), background var(--anim-fast), box-shadow var(--anim-fast);
+}
+.info-scope-btn.active {
+    color: var(--c-accent);
+    border-color: var(--c-accent);
+    background: color-mix(in srgb, var(--c-accent-dark) 42%, var(--c-bg-inner));
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--c-accent) 20%, transparent);
+}
+
+.info-scope-controls--organelles-locked .info-scope-btn:not([data-info-scope="general"]),
+.info-scope-btn--locked,
+.info-scope-btn:disabled {
+    opacity: 0.34;
+    cursor: not-allowed;
+    filter: saturate(0.45);
+    pointer-events: none;
+    background: color-mix(in srgb, var(--c-bg-deep) 82%, transparent);
+    border-color: var(--c-border-soft);
+    color: color-mix(in srgb, var(--c-text-muted) 70%, transparent);
     box-shadow: none;
 }
 
-/* Кнопка в forces-режиме (класс .active) — красный */
-#forceViewToggleBtn.active {
-    background: var(--c-danger-bg);
-    border-color: var(--c-danger);
-    color: var(--c-danger);
-    box-shadow: 0 0 8px var(--c-danger-glow);
+.info-scope-controls--organelles-locked .info-scope-btn.active:disabled {
+    opacity: 0.58;
+    color: color-mix(in srgb, var(--c-accent) 72%, var(--c-text-muted));
+    border-color: color-mix(in srgb, var(--c-accent) 42%, var(--c-border-soft));
 }
 
-.preview-mode-badge--create-off {
-    color: var(--c-text-muted);
-    --preview-mode-bg: transparent;
+.preview-layer-controls--locked { opacity: 0.34; pointer-events: none; }
+
+/* ────────────────────────────────────────────────────────────────
+   Fast transitions — mode badge changes immediately
+   ──────────────────────────────────────────────────────────────── */
+
+.preview-mode-badge,
+.preview-mode-badge .preview-mode-badge-bg,
+.preview-mode-badge .preview-mode-badge-text {
+    transition: none !important;
 }
 
-.preview-mode-badge--create-on {
-    color: var(--c-accent);
-    --preview-mode-bg: var(--c-accent-glow);
+/* ────────────────────────────────────────────────────────────────
+   Responsive
+   ──────────────────────────────────────────────────────────────── */
+
+@media (max-width: 460px) {
+    :root {
+        --preview-side-left-w:  90px;
+        --preview-side-right-w: 90px;
+    }
+
+    .preview-layer-btn,
+    .preview-mode-btn {
+        font-size: 8px;
+        padding-left: 4px;
+        padding-right: 10px;
+    }
 }

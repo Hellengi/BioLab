@@ -1,22 +1,18 @@
+
+
 /**
  * toolbar.js
- * Управляет отображением верхней панели: температура, скорость, пауза,
- * время симуляции и FPS/TPS.
+ * Controls the top toolbar: simulation speed, pause state, time display and FPS/TPS.
  */
 
 import { dom } from "./dom.js";
 import { attachTooltip } from "./tooltip.js";
 
-// ── Цветовые константы температурного индикатора ────────────────────────────
-
-const TEMP_COLOR_COLD   = "#60a5fa";
-const TEMP_COLOR_NORMAL = "#f1f5f9";
-const TEMP_COLOR_HOT    = "#f87171";
-
-const TEMP_COLD_THRESHOLD = 10;   // °C — ниже этого начинается холодный оттенок
-const TEMP_HOT_THRESHOLD  = 35;   // °C — выше этого начинается горячему оттенку
-const TEMP_COLD_RANGE     = 30;   // диапазон плавного перехода к холодному
-const TEMP_HOT_RANGE      = 25;   // диапазон плавного перехода к горячему
+const TIME_COLOR_COLD   = "#60a5fa";
+const TIME_COLOR_NORMAL = "#f1f5f9";
+const TIME_COLOR_HOT    = "#f59e6b";
+const MAX_CLOCK_COLOR_MIX = 0.56;
+const NEUTRAL_SLIDER_VALUE = 50;
 
 const MILLISECONDS_PER_SECOND = 1000;
 const MINUTE_SECONDS = 60;
@@ -24,38 +20,30 @@ const HOUR_SECONDS   = 60 * MINUTE_SECONDS;
 const DAY_SECONDS    = 24 * HOUR_SECONDS;
 const YEAR_SECONDS   = 365.25 * DAY_SECONDS;
 
-// ── Публичные функции ────────────────────────────────────────────────────────
+// ── Public API ──────────────────────────────────────────────────────────────
 
-/** Подключает tooltip верхней панели после bindDom(). */
 export function bindToolbarTooltips() {
-    attachTooltip(dom.timeDisplay, dom.timeTooltip, { maxWidth: 220 });
+    attachTooltip(dom.timeDisplay, dom.timeTooltip, { maxWidth: 148, fixedWidth: 148 });
 }
 
 /**
- * Обновляет отображение температуры и скорости симуляции в тулбаре.
+ * Applies toolbar display state. tempCelsius is intentionally ignored: the old
+ * temperature indicator was merged into the time display.
  * @param {number|null} tempCelsius
  * @param {number|null} speedFactor
  */
 export function applyDisplayFromConfig(tempCelsius, speedFactor) {
-    _updateTemperatureLabel(tempCelsius ?? 20);
-    _updateSpeedLabel(speedFactor ?? 0);
+    const sliderValue = _currentTimeSliderValue();
+    _updateSpeedLabel(speedFactor ?? _speedFromSlider(sliderValue));
+    _applyTimeSpeedTint(sliderValue);
 }
 
-/**
- * Устанавливает состояние кнопки паузы (текст + CSS-класс).
- * @param {boolean} paused
- */
 export function applyPauseButtonState(paused) {
     if (!dom.pauseBtn) return;
     dom.pauseBtn.textContent = paused ? "Resume" : "Pause";
     dom.pauseBtn.classList.toggle("paused", paused);
 }
 
-/**
- * Обновляет окно времени и кастомный tooltip с tick.
- * @param {number|null} seconds
- * @param {number|null} tick
- */
 export function updateTimeDisplay(seconds, tick) {
     if (!dom.timeDisplay || !dom.timeYearsDays || !dom.timeClock) return;
 
@@ -63,21 +51,14 @@ export function updateTimeDisplay(seconds, tick) {
     const safeTick = Number.isFinite(Number(tick)) ? Number(tick) : 0;
     const formatted = _formatFullSimulationTime(safeSeconds);
 
-    dom.timeYearsDays.textContent = `${formatted.years}y · ${formatted.days}d`;
+    dom.timeYearsDays.textContent = `${formatted.years}y ${formatted.days}d`;
     dom.timeClock.textContent = `${_pad2(formatted.hours)}:${_pad2(formatted.minutes)}:${_pad2(formatted.seconds)}.${_pad3(formatted.milliseconds)}`;
 
     if (dom.timeTooltipTick) {
-        dom.timeTooltipTick.textContent = String(Math.round(safeTick));
+        dom.timeTooltipTick.textContent = _formatTickValue(safeTick);
     }
 }
 
-/**
- * Обновляет правый индикатор FPS/TPS.
- * В паузе вместо значений показывает Paused.
- * @param {number|null} fps
- * @param {number|null} tps
- * @param {boolean} paused
- */
 export function updateMetricsDisplay(fps, tps, paused = false) {
     const safeFps = Math.max(0, Math.round(Number(fps) || 0));
     const safeTps = Math.max(0, Math.round(Number(tps) || 0));
@@ -95,18 +76,41 @@ export function updateMetricsDisplay(fps, tps, paused = false) {
     }
 }
 
-// ── Приватные вспомогательные функции ───────────────────────────────────────
+// ── Private helpers ─────────────────────────────────────────────────────────
 
-function _updateTemperatureLabel(t) {
-    if (!dom.temperatureLabel) return;
+function _formatTickValue(tick) {
+    const safeTick = Math.max(0, Math.round(Number(tick) || 0));
+    if (safeTick >= 1_000_000_000_000) return `${Math.round(safeTick / 1_000_000_000)}b`;
+    if (safeTick >= 1_000_000_000) return `${Math.round(safeTick / 1_000_000)}m`;
+    if (safeTick >= 1_000_000) return `${Math.round(safeTick / 1_000)}k`;
+    return String(safeTick);
+}
 
-    dom.temperatureLabel.textContent = `${Math.round(t)}°C`;
-    dom.temperatureLabel.style.color = _temperatureColor(t);
+function _currentTimeSliderValue() {
+    const value = Number(dom.timeSlider?.value);
+    return Number.isFinite(value) ? value : NEUTRAL_SLIDER_VALUE;
+}
+
+function _speedFromSlider(sliderValue) {
+    return Math.pow(10, (sliderValue - NEUTRAL_SLIDER_VALUE) / 25.0);
 }
 
 function _updateSpeedLabel(speedFactor) {
     if (!dom.speedLabel) return;
     dom.speedLabel.textContent = `${_formatSpeed(speedFactor)}×`;
+}
+
+function _applyTimeSpeedTint(sliderValue) {
+    const offset = Math.max(-50, Math.min(50, sliderValue - NEUTRAL_SLIDER_VALUE));
+    const power = Math.abs(offset) / 50;
+    const colorMix = power * MAX_CLOCK_COLOR_MIX;
+    const targetColor = offset < 0 ? TIME_COLOR_COLD : TIME_COLOR_HOT;
+    if (dom.timeClock) {
+        dom.timeClock.style.color = power <= 0.001
+            ? TIME_COLOR_NORMAL
+            : _lerpColor(TIME_COLOR_NORMAL, targetColor, colorMix);
+    }
+
 }
 
 function _formatSpeed(speedFactor) {
@@ -150,18 +154,6 @@ function _pad2(value) {
 
 function _pad3(value) {
     return String(Math.max(0, Math.floor(value))).padStart(3, "0");
-}
-
-function _temperatureColor(t) {
-    if (t < TEMP_COLD_THRESHOLD) {
-        const factor = Math.max(0, Math.min(1, (TEMP_COLD_THRESHOLD - t) / TEMP_COLD_RANGE));
-        return _lerpColor(TEMP_COLOR_NORMAL, TEMP_COLOR_COLD, factor);
-    }
-    if (t > TEMP_HOT_THRESHOLD) {
-        const factor = Math.max(0, Math.min(1, (t - TEMP_HOT_THRESHOLD) / TEMP_HOT_RANGE));
-        return _lerpColor(TEMP_COLOR_NORMAL, TEMP_COLOR_HOT, factor);
-    }
-    return TEMP_COLOR_NORMAL;
 }
 
 function _lerpColor(from, to, t) {

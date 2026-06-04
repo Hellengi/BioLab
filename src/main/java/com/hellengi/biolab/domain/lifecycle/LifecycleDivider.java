@@ -1,3 +1,4 @@
+
 package com.hellengi.biolab.domain.lifecycle;
 
 import com.hellengi.biolab.config.YamlConfig;
@@ -21,15 +22,8 @@ public class LifecycleDivider {
         double firstDivisionImpulse = firstGenome.getDivisionImpulse();
         double secondDivisionImpulse = secondGenome.getDivisionImpulse();
 
-        double firstImpulseEnergyCost =
-                firstDivisionImpulse * config.getCell().getEnergyToDivisionImpulseFactor();
-        double secondImpulseEnergyCost =
-                secondDivisionImpulse * config.getCell().getEnergyToDivisionImpulseFactor();
-
-        double remainingEnergy =
-                parent.getEnergy() - firstImpulseEnergyCost - secondImpulseEnergyCost;
-
-        double baseChildEnergy = remainingEnergy / 2.0;
+        double divCost = parent.getDivisionEnergyCost();
+        double baseChildEnergy = Math.max(0.0, parent.getEnergy() / 2.0 - divCost);
 
         double firstEnergy = Math.min(baseChildEnergy, firstGenome.getMaxEnergy());
         double secondEnergy = Math.min(baseChildEnergy, secondGenome.getMaxEnergy());
@@ -51,12 +45,16 @@ public class LifecycleDivider {
         first.setEnergy(firstEnergy);
         first.setGenome(firstGenome);
         first.setDirectionAngle(parent.getDirectionAngle());
+        first.setCellDamage(parent.getCellDamage() * config.getCell().getDivDamageTransferFactor());
+        first.setCpDamage(parent.getCpDamage() * config.getCell().getDivDamageTransferFactor());
 
         Cell second = new Cell(config);
         second.setVelocity(secondVx, secondVy);
         second.setEnergy(secondEnergy);
         second.setGenome(secondGenome);
         second.setDirectionAngle(parent.getDirectionAngle());
+        second.setCellDamage(parent.getCellDamage() * config.getCell().getDivDamageTransferFactor());
+        second.setCpDamage(parent.getCpDamage() * config.getCell().getDivDamageTransferFactor());
 
         double distanceBetweenCenters = first.getRadius() + second.getRadius();
         double offsetFromParent = distanceBetweenCenters / 2.0;

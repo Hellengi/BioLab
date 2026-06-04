@@ -1,3 +1,5 @@
+
+
 /* ═══════════════════════════════════════════════════════
    base.css — CSS-переменные и базовый сброс
    ═══════════════════════════════════════════════════════ */
@@ -21,30 +23,38 @@
     --c-text-muted:  #64748b;
     --c-text-on:     #ffffff;
 
-    /* Акцент */
-    --c-accent:      #38bdf8;
-    --c-accent-dim:  #0ea5e9;
-    --c-accent-dark: #0c4a6e;
-    --c-accent-glow: rgba(56, 189, 248, 0.18);
+    /* Акценты: light / base / strong / dark / bg / glow */
+    --c-accent-light:  #7dd3fc;
+    --c-accent:        #38bdf8;
+    --c-accent-strong: #0ea5e9;
+    --c-accent-dark:   #0c4a6e;
+    --c-accent-bg:     #082f49;
+    --c-accent-glow:   rgba(56, 189, 248, 0.18);
 
-    /* Состояния */
+    --c-danger-light:  #fca5a5;
     --c-danger:        #f87171;
-    --c-danger-dark:   #dc2626;
+    --c-danger-strong: #ef4444;
+    --c-danger-dark:   #7f1d1d;
     --c-danger-bg:     #3d1515;
-    --c-danger-border: #7f1d1d;
-    --c-danger-glow: rgba(248, 113, 113, 0.18);
+    --c-danger-glow:   rgba(248, 113, 113, 0.18);
 
-    --c-success:        #4ade80;
-    --c-success-bg:     #14532d;
-    --c-success-border: #166534;
-    --c-success-glow: rgba(74,  222, 128, 0.18);
+    --c-success-light: #86efac;
+    --c-success:       #4ade80;
+    --c-success-strong:#22c55e;
+    --c-success-dark:  #166534;
+    --c-success-bg:    #14532d;
+    --c-success-glow:  rgba(74, 222, 128, 0.18);
 
-    /* Цвета стрелок сил */
-    --c-arrow-gravity:  #f87171;  /* красный  — клетка тонет        */
-    --c-arrow-buoyancy: #4ade80;  /* зелёный  — клетка всплывает    */
-    --c-arrow-drag:     #fbbf24;  /* янтарный — сопротивление среды */
-    --c-arrow-impulse:  #c084fc;  /* фиолет   — импульс столкновения*/
-    --c-arrow-speed:    #e2e8f0;  /* белый    — скорость            */
+    --c-warning-light: #fde68a;
+    --c-warning:       #fbbf24;
+    --c-warning-strong:#f59e0b;
+    --c-warning-dark:  #92400e;
+    --c-warning-bg:    #3b2507;
+    --c-warning-glow:  rgba(251, 191, 36, 0.18);
+
+    /* Алиасы для старых правил */
+    --c-danger-border:  var(--c-danger-dark);
+    --c-success-border: var(--c-success-dark);
 
     /* Температурный индикатор */
     --c-temp-cold:   #93c5fd;
@@ -84,7 +94,7 @@
     --z-toolbar: 10;
     --z-sidebar: 20;
     --z-modal:   1000;
-    --z-organelle-panel: 30;
+    --z-organelle-panel: calc(var(--z-sidebar) - 1);
     --z-tooltip: 200;
 
     /* Тени */

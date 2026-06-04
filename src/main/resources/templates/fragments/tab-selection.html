@@ -5,7 +5,7 @@
 <div th:fragment="tab-selection" id="tabSelected" class="tab-panel hidden">
 
   <div class="panel-header-row">
-    <h2>Selected Cell</h2>
+    <h2 id="selectedCellTitle">Cell Selection</h2>
     <button id="saveSelectedCellBtn" class="icon-btn hidden" title="Save cell template">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -15,20 +15,40 @@
     </button>
   </div>
 
-  <!-- Populated dynamically when a cell is selected -->
   <div id="selectedCellContent" class="hidden">
-
-    <!-- Sticky preview canvas -->
     <div class="sticky-preview" id="selectedStickyPreview">
       <div class="selected-cell-preview-wrap" id="selectedCellPreviewWrap">
-
         <div class="preview-triptych">
-
-          <div class="preview-zone preview-zone--left">
-            <div id="forceViewIndicator"
-                 class="preview-mode-badge preview-mode-badge--normal">
+          <div class="preview-zone preview-zone--left preview-zone--modes">
+            <div id="forceViewIndicator" class="preview-mode-badge preview-mode-badge--general">
               <span class="preview-mode-badge-bg"></span>
-              <span class="preview-mode-badge-text">Normal</span>
+              <span class="preview-mode-badge-text">General</span>
+            </div>
+            <div id="selectedPreviewModeControls" class="preview-control-grid preview-control-grid--modes" data-mode="general" aria-label="Selected cell preview mode">
+              <button type="button" class="icon-btn preview-mode-icon-btn active" data-preview-mode="general" aria-label="General mode" title="General">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="3.2"></circle>
+                  <path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6-10-6-10-6z"></path>
+                </svg>
+              </button>
+              <button type="button" class="icon-btn preview-mode-icon-btn" data-preview-mode="forces" aria-label="Forces mode" title="Forces">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 16l6-6"></path>
+                  <path d="M10 10H6V6"></path>
+                  <path d="M20 8l-6 6"></path>
+                  <path d="M14 14h4v4"></path>
+                </svg>
+              </button>
+              <button type="button" class="icon-btn preview-mode-icon-btn" data-preview-mode="health" aria-label="Health mode" title="Health">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 21s-6.5-4.4-8.6-8.1C1.8 10 2.8 6.6 6 5.4c2-.7 4 .1 6 2.2 2-2.1 4-2.9 6-2.2 3.2 1.2 4.2 4.6 2.6 7.5C18.5 16.6 12 21 12 21z"></path>
+                </svg>
+              </button>
+              <button type="button" class="icon-btn preview-mode-icon-btn" data-preview-mode="energy" aria-label="Energy mode" title="Energy">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M13 2L5 13h5l-1 9 8-11h-5l1-9z"></path>
+                </svg>
+              </button>
             </div>
           </div>
 
@@ -36,118 +56,45 @@
             <canvas id="selectedCellPreviewCanvas" width="160" height="160"></canvas>
           </div>
 
-          <div class="preview-zone preview-zone--right">
-            <div id="forceLegend" class="force-legend force-legend--hidden">
-              <!-- Строки добавляются JS из preview.js -->
+          <div class="preview-zone preview-zone--right preview-zone--status">
+            <div id="selectedPreviewEventIndicator" class="preview-mode-badge preview-mode-badge--event hidden" aria-live="polite">
+              <span class="preview-mode-badge-bg"></span>
+              <span class="preview-mode-badge-text"></span>
+            </div>
+            <div id="previewLayerControls" class="preview-segmented preview-layer-controls" aria-label="Preview render layers">
+              <button type="button" class="preview-layer-btn active" data-preview-layer-count="1">Organelles</button>
+              <button type="button" class="preview-layer-btn active" data-preview-layer-count="2">Membrane</button>
+              <button type="button" class="preview-layer-btn active" data-preview-layer-count="3">Shading</button>
             </div>
           </div>
-
-        </div>
-
-        <!-- Кнопка переключения режима сил: левый нижний угол -->
-        <button id="forceViewToggleBtn" type="button"
-                class="icon-btn preview-action-btn" title="Show forces on preview">
-          <!-- vectors / forces icon -->
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
-            <line x1="12" y1="19" x2="12" y2="5"/>
-            <polyline points="5 12 12 5 19 12"/>
-          </svg>
-        </button>
-
-      </div>
-    </div>
-
-    <!-- Overview -->
-    <div class="settings-section">
-      <div class="settings-section-header">
-        <span class="settings-section-label">Overview</span>
-      </div>
-      <div class="cell-info-grid">
-        <div class="cell-info-label">Code</div>
-        <div id="selectedCellCode"></div>
-
-        <div class="cell-info-label">Energy</div>
-        <div id="selectedCellEnergy"></div>
-
-        <div class="cell-info-label">Mass</div>
-        <div id="selectedCellMass"></div>
-
-        <div class="cell-info-label">Radius</div>
-        <div id="selectedCellRadius"></div>
-
-        <div class="cell-info-label">Density</div>
-        <div id="selectedCellDensity"></div>
-
-        <div class="cell-info-label">Elasticity</div>
-        <div id="selectedCellElasticity"></div>
-
-        <div class="cell-info-label">Opacity</div>
-        <div id="selectedCellOpacity"></div>
-
-        <div class="cell-info-label">GFP</div>
-        <div id="selectedCellGfp"></div>
-      </div>
-    </div>
-
-    <!-- Motion -->
-    <div class="settings-section">
-      <div class="settings-section-header">
-        <span class="settings-section-label">Motion</span>
-      </div>
-      <div class="cell-info-grid">
-
-        <div class="cell-info-label">Speed</div>
-        <div id="selectedCellSpeed"></div>
-
-        <div id="selectedCellGravBuoyLabel" class="cell-info-label">Grav/buoy force</div>
-        <div id="selectedCellGravBuoyForce"></div>
-
-        <div class="cell-info-label">Drag force</div>
-        <div id="selectedCellDragForce"></div>
-
-        <!-- Collision impulse — animated show/hide via JS -->
-        <div id="selectedCellImpulseRow" class="hidden">
-          <div class="cell-info-label">Collision impulse</div>
-          <div id="selectedCellCollisionImpulse"></div>
         </div>
 
       </div>
     </div>
 
-    <!-- Environment -->
     <div class="settings-section">
       <div class="settings-section-header">
-        <span class="settings-section-label">Environment</span>
+        <span class="settings-section-label">Information</span>
       </div>
-      <div class="cell-info-grid">
-        <div class="cell-info-label">Illumination</div>
-        <div id="selectedCellIllumination"></div>
+      <div id="selectedInfoScopeControls" class="info-scope-controls" aria-label="Selected cell information scope">
+        <button type="button" class="info-scope-btn active" data-info-scope="general">General</button>
+        <button type="button" class="info-scope-btn" data-info-scope="nucleus">Nucleus</button>
+        <button type="button" class="info-scope-btn" data-info-scope="cytosol">Cytosol</button>
+        <button type="button" class="info-scope-btn" data-info-scope="membrane">Membrane</button>
+        <button type="button" class="info-scope-btn" data-info-scope="chloroplast">Chloroplast</button>
+        <button type="button" class="info-scope-btn" data-info-scope="lysosome">Lysosome</button>
       </div>
+      <div id="selectedInfoGrid" class="cell-info-grid"></div>
     </div>
-
-    <!-- Genome -->
-    <div class="settings-section">
-      <div class="settings-section-header">
-        <span class="settings-section-label">Genome</span>
-      </div>
-      <div class="cell-info-grid">
-        <div class="cell-info-label">Division energy</div>
-        <div id="selectedCellDivisionThreshold"></div>
-
-        <div class="cell-info-label">Division impulse</div>
-        <div id="selectedCellDivisionImpulse"></div>
-
-        <div class="cell-info-label">Division angle</div>
-        <div id="selectedCellDivisionAngle"></div>
-
-        <div class="cell-info-label">RGB</div>
-        <div id="selectedCellRgb"></div>
-      </div>
-    </div>
-
   </div>
 
 </div>
 
 </body>
 </html>
+
+
+
+
+
+

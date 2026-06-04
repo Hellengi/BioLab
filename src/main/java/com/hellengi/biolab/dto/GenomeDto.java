@@ -4,13 +4,19 @@ public record GenomeDto(
         double divisionThreshold,
         double divisionImpulse,
         double divisionAngle,
-        double colorHue,
-        double saturation,
-        double lightness,
         double maxEnergy,
         Double dryMass,
         Double elasticity,
         Double gfp,
+        boolean melaninEnabled,
+        Double melaninPercent,
+        boolean chloroplastEnabled,
+        Double chloroplastAmount,
+        Double chlorophyll,
+        Double carotenoids,
+        boolean lysosomeEnabled,
+        Double lysosomeAmount,
+        Double lysosomeEnzymeActivity,
         String code
 ) {
 }

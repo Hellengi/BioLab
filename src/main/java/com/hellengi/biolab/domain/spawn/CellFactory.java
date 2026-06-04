@@ -1,3 +1,5 @@
+
+
 package com.hellengi.biolab.domain.spawn;
 
 import com.hellengi.biolab.config.YamlConfig;
@@ -42,7 +44,7 @@ public class CellFactory {
     public Cell createCell(SpawnCellRequestDto requestDto) {
         Genome genome = genomeMapper.toDomain(requestDto.genome());
         double initialEnergy = Math.min(baseConfig.getCell().getStartEnergy(), genome.getMaxEnergy());
-        Point worldCenter = new Point(baseConfig.worldCenterX(), baseConfig.worldCenterX());
+        Point worldCenter = new Point(baseConfig.worldCenterX(), baseConfig.worldCenterY());
         Point point = clampInsideCircle(worldCenter, baseConfig.worldRadius(), requestDto.x(), requestDto.y());
         Velocity velocity = toVelocity(
                 requestDto.initialDirection(), Math.max(0.0, requestDto.initialSpeed())
@@ -54,6 +56,9 @@ public class CellFactory {
         cell.setEnergy(initialEnergy);
         cell.setGenome(genome);
         cell.setDirectionAngle(requestDto.initialDirection());
+        cell.setCellDamage(clamp01(requestDto.startCellDamage() != null ? requestDto.startCellDamage() : 0.0));
+        cell.setCpDamage(clamp01(requestDto.startCpDamage() != null ? requestDto.startCpDamage() : 0.0));
+        cell.ensureInternalLayoutInitialized();
         return cell;
     }
 
@@ -72,6 +77,9 @@ public class CellFactory {
         cell.setEnergy(Math.min(initialEnergy, genome.getMaxEnergy()));
         cell.setGenome(genome);
         cell.setDirectionAngle(initialDirection);
+        cell.setCellDamage(clamp01(baseConfig.getGenome().getStartCellDamage().getInitial()));
+        cell.setCpDamage(clamp01(baseConfig.getGenome().getStartCpDamage().getInitial()));
+        cell.ensureInternalLayoutInitialized();
         return cell;
     }
 
@@ -81,17 +89,29 @@ public class CellFactory {
                 genome.getDivisionThreshold().getInitial(),
                 genome.getDivisionImpulse().getInitial(),
                 genome.getDivisionAngle().getInitial(),
-                genome.getColorHue().getInitial(),
-                genome.getSaturation().getInitial(),
-                genome.getLightness().getInitial(),
                 genome.getMaxEnergy().getInitial(),
                 genome.getDryMass().getInitial(),
                 genome.getElasticity().getInitial(),
-                genome.getGfp().getInitial()
+                genome.getGfp().getInitial(),
+                genome.isMelaninEnabledInitial(),
+                genome.getMelaninPercent().getInitial(),
+                genome.isChloroplastEnabledInitial(),
+                genome.getChloroplastAmount().getInitial(),
+                genome.getChlorophyll().getInitial(),
+                genome.getCarotenoids().getInitial(),
+                genome.isLysosomeEnabledInitial(),
+                genome.getLysosomeAmount().getInitial(),
+                genome.getLysosomeEnzymeActivity().getInitial()
         );
+    }
+
+    private double clamp01(double value) {
+        if (!Double.isFinite(value)) return 0.0;
+        return Math.max(0.0, Math.min(1.0, value));
     }
 
     private double randomOffset(double halfRange) {
         return random.nextDouble() * 2.0 * halfRange - halfRange;
     }
 }
+

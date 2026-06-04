@@ -1,4 +1,3 @@
-
 /**
  * ui/events.js
  * Точка привязки всех событий UI.
@@ -24,7 +23,9 @@ import {
 import {
     toggleCellPlacement,
     onCreateFormChange,
+    syncCreateInfoPanel,
     getCreateCellFields,
+    getCreateDebugFields,
     getCreateChloroplastFields,
     setPlaceMode,
 } from "./tabs/creation.js";
@@ -32,11 +33,31 @@ import { onCanvasClick }                from "./panels/canvas.js";
 import { bindCanvasMouseEvents }        from "./panels/cursor.js";
 import { bindInputs, closeModal, bindAsyncClick } from "./panels/_panels.js";
 import { initTabs }                     from "./tabs/_tabs.js";
-import { drawSelectedCellPreview, setForceViewEnabled } from "../render/preview.js";
+import {
+    drawCreateCellPreview,
+    drawSelectedCellPreview,
+    handleCreatePreviewClick,
+    handleCreatePreviewPointerLeave,
+    handleCreatePreviewPointerMove,
+    handleSelectedPreviewClick,
+    handleSelectedPreviewPointerLeave,
+    handleSelectedPreviewPointerMove,
+    markSelectedPreviewScopeSelected,
+    markCreatePreviewScopeSelected,
+    syncCreatePreviewScopeSelectionWithoutFade,
+    setPreviewLayerCount,
+    setSelectedPreviewMode,
+} from "../render/preview.js";
 import { handleSimulationReset, togglePause } from "../store/actions.js";
-import { state, setDisplayLayer } from "../store/state.js";
+import { setCreateInfoScope, setDisplayLayer, setSelectedInfoScope, state } from "../store/state.js";
 import { sendDisplayLayers } from "../transport/ws/socket.js";
 import { bindToolbarTooltips } from "./toolbar.js";
+import {
+    closeActiveOrganellePanel,
+    hasActiveOrganellePanel,
+    openOrganellePanel,
+} from "./tabs/creation-organelle.js";
+import { refreshSelection } from "./tabs/selection.js";
 import {
     endSliderDrag,
     resetTimeToNormal,
@@ -52,9 +73,12 @@ export function bindEvents() {
     bindSettingsTabEvents();
     bindDisplayLayerEvents();
     bindSelectedCellEvents();
+    bindPreviewLayerEvents();
+    bindPreviewLightEvents();
     bindCreatePanelEvents();
     bindCreateFormEvents();
     bindCanvasEvents();
+    bindPreviewScopeEvents();
     bindKeyboardEvents();
     bindSidebarToggle();
     bindSettingsForm();
@@ -69,7 +93,7 @@ function bindToolbarEvents() {
     dom.timeSlider.addEventListener("input",       () => updateTimeLocal(dom.timeSlider.value));
     dom.timeSlider.addEventListener("pointerup",   () => endSliderDrag());
     dom.timeSlider.addEventListener("touchend",    () => endSliderDrag(), { passive: true });
-    dom.tempDisplay.addEventListener("click",      () => resetTimeToNormal());
+    dom.timeDisplay?.addEventListener("click",      () => resetTimeToNormal());
 
     dom.pauseBtn.addEventListener("click", () => togglePause());
 
@@ -134,21 +158,54 @@ function syncDisplayLayerButton(button, enabled) {
     button.setAttribute("aria-pressed", String(enabled));
 }
 
+
+function bindPreviewLayerEvents() {
+    const buttons = dom.previewLayerButtons ?? [];
+    if (buttons.length === 0) return;
+
+    const sync = () => {
+        const count = state.previewLayerCount ?? 3;
+        for (const button of buttons) {
+            const level = Number(button.dataset.previewLayerCount ?? 0);
+            button.classList.toggle("active", level <= count);
+            button.setAttribute("aria-pressed", String(level <= count));
+        }
+    };
+
+    sync();
+    for (const button of buttons) {
+        button.addEventListener("click", () => {
+            const selectedLayerButton = Boolean(button.closest("#previewLayerControls"));
+            if (selectedLayerButton && state.selectedPreviewMode !== "general") return;
+            const count = Number(button.dataset.previewLayerCount ?? 3);
+            setPreviewLayerCount(count);
+            sync();
+            if (selectedLayerButton) {
+                const selectedCell = state.cellById?.get(state.selectedCellId);
+                if (selectedCell && state.selectedStrain) drawSelectedCellPreview(selectedCell, state.selectedStrain);
+            } else {
+                drawCreateCellPreview();
+            }
+        });
+    }
+}
+
+function bindPreviewLightEvents() {
+    dom.selectedCellPreviewCanvas?.addEventListener("pointermove", handleSelectedPreviewPointerMove);
+    dom.selectedCellPreviewCanvas?.addEventListener("pointerleave", handleSelectedPreviewPointerLeave);
+    dom.selectedCellPreviewCanvas?.addEventListener("click", handleSelectedPreviewClick);
+
+    dom.createCellPreviewCanvas?.addEventListener("pointermove", handleCreatePreviewPointerMove);
+    dom.createCellPreviewCanvas?.addEventListener("pointerleave", handleCreatePreviewPointerLeave);
+    dom.createCellPreviewCanvas?.addEventListener("click", handleCreatePreviewClick);
+}
+
 // ── Панель выбранной клетки ───────────────────────────────────────────────────
 
-function syncForceViewUi(active) {
-    dom.forceViewToggleBtn?.classList.toggle("active", active);
-
-    const badge = dom.forceViewIndicator;
-    if (!badge) return;
-
-    badge.classList.toggle("preview-mode-badge--forces", active);
-    badge.classList.toggle("preview-mode-badge--normal", !active);
-
-    const text = badge.querySelector(".preview-mode-badge-text");
-    if (text) {
-        text.textContent = active ? "Forces" : "Normal";
-    }
+function syncSelectedModeUi(mode) {
+    setSelectedPreviewMode(mode);
+    refreshSelection(true);
+    sendDisplayLayers();
 }
 
 function bindSelectedCellEvents() {
@@ -165,20 +222,19 @@ function bindSelectedCellEvents() {
     bindAsyncClick(dom.saveSelectedCellConfirmBtn, confirmSaveSelectedCell,
         "Save selected cell error", "Failed to save cell template");
 
-    const forceBtn = dom.forceViewToggleBtn;
-    if (forceBtn) {
-        forceBtn.addEventListener("click", () => {
-            const isActive = !forceBtn.classList.contains("active");
-
-            setForceViewEnabled(isActive);
-            syncForceViewUi(isActive);
-
-            const selectedCell = state.cellById?.get(state.selectedCellId);
-            if (selectedCell && state.selectedStrain) {
-                drawSelectedCellPreview(selectedCell, state.selectedStrain);
-            }
-        });
+    for (const button of dom.selectedPreviewModeButtons ?? []) {
+        button.addEventListener("click", () => syncSelectedModeUi(button.dataset.previewMode ?? "general"));
     }
+
+    dom.selectedInfoScopeControls?.addEventListener("click", event => {
+        const button = event.target.closest("[data-info-scope]");
+        if (!button || button.disabled) return;
+        const scope = button.dataset.infoScope ?? "general";
+        if ((state.selectedPreviewMode ?? "general") === "forces" && scope !== "general") return;
+        setSelectedInfoScope(scope);
+        markSelectedPreviewScopeSelected(scope);
+        refreshSelection(true);
+    });
 }
 
 // ── Панель создания клетки ────────────────────────────────────────────────────
@@ -203,6 +259,16 @@ function bindCreatePanelEvents() {
         })
     );
 
+    dom.createInfoScopeControls?.addEventListener("click", event => {
+        const button = event.target.closest("[data-create-info-scope]");
+        if (!button) return;
+        const scope = button.dataset.createInfoScope ?? "general";
+        setCreateInfoScope(scope);
+        window.dispatchEvent(new CustomEvent("biolab:create-info-scope-change", {
+            detail: {scope, source: "button", fadeHighlight: true}
+        }));
+    });
+
     dom.saveCellCancelBtn?.addEventListener("click", () => closeModal(dom.saveCellModal));
     dom.loadCellCancelBtn?.addEventListener("click", () => closeModal(dom.loadCellModal));
     dom.saveCellModal?.addEventListener("click", e => {
@@ -218,12 +284,41 @@ function bindCreatePanelEvents() {
 }
 
 function bindCreateFormEvents() {
-    for (const { range, input } of getCreateCellFields()) {
+    for (const { range, input } of [...getCreateCellFields(), ...getCreateDebugFields()]) {
         bindInputs(range, input, onCreateFormChange);
     }
     for (const { range, input } of getCreateChloroplastFields()) {
         bindInputs(range, input, onCreateFormChange);
     }
+}
+
+function bindPreviewScopeEvents() {
+    window.addEventListener("biolab:selected-info-scope-change", () => refreshSelection(true));
+    window.addEventListener("biolab:create-info-scope-change", event => {
+        const detail = event.detail ?? {};
+        const scope = detail.scope ?? state.createInfoScope ?? "general";
+        const shouldFade = scope !== "general" && detail.fadeHighlight === true;
+
+        if (scope === "general") {
+            closeActiveOrganellePanel();
+        } else if (_canOpenCreateOrganelle(scope)) {
+            openOrganellePanel(scope);
+        }
+        syncCreateInfoPanel();
+
+        if (shouldFade) {
+            markCreatePreviewScopeSelected(scope);
+        } else {
+            syncCreatePreviewScopeSelectionWithoutFade(scope);
+        }
+        drawCreateCellPreview();
+    });
+}
+
+function _canOpenCreateOrganelle(scope) {
+    // Panels must be available even for disabled optional organelles,
+    // because the user needs the panel itself to enable/configure them.
+    return Boolean(scope && scope !== "general");
 }
 
 // ── Canvas-события ────────────────────────────────────────────────────────────
@@ -240,7 +335,15 @@ function bindKeyboardEvents() {
         if (event.repeat || _isTypingTarget(event.target)) return;
 
         if (event.key === "Escape") {
-            if (state.placeMode) setPlaceMode(false);
+            if (state.placeMode) {
+                setPlaceMode(false);
+                return;
+            }
+            if (hasActiveOrganellePanel()) {
+                setCreateInfoScope("general");
+                window.dispatchEvent(new CustomEvent("biolab:create-info-scope-change", {detail: {scope: "general"}}));
+                return;
+            }
             return;
         }
 
@@ -304,5 +407,3 @@ function bindSidebarToggle() {
         }
     });
 }
-
-

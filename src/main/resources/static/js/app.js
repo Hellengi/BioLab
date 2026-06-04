@@ -1,3 +1,4 @@
+
 import {dom, bindDom} from "./ui/dom.js";
 import {state} from "./store/state.js";
 import { render } from "./render/canvas.js";

@@ -1,12 +1,23 @@
+
+
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <body>
 <div th:fragment="toolbar" class="toolbar">
   <div class="toolbar-left">
     <div class="time-control">
-      <div id="tempDisplay" class="toolbar-display temp-display" title="Temperature / simulation speed">
-        <span id="temperatureLabel" class="temp-value">20&#xB0;C</span>
-        <span id="speedLabel" class="speed-value">1.00&#xD7;</span>
+      <div id="timeDisplay" class="toolbar-display time-display" tabindex="0" role="button" aria-label="Reset simulation speed to 1x" aria-describedby="timeTooltip">
+        <div class="time-display-top">
+          <span id="timeYearsDays" class="time-years-days">0y 0d</span>
+          <span id="speedLabel" class="speed-value">1.00&#xD7;</span>
+        </div>
+        <span id="timeClock" class="time-clock">00:00:00.000</span>
+        <span id="timeTooltip" class="app-tooltip app-tooltip--time" role="tooltip" aria-hidden="true">
+          <span class="app-tooltip-row">
+            <span>Tick</span>
+            <span id="timeTooltipTick">0</span>
+          </span>
+        </span>
       </div>
       <input id="timeSlider" type="range" min="0" max="100" step="0.1" value="50"
              title="Simulation speed: 0.01× … 100×">
@@ -17,19 +28,9 @@
     <button id="resetBtn" type="button" class="btn btn-secondary reset-btn">Reset</button>
   </div>
 
-  <div class="toolbar-center">
-    <div id="timeDisplay" class="toolbar-display time-display" tabindex="0" aria-describedby="timeTooltip">
-      <span id="timeYearsDays" class="time-years-days">0y · 0d</span>
-      <span id="timeClock" class="time-clock">00:00:00.000</span>
-      <span id="timeTooltip" class="app-tooltip app-tooltip--time" role="tooltip" aria-hidden="true">
-        <span class="app-tooltip-title">Simulation time</span>
-        <span class="app-tooltip-row">
-          <span>Tick</span>
-          <span id="timeTooltipTick">0</span>
-        </span>
-      </span>
-    </div>
-  </div>
+  <div class="toolbar-center"></div>
+
+
 
   <div class="toolbar-right">
     <span id="fpsLabel" class="fps-badge" aria-live="polite">

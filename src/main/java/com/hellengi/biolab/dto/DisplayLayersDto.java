@@ -5,11 +5,17 @@ public record DisplayLayersDto(
         boolean opacityMap,
         boolean lightDirection,
         boolean quadtree,
-        boolean cellDirections
+        boolean cellDirections,
+        Long selectedCellId,
+        String selectedCellMode
 ) {
+    public boolean selectedForcesEnabled(long cellId) {
+        return selectedCellId != null
+                && selectedCellId == cellId
+                && "forces".equalsIgnoreCase(selectedCellMode);
+    }
+
     public static DisplayLayersDto off() {
-        return new DisplayLayersDto(false, false, false, false);
+        return new DisplayLayersDto(false, false, false, false, null, "general");
     }
 }
-
-

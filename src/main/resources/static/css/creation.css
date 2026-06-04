@@ -1,5 +1,5 @@
 /* ==========================================================
-   creation.css — Create Cell switcher, organelle list and toggle
+   creation.css — Cell Creation switcher, organelle list and toggle
    ========================================================== */
 
 /* ────────────────────────────────────────────────────────────────
@@ -159,10 +159,7 @@
     opacity: 0.4;
     border-color: var(--c-border-soft);
     background: var(--c-bg-deep);
-    cursor: default;
-}
-.organelle-btn--optional.organelle-disabled > *:not(.organelle-toggle) {
-    pointer-events: none;
+    cursor: pointer;
 }
 
 
