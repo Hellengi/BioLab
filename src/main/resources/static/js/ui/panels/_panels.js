@@ -1,3 +1,4 @@
+
 /**
  * ui/panels/_panels.js
  * Общие UI-утилиты: синхронизация input/range-пар, модальные окна,
@@ -6,6 +7,7 @@
 
 import { dom } from "../dom.js";
 import { t } from "../../localization/localization.js";
+import { screenPointToWorld } from "./canvas-camera.js";
 
 // ── Синхронизация слайдер + числовой input ───────────────────────────────────
 
@@ -40,11 +42,7 @@ export function bindInputs(rangeInput, numberInput, onInput, onCommit = onInput)
  * @returns {{ x: number, y: number }}
  */
 export function getCanvasCoordinates(event) {
-    const rect = dom.canvas.getBoundingClientRect();
-    return {
-        x: event.clientX - rect.left,
-        y: event.clientY - rect.top,
-    };
+    return screenPointToWorld(event);
 }
 
 // ── Модальные окна ────────────────────────────────────────────────────────────
@@ -92,5 +90,7 @@ export function applyInputBounds(element, { min, max, step }) {
     element.max  = String(max);
     element.step = String(step);
 }
+
+
 
 

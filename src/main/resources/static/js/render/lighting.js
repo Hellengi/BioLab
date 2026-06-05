@@ -113,8 +113,8 @@ export function drawBackground(ctx, lighting, options = {}) {
     const cols = lighting?.gridWidth ?? 0;
     const rows = lighting?.gridHeight ?? 0;
 
-    const W = ctx.canvas.width;
-    const H = ctx.canvas.height;
+    const W = Math.max(1, Number(options.worldWidth) || ctx.canvas.width);
+    const H = Math.max(1, Number(options.worldHeight) || ctx.canvas.height);
     const opticalDensityMode = Boolean(options.opticalDensityMode);
 
     if (!lightMap.length || cols <= 0 || rows <= 0) {
@@ -162,7 +162,7 @@ function grayscaleBackgroundColor(illumination) {
     return { r: v, g: v, b: v };
 }
 
-export function drawDisplayLayers(ctx, lighting, displayLayers) {
+export function drawDisplayLayers(ctx, lighting, displayLayers, options = {}) {
     if (!lighting || !displayLayers) return;
 
     const hasOpacityMap = displayLayers.opacityMap
@@ -170,7 +170,7 @@ export function drawDisplayLayers(ctx, lighting, displayLayers) {
         && lighting.opacityMap.length > 0;
 
     if (hasOpacityMap) {
-        applyOpticalDensityFilter(ctx, lighting);
+        applyOpticalDensityFilter(ctx, lighting, options);
     }
 
 
@@ -183,7 +183,7 @@ export function drawDisplayLayers(ctx, lighting, displayLayers) {
     }
 }
 
-function applyOpticalDensityFilter(ctx, lighting) {
+function applyOpticalDensityFilter(ctx, lighting, options = {}) {
     const opacityMap = lighting?.opacityMap ?? [];
     const cols = lighting?.gridWidth ?? 0;
     const rows = lighting?.gridHeight ?? 0;
@@ -214,7 +214,9 @@ function applyOpticalDensityFilter(ctx, lighting) {
     ctx.save();
     ctx.globalCompositeOperation = "source-over";
     ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(offscreen, 0, 0, ctx.canvas.width, ctx.canvas.height);
+    const W = Math.max(1, Number(options.worldWidth) || ctx.canvas.width);
+    const H = Math.max(1, Number(options.worldHeight) || ctx.canvas.height);
+    ctx.drawImage(offscreen, 0, 0, W, H);
     ctx.restore();
 }
 
@@ -281,7 +283,9 @@ function drawGridImage(ctx, cols, rows, fillPixel, options = {}) {
     if (ctx.imageSmoothingEnabled) {
         ctx.imageSmoothingQuality = "medium";
     }
-    ctx.drawImage(offscreen, 0, 0, ctx.canvas.width, ctx.canvas.height);
+    const W = Math.max(1, Number(options.worldWidth) || ctx.canvas.width);
+    const H = Math.max(1, Number(options.worldHeight) || ctx.canvas.height);
+    ctx.drawImage(offscreen, 0, 0, W, H);
     ctx.restore();
 }
 
@@ -363,7 +367,7 @@ function drawLightDirectionLayer(ctx, lighting) {
     const gridStep = Math.max(1, lighting?.gridStep ?? 1);
 
     ctx.save();
-    ctx.lineCap = "round";
+    ctx.lineCap = "butt";
     ctx.lineJoin = "round";
     ctx.shadowBlur = 0;
 
@@ -405,8 +409,13 @@ function drawLightDirectionStrokePass(ctx, arrows, count, packed, gridStep, buck
         const cx = Number(readLightDirectionArrow(arrows, packed, i, 0)) || 0;
         const cy = Number(readLightDirectionArrow(arrows, packed, i, 1)) || 0;
 
+        const tipX = cx + nx * length * 0.5;
+        const tipY = cy + ny * length * 0.5;
+        const headLength = lightDirectionHeadLength(strength);
+        if (length <= headLength + 0.5) continue;
+
         ctx.moveTo(cx - nx * length * 0.5, cy - ny * length * 0.5);
-        ctx.lineTo(cx + nx * length * 0.5, cy + ny * length * 0.5);
+        ctx.lineTo(tipX - nx * headLength, tipY - ny * headLength);
         hasPath = true;
     }
 
@@ -496,8 +505,8 @@ function drawLightDirectionPointPass(ctx, arrows, count, packed, gridStep) {
 }
 
 function appendArrowHeadPath(ctx, x, y, dirX, dirY, strength) {
-    const headLength = LIGHT_DIRECTION_LAYER.headLength * (0.65 + 0.35 * strength);
-    const headWidth = LIGHT_DIRECTION_LAYER.headWidth * (0.75 + 0.25 * strength);
+    const headLength = lightDirectionHeadLength(strength);
+    const headWidth = lightDirectionHeadWidth(strength);
     const baseX = x - dirX * headLength;
     const baseY = y - dirY * headLength;
     const perpX = -dirY;
@@ -507,6 +516,14 @@ function appendArrowHeadPath(ctx, x, y, dirX, dirY, strength) {
     ctx.lineTo(baseX + perpX * headWidth, baseY + perpY * headWidth);
     ctx.lineTo(baseX - perpX * headWidth, baseY - perpY * headWidth);
     ctx.closePath();
+}
+
+function lightDirectionHeadLength(strength) {
+    return LIGHT_DIRECTION_LAYER.headLength * (0.65 + 0.35 * clamp01(strength));
+}
+
+function lightDirectionHeadWidth(strength) {
+    return LIGHT_DIRECTION_LAYER.headWidth * (0.75 + 0.25 * clamp01(strength));
 }
 
 function readLightDirectionArrow(arrows, packed, index, field) {
@@ -712,3 +729,7 @@ function drawTrapezoidSource(ctx, source) {
     ctx.strokeStyle = 'rgba(255,255,255,0.9)';
     ctx.stroke();
 }
+
+
+
+

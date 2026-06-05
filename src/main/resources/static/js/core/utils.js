@@ -1,3 +1,4 @@
+
 function roundTo(value, digits) {
     const factor = 10 ** digits;
     return Math.round(value * factor) / factor;
@@ -35,14 +36,36 @@ export function preparePreviewCanvas(previewCtx, previewCanvas) {
         return null;
     }
 
-    const width = previewCanvas.width;
-    const height = previewCanvas.height;
+    const rect = previewCanvas.getBoundingClientRect?.();
+    const cssWidth = Math.max(
+        1,
+        Math.round(rect?.width || previewCanvas.clientWidth || previewCanvas.width || 1)
+    );
+    const cssHeight = Math.max(
+        1,
+        Math.round(rect?.height || previewCanvas.clientHeight || previewCanvas.height || 1)
+    );
+    const dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+    const backingWidth = Math.max(1, Math.round(cssWidth * dpr));
+    const backingHeight = Math.max(1, Math.round(cssHeight * dpr));
 
-    previewCtx.clearRect(0, 0, width, height);
+    if (previewCanvas.width !== backingWidth || previewCanvas.height !== backingHeight) {
+        previewCanvas.width = backingWidth;
+        previewCanvas.height = backingHeight;
+    }
+
+    previewCanvas.dataset.logicalWidth = String(cssWidth);
+    previewCanvas.dataset.logicalHeight = String(cssHeight);
+    previewCanvas.dataset.previewDpr = String(dpr);
+
+    previewCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    previewCtx.imageSmoothingEnabled = true;
+    previewCtx.imageSmoothingQuality = "high";
+    previewCtx.clearRect(0, 0, cssWidth, cssHeight);
     previewCtx.fillStyle = "#181818";
-    previewCtx.fillRect(0, 0, width, height);
+    previewCtx.fillRect(0, 0, cssWidth, cssHeight);
 
-    return { width, height };
+    return { width: cssWidth, height: cssHeight, dpr };
 }
 
 export function setText(element, value) {
@@ -62,3 +85,5 @@ function clamp01(value) {
     if (!Number.isFinite(value)) return 0;
     return Math.max(0, Math.min(1, value));
 }
+
+

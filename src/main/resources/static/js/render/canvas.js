@@ -1,8 +1,9 @@
 import { drawDeadCellEffects, updateDeadCellEffects } from "./effects.js";
 import { drawBackground, drawDisplayLayers, drawLightSourceBodies } from "./lighting.js";
-import { ORGANIC_BROWN_COLOR, organicBrownHsl } from "./colors.js";
-import {GFP_GLOW, drawInternalGfpGlow} from "./gfp.js";
+import { ORGANIC_BROWN_COLOR } from "./colors.js";
+import { buildCapturedFoodSlotMap, drawBiologyCell } from "./cell-renderer.js";
 import { cssVar } from "../core/utils.js";
+import { getCanvasCameraState, getVisibleWorldBounds } from "../ui/panels/canvas-camera.js";
 
 
 const CELL_MIN_LIGHT = 0.38;
@@ -18,27 +19,6 @@ const CELL_RADIAL_ALPHA = Object.freeze({
     edgeStop: 0.92,
 });
 
-const CYTOSOL_TEXTURE = Object.freeze({
-    granules: 10,
-    alpha: 0.055,
-    minRadius: 0.18,
-    maxRadius: 0.52,
-});
-
-const GFP_FLUORESCENCE_COLOR = Object.freeze({
-    hue: 132,
-    saturation: 98,
-    lightness: 70,
-});
-
-const ORGANELLE_VISIBILITY = Object.freeze({
-    nucleoidMinAlpha: 0.46,
-    nucleoidBoost: 1.18,
-    chloroplastMinAlpha: 0.34,
-    chloroplastBoost: 1.55,
-    lysosomeMinAlpha: 0.36,
-    lysosomeBoost: 1.42,
-});
 
 const FOOD_SHAPE = Object.freeze({
     pointCount: 13,
@@ -61,32 +41,6 @@ const FOOD_INNER_BODY = Object.freeze({
 // Strength and shape of cosmetic cell highlights/shadows.
 // These constants intentionally live in one place, so the visual effect can be tuned
 // without touching the renderer logic. Higher alpha/gradientScale = brighter crescents.
-const CELL_LIGHTING_DETAIL = Object.freeze({
-    gradientScale: 4.85,
-
-    // Highlight stays a crescent, but now it is explicitly bright near the outer
-    // cell edge so it does not look detached from the membrane.
-    maxHighlightAlpha: 0.68,
-    highlightCoreAlpha: 0.44,
-    highlightRimAlpha: 0.19,
-    highlightInnerCircleShift: 0.50,
-    highlightInnerCircleRadius: 1.14,
-    highlightCoreX: 0.86,
-    highlightCoreY: -0.12,
-    highlightGradientOuterRadius: 0.96,
-    highlightCoreRadius: 0.38,
-    highlightSoftOuterRadiusBoost: 0.38,
-    highlightSoftCoreRadiusBoost: 0.30,
-    highlightSoftCoreAlphaFactor: 0.18,
-    highlightSoftRimAlphaFactor: 0.28,
-
-    // Shadow is not a second crescent anymore. It is a broad side gradient,
-    // because real translucent cells usually darken smoothly on the unlit side.
-    maxShadowAlpha: 0.70,
-    shadowEdgeAlpha: 0.50,
-    shadowMidAlpha: 0.34,
-    shadowReach: 0.64,
-});
 
 const CELL_DIRECTION_VECTOR = Object.freeze({
     length: 12.0,
@@ -98,8 +52,6 @@ const CELL_DIRECTION_VECTOR = Object.freeze({
 });
 const selectionStrokeColorCache = new Map();
 const foodPathCache = new Map();
-let cellScratchCanvas = null;
-let cellScratchCtx = null;
 
 const OPTICAL_DENSITY_BG_DARK = Object.freeze({ r: 34, g: 38, b: 46 });
 const OPTICAL_DENSITY_BG_MAX = Object.freeze({ r: 255, g: 255, b: 255 });
@@ -124,18 +76,40 @@ const SELECTED_CELL_RING = Object.freeze({
 
 export function render(ctx, state) {
     if (!state.world || !state.config) return;
+
+    const camera = getCanvasCameraState();
+    const worldSize = Math.max(1, Number(state.config.tubeDiameter) || camera.worldWidth || 1);
+    const visibleBounds = getVisibleWorldBounds(96);
+
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
     ctx.save();
-    clipTube(ctx);
+    ctx.setTransform(
+        camera.dpr * camera.zoom,
+        0,
+        0,
+        camera.dpr * camera.zoom,
+        camera.dpr * camera.x,
+        camera.dpr * camera.y
+    );
+
+    clipTube(ctx, worldSize);
 
     const opticalDensityLayerEnabled = hasOpticalDensityLayer(state);
 
     drawBackground(ctx, state.world.lighting, {
         opticalDensityMode: opticalDensityLayerEnabled,
+        worldWidth: worldSize,
+        worldHeight: worldSize,
     });
 
+    if (state.world.lighting) {
+        drawLightSourceBodies(ctx, state.world.lighting);
+    }
+
     for (const food of state.world.foods) {
-        if (food.capturedByCellId == null) {
+        if (food.capturedByCellId == null && isCircleVisible(food, visibleBounds, 8)) {
             drawFood(ctx, food, state.world.lighting, opticalDensityLayerEnabled);
         }
     }
@@ -145,12 +119,12 @@ export function render(ctx, state) {
     if (!opticalDensityLayerEnabled) {
         const capturedFoods = buildCapturedFoodSlotMap(state.world.foods);
         for (const cell of state.world.cells) {
-            if (cell.dead) continue;
-            drawCell(ctx, cell, state.world.lighting, false, capturedFoods);
+            if (cell.dead || !isCircleVisible(cell, visibleBounds, 24)) continue;
+            drawCell(ctx, cell, state.world.lighting, false, capturedFoods, camera);
         }
         for (const deadCell of state.world.cells) {
-            if (!deadCell.dead) continue;
-            drawDeadCell(ctx, deadCell, state.world.lighting, false, capturedFoods);
+            if (!deadCell.dead || !isCircleVisible(deadCell, visibleBounds, 24)) continue;
+            drawDeadCell(ctx, deadCell, state.world.lighting, false, capturedFoods, camera);
         }
         updateDeadCellEffects();
         drawDeadCellEffects(ctx, false);
@@ -158,24 +132,34 @@ export function render(ctx, state) {
         updateDeadCellEffects();
     }
 
-    drawDisplayLayers(ctx, state.world.lighting, state.displayLayers);
-    drawCellDirectionLayer(ctx, state);
+    drawDisplayLayers(ctx, state.world.lighting, state.displayLayers, {
+        worldWidth: worldSize,
+        worldHeight: worldSize,
+    });
+    drawCellDirectionLayer(ctx, state, visibleBounds);
 
     ctx.restore();
 
-    drawTubeBorder(ctx);
+    ctx.save();
+    ctx.setTransform(
+        camera.dpr * camera.zoom,
+        0,
+        0,
+        camera.dpr * camera.zoom,
+        camera.dpr * camera.x,
+        camera.dpr * camera.y
+    );
 
-    if (state.world.lighting) {
-        drawLightSourceBodies(ctx, state.world.lighting);
-    }
+    drawTubeBorder(ctx, worldSize);
 
     // Selection ring is an interaction overlay, so it stays visible even when
     // Light & Density view hides the cell bodies.
     drawSelectedCellOverlay(ctx, state, opticalDensityLayerEnabled);
+    ctx.restore();
 }
 
-function clipTube(ctx) {
-    const d = ctx.canvas.width;
+function clipTube(ctx, worldSize) {
+    const d = Math.max(1, Number(worldSize) || 1);
     const r = d / 2;
 
     ctx.beginPath();
@@ -183,8 +167,8 @@ function clipTube(ctx) {
     ctx.clip();
 }
 
-function drawTubeBorder(ctx) {
-    const d = ctx.canvas.width;
+function drawTubeBorder(ctx, worldSize) {
+    const d = Math.max(1, Number(worldSize) || 1);
     const r = d / 2;
 
     ctx.beginPath();
@@ -192,6 +176,19 @@ function drawTubeBorder(ctx) {
     ctx.strokeStyle = "rgba(226,232,240,0.35)";
     ctx.lineWidth = 1;
     ctx.stroke();
+}
+
+
+function isCircleVisible(object, bounds, extraPadding = 0) {
+    if (!object || !bounds) return true;
+    const radius = Math.max(0, Number(object.radius) || 0) + Math.max(0, Number(extraPadding) || 0);
+    const x = Number(object.x) || 0;
+    const y = Number(object.y) || 0;
+
+    return x + radius >= bounds.minX
+        && x - radius <= bounds.maxX
+        && y + radius >= bounds.minY
+        && y - radius <= bounds.maxY;
 }
 
 function drawFood(ctx, food, lighting, grayscaleMode = false) {
@@ -220,292 +217,20 @@ function drawFood(ctx, food, lighting, grayscaleMode = false) {
     fillFoodShape(ctx, food, innerFill, FOOD_INNER_BODY.scale);
 }
 
-function drawCell(ctx, cell, lighting, grayscaleMode = false, capturedFoods = null) {
-    const illum = cellIlluminance(cell, lighting);
-    const visual = cell.visual ?? {};
-    const cytosolColor = grayscaleMode ? grayscaleRgb(visual.cytosolColor ?? visual.cellColor) : (visual.cytosolColor ?? visual.cellColor);
-    const membraneColor = grayscaleMode ? grayscaleRgb(visual.membraneColor) : visual.membraneColor;
-    const chloroplastColor = grayscaleMode ? grayscaleRgb(visual.chloroplastColor) : visual.chloroplastColor;
-    const lysosomeColor = grayscaleMode ? grayscaleRgb(visual.lysosomeColor) : visual.lysosomeColor;
-    const nucleoidColor = grayscaleMode ? grayscaleRgb(visual.nucleoidColor) : visual.nucleoidColor;
-
-    const bodyOpacity = cytosolRenderAlpha(cell);
-    const membraneOpacity = membraneRenderAlpha(cell);
-
-    // Strict visual order: cytosol -> organelles -> membrane -> shading.
-    // Low-light color response is restored to the old implementation: biological
-    // colors are modulated by illuminance before the cosmetic shadow/highlight pass.
-    fillBodySolidRgb(ctx, cell.x, cell.y, cell.radius, cytosolColor, bodyOpacity, illum);
-    drawCytosolTexture(ctx, cell, modulateRgb(cytosolColor ?? {r: 200, g: 194, b: 170}, illum), bodyOpacity);
-    drawCellInternalGfpGlow(ctx, cell, visual.gfpColor, bodyOpacity);
-    drawCellOrganelles(ctx, cell, nucleoidColor, chloroplastColor, lysosomeColor, illum, capturedFoods);
-    drawMembraneOverlay(ctx, cell, membraneColor, membraneOpacity, illum);
-    drawCellLightCrescents(ctx, cell);
-}
-
-function drawCellOrganelles(ctx, cell, nucleoidColor, chloroplastColor, lysosomeColor, illum, capturedFoods = null) {
-    drawNucleoid(ctx, cell, nucleoidColor, illum);
-    drawLysosomes(ctx, cell, lysosomeColor, illum, capturedFoods);
-    drawChloroplasts(ctx, cell, chloroplastColor, illum);
-}
-
-function drawNucleoid(ctx, cell, color, illum) {
-    const radius = Math.max(1.2, Number(cell.nucleusRadius ?? 0) || cell.radius * 0.28);
-    const x = cell.x + (Number(cell.nucleusOffsetX ?? 0) || 0);
-    const y = cell.y + (Number(cell.nucleusOffsetY ?? 0) || 0);
-    const fill = modulateRgb(color ?? {r: 82, g: 72, b: 150}, illum);
-    const alpha = clamp01(Math.max(
-        ORGANELLE_VISIBILITY.nucleoidMinAlpha,
-        colorOpacity(cell.visual?.nucleoidColor, 0.46) * ORGANELLE_VISIBILITY.nucleoidBoost
-    ));
-    ctx.save();
-    ctx.globalAlpha = alpha;
-    ctx.fillStyle = rgb(fill, 1.0);
-    ctx.beginPath();
-    ctx.arc(x, y, radius, 0, Math.PI * 2);
-    ctx.fill();
-    drawOrganelleExternalShadow(ctx, x, y, radius, cell.visual, alpha);
-    ctx.restore();
-}
-
-function drawChloroplasts(ctx, cell, color, illum) {
-    const count = Math.max(0, Math.round(cell.visual?.chloroplastAmount ?? 0));
-    const rawOpacity = colorOpacity(cell.visual?.chloroplastColor, 0.0);
-    const opacity = rawOpacity <= 0.001 ? 0.0 : clamp01(Math.max(
-        ORGANELLE_VISIBILITY.chloroplastMinAlpha,
-        rawOpacity * ORGANELLE_VISIBILITY.chloroplastBoost
-    ));
-    const maxVisible = Math.min(count, 24);
-    if (maxVisible <= 0 || opacity <= 0.001) return;
-
-    const fill = modulateRgb(color ?? {r: 170, g: 174, b: 126}, illum);
-    const organelleRadius = clamp(cell.radius * 0.11, 1.25, 3.6);
-    const seed = Number(cell.id) || 1;
-
-    ctx.save();
-    ctx.fillStyle = rgb(fill, opacity);
-    ctx.strokeStyle = rgb({r: Math.max(0, fill.r - 34), g: Math.max(0, fill.g - 34), b: Math.max(0, fill.b - 34)}, opacity * 0.55);
-    ctx.lineWidth = 0.55;
-
-    for (let i = 0; i < maxVisible; i++) {
-        const angle = hash01(seed, i * 2 + 1) * Math.PI * 2;
-        const radial01 = Math.sqrt(hash01(seed, i * 2 + 2));
-        const distance = radial01 * cell.radius * 0.84;
-        const edgeT = smoothstep((radial01 - 0.66) / 0.24);
-        const x = cell.x + Math.cos(angle) * distance;
-        const y = cell.y + Math.sin(angle) * distance;
-        const sx = organelleRadius * 1.34;
-        const sy = organelleRadius * (0.78 - edgeT * 0.34);
-
-        ctx.save();
-        ctx.translate(x, y);
-        const rotation = angle + Math.PI / 2;
-        ctx.rotate(rotation);
-        ctx.beginPath();
-        ctx.ellipse(0, 0, sx, sy, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-        ctx.restore();
-    }
-
-    ctx.restore();
-}
-
-
-function drawLysosomes(ctx, cell, color, illum, capturedFoods = null) {
-    const count = Math.max(0, Math.round(cell.visual?.lysosomeAmount ?? 0));
-    const rawOpacity = colorOpacity(cell.visual?.lysosomeColor, 0.0);
-    const opacity = rawOpacity <= 0.001 ? 0.0 : clamp01(Math.max(
-        ORGANELLE_VISIBILITY.lysosomeMinAlpha,
-        rawOpacity * ORGANELLE_VISIBILITY.lysosomeBoost
-    ));
-    const maxVisible = Math.min(count, 6);
-    if (maxVisible <= 0 || opacity <= 0.001) return;
-
-    const fill = modulateRgb(color ?? {r: 180, g: 36, b: 38}, illum);
-    // Lysosomes are drawn as vesicles only. Internal glow was removed because it
-    // made the organelle look distorted and did not match the preview.
-    const seed = Number(cell.id) || 1;
-
-    const slots = cell.lysosomeSlots ?? [];
-    let fallbackLayouts = null;
-
-    ctx.save();
-    for (let i = 0; i < maxVisible; i++) {
-        const slot = lysosomeSlot(cell, i);
-        let layout = lysosomeLayoutFromSlot(slot);
-        if (!layout) {
-            fallbackLayouts ??= lysosomeLayouts(seed, maxVisible, cell.radius, slots);
-            layout = fallbackLayouts[i];
-        }
-        layout ??= {x: 0, y: 0, r: Math.max(1.2, cell.radius * 0.12), rotation: 0};
-        const capturedFood = capturedFoodForSlot(cell, capturedFoods, i);
-        const foodRadius = Number(capturedFood?.radius ?? slot?.foodRadius ?? 0) || 0;
-        // No internal lysosome glow. Digesting food is visible through the vesicle body.
-        const x = cell.x + layout.x;
-        const y = cell.y + layout.y;
-        const r = layout.r;
-
-
-        fillLysosomeRadial(ctx, x, y, r, layout.rotation, fill, opacity);
-        ctx.strokeStyle = rgb({r: Math.max(0, fill.r - 28), g: Math.max(0, fill.g - 28), b: Math.max(0, fill.b - 28)}, opacity * 0.65);
-        ctx.lineWidth = 0.55;
-        ctx.beginPath();
-        ctx.ellipse(x, y, r * 1.05, r * 0.92, layout.rotation, 0, Math.PI * 2);
-        ctx.stroke();
-
-        if (slot?.occupied && foodRadius > 0) {
-            const fx = Number(capturedFood?.x ?? x);
-            const fy = Number(capturedFood?.y ?? y);
-            const fr = Math.max(0.35, foodRadius);
-            const baseLightness = 33;
-            const shadedLightness = modulateLightness(baseLightness, illum);
-            const innerLightness = Math.round(
-                baseLightness - (baseLightness - shadedLightness) * FOOD_INNER_BODY.darkeningFactor
-            );
-            const foodId = Number(slot.foodId ?? capturedFood?.id ?? i);
-            const fillStyle = organicBrownHsla(shadedLightness, FOOD_INNER_BODY.mainAlpha);
-            const innerStyle = organicBrownHsla(innerLightness, FOOD_INNER_BODY.innerAlpha);
-            fillFoodShapeAt(ctx, foodId, fx, fy, fr, fillStyle, 1.0);
-            fillFoodShapeAt(ctx, foodId, fx, fy, fr, innerStyle, FOOD_INNER_BODY.scale);
-        }
-
-    }
-    ctx.restore();
-}
-
-
-function lysosomeLayoutFromSlot(slot) {
-    const r = Number(slot?.layoutRadius ?? 0);
-    const x = Number(slot?.layoutX ?? NaN);
-    const y = Number(slot?.layoutY ?? NaN);
-    if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(r) || r <= 0) return null;
-    return {x, y, r, rotation: Number(slot?.layoutRotation ?? 0) || 0};
-}
-
-function lysosomeSlot(cell, index) {
-    return (cell.lysosomeSlots ?? []).find(slot => Math.round(Number(slot.index)) === index) ?? null;
-}
-
-function buildCapturedFoodSlotMap(foods = []) {
-    const captured = new Map();
-    for (const food of foods ?? []) {
-        if (food?.capturedByCellId == null) continue;
-        const cellId = Number(food.capturedByCellId);
-        const slotIndex = Math.round(Number(food.digestionSlotIndex));
-        if (!Number.isFinite(cellId) || !Number.isFinite(slotIndex)) continue;
-        captured.set(`${cellId}:${slotIndex}`, food);
-    }
-    return captured;
-}
-
-function capturedFoodForSlot(cell, capturedFoods, index) {
-    const cellId = Number(cell?.id);
-    if (!Number.isFinite(cellId)) return null;
-    if (capturedFoods?.get) {
-        return capturedFoods.get(`${cellId}:${index}`) ?? null;
-    }
-    return (capturedFoods ?? []).find(food => Number(food?.capturedByCellId) === cellId && Math.round(Number(food?.digestionSlotIndex)) === index) ?? null;
-}
-
-function lysosomeLayouts(seed, count, radius, slots = []) {
-    const visibleCount = Math.min(6, Math.max(0, Math.round(count ?? 0)));
-    const positions = [];
-    const radii = [];
-    const nucleusRadius = radius * 0.28;
-    const margin = Math.max(0.18, radius * 0.018);
-    const goldenAngle = Math.PI * (3 - Math.sqrt(5));
-
-    for (let i = 0; i < visibleCount; i++) {
-        radii[i] = lysosomeLayoutRadius(radius, slots.find(slot => Math.round(Number(slot.index)) === i));
-    }
-
-    for (let i = 0; i < visibleCount; i++) {
-        const r = radii[i];
-        let minDistance = Math.min(radius * 0.82, nucleusRadius + r + margin);
-        const maxDistance = Math.max(0, radius - r - margin);
-        if (maxDistance < minDistance) minDistance = maxDistance;
-
-        const baseAngle = hash01(seed + 1709, i * 3 + 1) * Math.PI * 2;
-        const radialHash = hash01(seed + 1709, i * 3 + 2);
-        const desiredDistance = minDistance + (maxDistance - minDistance) * (0.18 + 0.76 * radialHash);
-        let best = {
-            x: Math.cos(baseAngle) * desiredDistance,
-            y: Math.sin(baseAngle) * desiredDistance,
-            score: Number.POSITIVE_INFINITY,
-        };
-
-        for (let attempt = 0; attempt < 12; attempt++) {
-            const angle = baseAngle + goldenAngle * attempt;
-            const distanceT = hash01(seed + 1709, i * 97 + attempt * 7 + 11);
-            const distance = attempt === 0 ? desiredDistance : minDistance + (maxDistance - minDistance) * distanceT;
-            const x = Math.cos(angle) * distance;
-            const y = Math.sin(angle) * distance;
-            let score = Math.abs(distance - desiredDistance) * 0.20 + Math.abs(Math.sin((angle - baseAngle) * 0.5)) * radius * 0.04;
-
-            const nucleusGap = Math.hypot(x, y) - nucleusRadius - r - margin;
-            if (nucleusGap < 0) score += 10000 + Math.abs(nucleusGap) * 1000;
-
-            const edgeGap = radius - Math.hypot(x, y) - r - margin;
-            if (edgeGap < 0) score += 10000 + Math.abs(edgeGap) * 1000;
-
-            for (let j = 0; j < positions.length; j++) {
-                const gap = Math.hypot(x - positions[j].x, y - positions[j].y) - r - radii[j] - margin;
-                if (gap < 0) score += 10000 + Math.abs(gap) * 1000;
-            }
-
-            if (score < best.score) best = {x, y, score};
-        }
-
-        positions[i] = {x: best.x, y: best.y, r, rotation: baseAngle * 0.25};
-    }
-
-    return positions;
-}
-
-function lysosomeLayoutRadius(cellRadius, slot) {
-    const base = Math.sqrt(5.2 / Math.PI) * 1.15;
-    const foodRadius = Number(slot?.foodRadius ?? slot?.targetFoodRadius ?? 0) || 0;
-    const stretched = foodRadius > 0 ? foodRadius * 1.22 : base;
-    return Math.max(0.35, Math.max(base, stretched));
-}
-
-function drawCellInternalGfpGlow(ctx, cell, color, baseAlpha) {
-    drawInternalGfpGlow(ctx, {
-        x: cell.x,
-        y: cell.y,
-        radius: cell.radius,
-        color: color ?? {r: 83, g: 255, b: 139},
-        expression: cell.visual?.gfpExpression ?? normalizedGfp(cell),
-        baseAlpha,
-        rgba: rgb,
+function drawCell(ctx, cell, lighting, grayscaleMode = false, capturedFoods = null, camera = null) {
+    drawBiologyCell(ctx, cell, {
+        lighting,
+        grayscale: grayscaleMode,
+        capturedFoods,
+        layerCount: 3,
+        cacheStaticBase: true,
+        renderScale: (camera?.zoom ?? 1) * (camera?.dpr ?? 1),
     });
 }
 
-function drawMembraneOverlay(ctx, cell, color, alpha, illum) {
-    const baseAlpha = clamp01(alpha);
-    if (baseAlpha <= 0.001) return;
-
-    const c = modulateRgb(color ?? {r: 206, g: 197, b: 172}, illum);
-    const gradient = ctx.createRadialGradient(cell.x, cell.y, cell.radius * 0.08, cell.x, cell.y, cell.radius);
-    gradient.addColorStop(0.0, rgb(c, baseAlpha * 0.18));
-    gradient.addColorStop(0.68, rgb(c, baseAlpha * 0.34));
-    gradient.addColorStop(0.90, rgb(c, baseAlpha * 0.70));
-    gradient.addColorStop(0.98, rgb(c, baseAlpha * 0.96));
-    gradient.addColorStop(1.0, rgb(c, baseAlpha));
-
-    ctx.save();
-    ctx.fillStyle = gradient;
-    ctx.beginPath();
-    ctx.arc(cell.x, cell.y, cell.radius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-}
-
-
-function drawDeadCell(ctx, deadCell, lighting, grayscaleMode = false, capturedFoods = null) {
+function drawDeadCell(ctx, deadCell, lighting, grayscaleMode = false, capturedFoods = null, camera = null) {
     const illum = cellIlluminance(deadCell, lighting);
-    drawCell(ctx, deadCell, lighting, grayscaleMode, capturedFoods);
+    drawCell(ctx, deadCell, lighting, grayscaleMode, capturedFoods, camera);
 
     const l = modulateLightness(ORGANIC_BROWN_COLOR.l, illum);
     const overlayAlpha = clamp01(0.42 + Math.min(0.35, (deadCell.lifetimeTicks ?? 0) / 180));
@@ -551,161 +276,12 @@ function modulateLightness(baseLightness, illuminance) {
     return Math.round(minL + (baseLightness - minL) * illuminance);
 }
 
-function drawCellLightCrescents(ctx, cell) {
-    const visual = cell.visual ?? {};
-    const shadowAngleDeg = visual.lightDirectionAngle;
-    const rawShadowGradient = visual.lightGradient;
-    const highlightAngleDeg = visual.highlightDirectionAngle;
-    const rawHighlightStrength = visual.highlightStrength;
-    const rawHighlightClarity = visual.highlightClarity;
-
-    const cellOpacity = cellRenderAlpha(cell);
-    const shadowStrength = Number.isFinite(rawShadowGradient)
-        ? clamp01(Math.max(0, rawShadowGradient) * CELL_LIGHTING_DETAIL.gradientScale)
-        : 0.0;
-    const highlightStrength = Number.isFinite(rawHighlightStrength)
-        ? clamp01(Math.max(0, rawHighlightStrength))
-        : 0.0;
-    const highlightClarity = Number.isFinite(rawHighlightClarity)
-        ? clamp01(rawHighlightClarity)
-        : 0.0;
-
-    const shadowAlpha = CELL_LIGHTING_DETAIL.maxShadowAlpha * shadowStrength * cellOpacity;
-    const highlightAlpha = CELL_LIGHTING_DETAIL.maxHighlightAlpha * highlightStrength * cellOpacity;
-
-    if (highlightAlpha <= 0.001 && shadowAlpha <= 0.001) return;
-
-    const radius = cell.radius;
-
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(cell.x, cell.y, radius, 0, Math.PI * 2);
-    ctx.clip();
-    ctx.translate(cell.x, cell.y);
-
-    if (shadowAlpha > 0.001 && Number.isFinite(shadowAngleDeg)) {
-        ctx.save();
-        ctx.rotate(shadowAngleDeg * Math.PI / 180.0);
-        drawSoftCellSideShadow(ctx, radius, shadowAlpha, shadowStrength * cellOpacity);
-        ctx.restore();
-    }
-
-    if (highlightAlpha > 0.001 && Number.isFinite(highlightAngleDeg)) {
-        ctx.save();
-        ctx.rotate(highlightAngleDeg * Math.PI / 180.0);
-        drawSoftCellHighlightCrescent(
-            ctx,
-            radius,
-            highlightAlpha,
-            highlightStrength * cellOpacity,
-            highlightClarity
-        );
-        ctx.restore();
-    }
-
-    ctx.restore();
-}
-
-function drawSoftCellHighlightCrescent(ctx, radius, alpha, strength, clarity = 1.0) {
-    const crispness = clamp01(clarity);
-    const softness = 1.0 - crispness;
-    const mainAlpha = clamp01(alpha * (0.82 + 0.18 * crispness));
-    const coreAlpha = clamp01(
-        CELL_LIGHTING_DETAIL.highlightCoreAlpha
-        * strength
-        * (0.44 + 0.56 * crispness)
-    );
-    if (mainAlpha <= 0.001 && coreAlpha <= 0.001) return;
-
-    const outerRadius = radius * (0.80 + softness * 0.14);
-    const innerRadius = radius * (0.06 + softness * 0.03);
-    const centerX = radius * 0.78;
-    const centerY = -radius * 0.06;
-    const scaleY = 0.70 - softness * 0.08;
-
-    ctx.save();
-    ctx.globalCompositeOperation = "screen";
-    ctx.translate(centerX, centerY);
-    ctx.scale(1, scaleY);
-
-    const gradient = ctx.createRadialGradient(0, 0, innerRadius, 0, 0, outerRadius);
-    gradient.addColorStop(0.00, `rgba(255, 255, 255, ${(mainAlpha * 0.90).toFixed(3)})`);
-    gradient.addColorStop(0.22, `rgba(255, 255, 255, ${(mainAlpha * 0.64).toFixed(3)})`);
-    gradient.addColorStop(0.50, `rgba(255, 255, 255, ${(mainAlpha * 0.20).toFixed(3)})`);
-    gradient.addColorStop(0.80, `rgba(255, 255, 255, ${(mainAlpha * 0.05).toFixed(3)})`);
-    gradient.addColorStop(1.00, "rgba(255, 255, 255, 0)");
-    ctx.fillStyle = gradient;
-    ctx.beginPath();
-    ctx.arc(0, 0, outerRadius, 0, Math.PI * 2);
-    ctx.fill();
-
-    if (coreAlpha > 0.001) {
-        const coreGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, radius * 0.30);
-        coreGradient.addColorStop(0.00, `rgba(255, 255, 255, ${coreAlpha.toFixed(3)})`);
-        coreGradient.addColorStop(0.42, `rgba(255, 255, 255, ${(coreAlpha * 0.20).toFixed(3)})`);
-        coreGradient.addColorStop(1.00, "rgba(255, 255, 255, 0)");
-        ctx.fillStyle = coreGradient;
-        ctx.beginPath();
-        ctx.arc(0, 0, radius * 0.30, 0, Math.PI * 2);
-        ctx.fill();
-    }
-
-    ctx.restore();
-}
-
-function drawSoftCellSideShadow(ctx, radius, alpha, strength) {
-    const edgeAlpha = clamp01(Math.max(
-        alpha * CELL_LIGHTING_DETAIL.shadowEdgeAlpha,
-        CELL_LIGHTING_DETAIL.shadowEdgeAlpha * strength
-    ));
-    const midAlpha = clamp01(CELL_LIGHTING_DETAIL.shadowMidAlpha * strength);
-    if (edgeAlpha <= 0.001 && midAlpha <= 0.001) return;
-
-    ctx.save();
-    ctx.globalCompositeOperation = "multiply";
-
-    const gradient = ctx.createLinearGradient(-radius, 0, radius, 0);
-    gradient.addColorStop(0.00, `rgba(0, 0, 0, ${edgeAlpha.toFixed(3)})`);
-    gradient.addColorStop(0.32, `rgba(0, 0, 0, ${midAlpha.toFixed(3)})`);
-    gradient.addColorStop(CELL_LIGHTING_DETAIL.shadowReach, "rgba(0, 0, 0, 0)");
-    gradient.addColorStop(1.00, "rgba(0, 0, 0, 0)");
-
-    ctx.fillStyle = gradient;
-    ctx.beginPath();
-    ctx.arc(0, 0, radius, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.restore();
-}
-
-function beginRightHighlightCrescentPath(ctx, radius) {
-    const innerCenterX = -radius * CELL_LIGHTING_DETAIL.highlightInnerCircleShift;
-    const innerRadius = radius * CELL_LIGHTING_DETAIL.highlightInnerCircleRadius;
-    const distance = Math.max(1.0e-6, Math.abs(innerCenterX));
-
-    const intersectionX = clamp(
-        (radius * radius - innerRadius * innerRadius + distance * distance) / (2 * distance),
-        -radius * 0.98,
-        radius * 0.98
-    );
-    const intersectionY = Math.sqrt(Math.max(0.0, radius * radius - intersectionX * intersectionX));
-
-    const outerAngle = Math.atan2(intersectionY, intersectionX);
-    const innerTopAngle = Math.atan2(intersectionY, intersectionX - innerCenterX);
-    const innerBottomAngle = Math.atan2(-intersectionY, intersectionX - innerCenterX);
-
-    ctx.beginPath();
-    ctx.moveTo(intersectionX, -intersectionY);
-    ctx.arc(0, 0, radius, -outerAngle, outerAngle, false);
-    ctx.arc(innerCenterX, 0, innerRadius, innerTopAngle, innerBottomAngle, true);
-    ctx.closePath();
-}
-
-function drawCellDirectionLayer(ctx, state) {
+function drawCellDirectionLayer(ctx, state, visibleBounds = null) {
     if (!state.displayLayers?.cellDirections) return;
 
     for (const cell of state.world.cells) {
         if (cell.dead) continue;
+        if (visibleBounds && !isCircleVisible(cell, visibleBounds, CELL_DIRECTION_VECTOR.length + 4)) continue;
         drawDirectionVector(ctx, cell);
     }
 }
@@ -758,90 +334,6 @@ function drawDirectionVector(ctx, cell) {
 }
 
 
-function drawCytosolTexture(ctx, cell, color, alpha) {
-    const baseAlpha = clamp01(alpha) * CYTOSOL_TEXTURE.alpha;
-    if (baseAlpha <= 0.001 || !Number.isFinite(Number(cell?.radius)) || cell.radius <= 0) return;
-
-    const seed = Number(cell.id) || 1;
-    const granules = Math.min(CYTOSOL_TEXTURE.granules, Math.max(4, Math.round(cell.radius * 0.30)));
-    const c = color ?? {r: 200, g: 194, b: 170};
-
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(cell.x, cell.y, cell.radius * 0.96, 0, Math.PI * 2);
-    ctx.clip();
-
-    for (let i = 0; i < granules; i++) {
-        const angle = hash01(seed + 3907, i * 2 + 1) * Math.PI * 2;
-        const radial = Math.sqrt(hash01(seed + 3907, i * 2 + 2)) * cell.radius * 0.82;
-        const x = cell.x + Math.cos(angle) * radial;
-        const y = cell.y + Math.sin(angle) * radial;
-        const r = cell.radius * (CYTOSOL_TEXTURE.minRadius + (CYTOSOL_TEXTURE.maxRadius - CYTOSOL_TEXTURE.minRadius) * hash01(seed + 3907, i * 3 + 5)) * 0.018;
-        ctx.fillStyle = rgb({r: Math.min(255, c.r + 18), g: Math.min(255, c.g + 18), b: Math.min(255, c.b + 18)}, baseAlpha * (0.65 + 0.35 * hash01(seed + 3907, i * 5 + 7)));
-        ctx.beginPath();
-        ctx.arc(x, y, Math.max(0.25, r), 0, Math.PI * 2);
-        ctx.fill();
-    }
-    ctx.restore();
-}
-
-function fillLysosomeRadial(ctx, x, y, radius, rotation, color, alpha) {
-    const a = clamp01(alpha);
-    if (a <= 0.001) return;
-    const center = color ?? {r: 180, g: 36, b: 38};
-    const midEdge = {r: Math.max(0, center.r - 16), g: Math.max(0, center.g - 16), b: Math.max(0, center.b - 16)};
-    const edge = {r: Math.max(0, center.r - 46), g: Math.max(0, center.g - 46), b: Math.max(0, center.b - 46)};
-
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(rotation);
-    ctx.scale(1.05, 0.92);
-    const gradient = ctx.createRadialGradient(0, 0, radius * 0.04, 0, 0, radius);
-    gradient.addColorStop(0.00, rgb(center, a));
-    gradient.addColorStop(0.48, rgb(center, a * 0.98));
-    gradient.addColorStop(0.82, rgb(midEdge, a * 0.97));
-    gradient.addColorStop(1.00, rgb(edge, a));
-    ctx.fillStyle = gradient;
-    ctx.beginPath();
-    ctx.arc(0, 0, radius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-}
-
-function drawOrganelleExternalShadow(ctx, x, y, radius, visual, opacity) {
-    const angleDeg = visual?.lightDirectionAngle;
-    const rawGradient = visual?.lightGradient;
-    const strength = Number.isFinite(rawGradient)
-        ? clamp01(Math.max(0, rawGradient) * CELL_LIGHTING_DETAIL.gradientScale)
-        : 0.0;
-    const alpha = CELL_LIGHTING_DETAIL.maxShadowAlpha * strength * clamp01(opacity);
-    if (alpha <= 0.001 || !Number.isFinite(angleDeg)) return;
-
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(x, y, radius, 0, Math.PI * 2);
-    ctx.clip();
-    ctx.translate(x, y);
-    ctx.rotate(angleDeg * Math.PI / 180.0);
-    drawSoftCellSideShadow(ctx, radius, alpha, strength * clamp01(opacity));
-    ctx.restore();
-}
-
-function fillBodySolidRgb(targetCtx, x, y, radius, color, alpha = 1.0, illum = 1.0) {
-    const baseAlpha = clamp01(alpha);
-    if (baseAlpha <= 0.0) return;
-
-    const c = modulateRgb(color ?? {r: 200, g: 194, b: 170}, illum);
-
-    targetCtx.save();
-    targetCtx.fillStyle = rgb(c, baseAlpha);
-    targetCtx.beginPath();
-    targetCtx.arc(x, y, radius, 0, Math.PI * 2);
-    targetCtx.fill();
-    targetCtx.restore();
-}
-
-
 function fillCellRadialHsl(targetCtx, x, y, radius, hue, saturation, lightness, alpha = 1.0) {
     const baseAlpha = clamp01(alpha);
     if (baseAlpha <= 0.0) return;
@@ -872,46 +364,6 @@ function fillCellRadialHsl(targetCtx, x, y, radius, hue, saturation, lightness, 
 }
 
 
-function drawDeadCellShadingFilter(ctx, cell, illum, grayscaleMode = false) {
-    const radius = Number(cell?.radius ?? 0);
-    if (!Number.isFinite(radius) || radius <= 0) return;
-
-    const lightness = modulateLightness(ORGANIC_BROWN_COLOR.l, illum);
-    const overlayAlpha = clamp01(0.42 + Math.min(0.35, (Number(cell?.lifetimeTicks ?? 0) || 0) / 180));
-
-    ctx.save();
-    ctx.globalCompositeOperation = grayscaleMode ? "source-over" : "multiply";
-    fillCellRadialHsl(
-        ctx,
-        0,
-        0,
-        radius,
-        ORGANIC_BROWN_COLOR.h,
-        ORGANIC_BROWN_COLOR.s,
-        lightness,
-        overlayAlpha
-    );
-    ctx.restore();
-}
-
-function oldLowLightDimmingAlpha(illum, opacity) {
-    const darkness = 1.0 - clamp01(illum);
-    if (darkness <= 0.001) return 0.0;
-    return clamp01(darkness * (0.66 + 0.16 * clamp01(opacity)));
-}
-
-function drawCellOldLowLightDimming(ctx, radius, alpha) {
-    const a = clamp01(alpha);
-    if (a <= 0.001) return;
-    ctx.save();
-    ctx.globalCompositeOperation = "multiply";
-    ctx.fillStyle = `rgba(0, 0, 0, ${a.toFixed(3)})`;
-    ctx.beginPath();
-    ctx.arc(0, 0, radius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-}
-
 function colorOpacity(color, fallback = 1.0) {
     const value = Number(color?.opacity ?? fallback);
     return clamp01(Number.isFinite(value) ? value : fallback);
@@ -923,64 +375,6 @@ function cellRenderAlpha(cell) {
         return 0.0;
     }
     return clamp(realOpacity * REAL_CELL_OPACITY_TO_RENDER_ALPHA, MIN_CELL_RENDER_ALPHA, MAX_CELL_RENDER_ALPHA);
-}
-
-function cytosolRenderAlpha(cell) {
-    const realOpacity = Math.max(0.0, Number(cell?.visual?.cytosolColor?.opacity ?? cell?.visual?.cellColor?.opacity ?? cell?.opacity ?? 1.0));
-    if (realOpacity <= 0.0) {
-        return 0.0;
-    }
-    return clamp(realOpacity * REAL_CELL_OPACITY_TO_RENDER_ALPHA, MIN_CELL_RENDER_ALPHA, MAX_CELL_RENDER_ALPHA);
-}
-
-function membraneRenderAlpha(cell) {
-    const realOpacity = Math.max(0.0, Number(cell?.visual?.membraneColor?.opacity ?? 0.0));
-    if (realOpacity <= 0.0) {
-        return 0.0;
-    }
-    return clamp(realOpacity * REAL_CELL_OPACITY_TO_RENDER_ALPHA, 0.05, 0.88);
-}
-
-function fillCellRadialRgb(targetCtx, x, y, radius, color, alpha = 1.0, illum = 1.0) {
-    const baseAlpha = clamp01(alpha);
-    if (baseAlpha <= 0.0) return;
-
-    const c = modulateRgb(color ?? {r: 200, g: 194, b: 170}, illum);
-    const centerAlpha = clamp01(baseAlpha * CELL_RADIAL_ALPHA.centerFactor);
-    const midAlpha = clamp01(baseAlpha * CELL_RADIAL_ALPHA.midFactor);
-    const edgeAlpha = clamp01(baseAlpha * CELL_RADIAL_ALPHA.edgeFactor);
-
-    const gradient = targetCtx.createRadialGradient(x, y, Math.max(0.0, radius * 0.04), x, y, radius);
-    gradient.addColorStop(0.0, rgb(c, centerAlpha));
-    gradient.addColorStop(0.55, rgb(c, midAlpha));
-    gradient.addColorStop(CELL_RADIAL_ALPHA.edgeStop, rgb(c, edgeAlpha));
-    gradient.addColorStop(1.0, rgb(c, edgeAlpha));
-
-    targetCtx.save();
-    targetCtx.beginPath();
-    targetCtx.arc(x, y, radius, 0, Math.PI * 2);
-    targetCtx.fillStyle = gradient;
-    targetCtx.fill();
-    targetCtx.restore();
-}
-
-function fillBodyRadialRgb(targetCtx, x, y, radius, color, alpha = 1.0, illum = 1.0) {
-    const baseAlpha = clamp01(alpha);
-    if (baseAlpha <= 0.0) return;
-
-    const c = modulateRgb(color ?? {r: 200, g: 194, b: 170}, illum);
-    const gradient = targetCtx.createRadialGradient(x, y, Math.max(0.0, radius * 0.03), x, y, radius);
-    gradient.addColorStop(0.0, rgb(c, baseAlpha));
-    gradient.addColorStop(0.58, rgb(c, baseAlpha * 0.88));
-    gradient.addColorStop(0.92, rgb(c, baseAlpha * 0.64));
-    gradient.addColorStop(1.0, rgb(c, baseAlpha * 0.54));
-
-    targetCtx.save();
-    targetCtx.beginPath();
-    targetCtx.arc(x, y, radius, 0, Math.PI * 2);
-    targetCtx.fillStyle = gradient;
-    targetCtx.fill();
-    targetCtx.restore();
 }
 
 function hash01(seed, salt) {
@@ -1009,121 +403,6 @@ function grayscaleRgb(color) {
 
 function rgb(color, alpha = 1.0) {
     return `rgba(${Math.round(color?.r ?? 255)}, ${Math.round(color?.g ?? 255)}, ${Math.round(color?.b ?? 255)}, ${clamp01(alpha).toFixed(3)})`;
-}
-
-function normalizedGfp(cell) {
-    return clamp01((cell?.genome?.gfp ?? 0) / 100.0);
-}
-
-function fluorescentLightnessBoost(lightness, gfp) {
-    const strength = Math.pow(clamp01(gfp), 0.50);
-    return clamp(lightness + GFP_GLOW.bodyLightnessBoost * strength, 0, 96);
-}
-
-function fluorescentSaturationBoost(saturation, gfp) {
-    return clamp(saturation + GFP_GLOW.bodySaturationBoost * clamp01(gfp), 0, 100);
-}
-
-function drawFluorescentCellBody(ctx, cell, hue, saturation, lightness, alpha, gfp) {
-    const padding = Math.ceil(Math.max(3, cell.radius * 0.08));
-    const size = Math.ceil(cell.radius * 2 + padding * 2);
-    const scratch = cellScratch(size);
-    if (!scratch?.ctx) {
-        fillCellRadialHsl(ctx, cell.x, cell.y, cell.radius, hue, saturation, lightness, alpha);
-        return;
-    }
-
-    const localCtx = scratch.ctx;
-    const center = size * 0.5;
-    localCtx.clearRect(0, 0, size, size);
-
-    fillCellRadialHsl(localCtx, center, center, cell.radius, hue, saturation, lightness, alpha);
-    drawCellInternalFluorescenceGlow(localCtx, center, center, cell.radius, alpha, gfp);
-
-    ctx.drawImage(cellScratchCanvas, cell.x - center, cell.y - center);
-}
-
-function cellScratch(size) {
-    if (!Number.isFinite(size) || size <= 0) {
-        return null;
-    }
-
-    if (!cellScratchCanvas) {
-        cellScratchCanvas = document.createElement("canvas");
-        cellScratchCtx = cellScratchCanvas.getContext("2d");
-    }
-
-    if (!cellScratchCtx) {
-        return null;
-    }
-
-    if (cellScratchCanvas.width !== size || cellScratchCanvas.height !== size) {
-        cellScratchCanvas.width = size;
-        cellScratchCanvas.height = size;
-    }
-
-    return { ctx: cellScratchCtx };
-}
-
-function drawCellInternalFluorescenceGlow(ctx, x, y, radius, baseAlpha, gfp) {
-    if (gfp <= 0.001) {
-        return;
-    }
-
-    // The source-atop blend is applied on a transparent scratch cell layer.
-    // It preserves the existing radial alpha mask, so GFP brightens only the
-    // visible cell body and never creates an opaque green disk.
-    const alpha = clamp01(Math.pow(gfp, 0.46) * (0.92 + 0.08 * baseAlpha));
-    const glow = ctx.createRadialGradient(
-        x,
-        y,
-        0,
-        x,
-        y,
-        radius
-    );
-    glow.addColorStop(
-        0.00,
-        hsla(
-            GFP_FLUORESCENCE_COLOR.hue,
-            GFP_FLUORESCENCE_COLOR.saturation,
-            GFP_FLUORESCENCE_COLOR.lightness,
-            GFP_GLOW.internalCoreAlpha * alpha
-        )
-    );
-    glow.addColorStop(
-        0.42,
-        hsla(
-            GFP_FLUORESCENCE_COLOR.hue,
-            GFP_FLUORESCENCE_COLOR.saturation,
-            GFP_FLUORESCENCE_COLOR.lightness,
-            GFP_GLOW.internalMidAlpha * alpha
-        )
-    );
-    glow.addColorStop(
-        0.92,
-        hsla(
-            GFP_FLUORESCENCE_COLOR.hue,
-            GFP_FLUORESCENCE_COLOR.saturation,
-            GFP_FLUORESCENCE_COLOR.lightness,
-            GFP_GLOW.internalEdgeAlpha * alpha
-        )
-    );
-    glow.addColorStop(
-        1.00,
-        hsla(GFP_FLUORESCENCE_COLOR.hue, GFP_FLUORESCENCE_COLOR.saturation, GFP_FLUORESCENCE_COLOR.lightness, 0)
-    );
-
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(x, y, radius, 0, Math.PI * 2);
-    ctx.clip();
-    ctx.globalCompositeOperation = "source-atop";
-    ctx.fillStyle = glow;
-    ctx.beginPath();
-    ctx.arc(x, y, radius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
 }
 
 function hsla(hue, saturation, lightness, alpha) {
@@ -1393,6 +672,7 @@ function clamp01(value) {
     if (!Number.isFinite(value)) return 0;
     return Math.max(0, Math.min(1, value));
 }
+
 
 
 

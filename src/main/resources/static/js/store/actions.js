@@ -1,3 +1,4 @@
+
 /**
  * store/actions.js
  * Высокоуровневые действия симуляции: загрузка конфига, сброс, пауза.
@@ -18,6 +19,7 @@ import {
     updateTimeDisplay,
 } from "../ui/toolbar.js";
 import { t } from "../localization/localization.js";
+import { setCanvasWorldSize, syncCanvasCameraToViewport } from "../ui/panels/canvas-camera.js";
 
 // ── Конфигурация ─────────────────────────────────────────────────────────────
 
@@ -33,12 +35,8 @@ export async function loadSimulationConfig() {
 export function applySimulationConfig() {
     if (!state.config) return;
 
-    if (dom.canvas.width !== state.config.tubeDiameter) {
-        dom.canvas.width = state.config.tubeDiameter;
-    }
-    if (dom.canvas.height !== state.config.tubeDiameter) {
-        dom.canvas.height = state.config.tubeDiameter;
-    }
+    setCanvasWorldSize(state.config.tubeDiameter);
+    syncCanvasCameraToViewport();
 
     if (!sliderState.isDragging) {
         dom.timeSlider.value = String(state.config.timeSlider?.value ?? 50);
@@ -124,5 +122,7 @@ export async function togglePause() {
     updateStats();
     render(dom.ctx, state);
 }
+
+
 
 

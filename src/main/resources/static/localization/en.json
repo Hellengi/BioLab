@@ -335,7 +335,7 @@
   "on": "on",
   "stats.line": "stats.line",
   "threshold / impulse / angle": "threshold / impulse / angle",
-  "time.yearsDays": "time.yearsDays",
+  "time.yearsDays": "{years}y {days}d",
   "tps": "tps",
   "true": "true",
   "Русский": "Русский"

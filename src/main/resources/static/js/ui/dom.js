@@ -1,3 +1,4 @@
+
 function requireEl(id) {
     const el = document.getElementById(id);
     if (!el) throw new Error(`Required DOM element not found: #${id}`);
@@ -29,6 +30,7 @@ export function bindDom() {
     dom.fpsValue = optionalEl("fpsValue");
     dom.tpsValue = optionalEl("tpsValue");
     dom.environmentScroll = optionalEl("environmentScroll") ?? document.querySelector(".environment-scroll");
+    dom.environmentWrap = dom.environmentScroll?.querySelector(".environment-wrap") ?? optionalEl("environmentWrap");
     dom.timeDisplay = optionalEl("timeDisplay");
     dom.timeYearsDays = optionalEl("timeYearsDays");
     dom.timeClock = optionalEl("timeClock");
@@ -241,6 +243,8 @@ export function bindDom() {
     dom.loadCellDeleteBtn = optionalEl("loadCellDeleteBtn");
     dom.loadCellConfirmBtn = optionalEl("loadCellConfirmBtn");
 }
+
+
 
 
 

@@ -1,5 +1,6 @@
 import {preparePreviewCanvas} from "../core/utils.js";
 import {drawInternalGfpGlow} from "./gfp.js";
+import {drawBiologyCell} from "./cell-renderer.js";
 import {t} from "../localization/localization.js";
 import {dom} from "../ui/dom.js";
 import {setCreateInfoScope, setSelectedInfoScope, state} from "../store/state.js";
@@ -282,13 +283,30 @@ function _hitAt(kind, event) {
 
 function _canvasPoint(canvas, event) {
     const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / Math.max(1, rect.width);
-    const scaleY = canvas.height / Math.max(1, rect.height);
-    return {x: (event.clientX - rect.left) * scaleX, y: (event.clientY - rect.top) * scaleY};
+    return {
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top,
+    };
 }
 
 function _canvasCenter(canvas) {
-    return {x: canvas.width / 2, y: canvas.height / 2};
+    return {
+        x: _previewLogicalWidth(canvas) / 2,
+        y: _previewLogicalHeight(canvas) / 2,
+    };
+}
+
+function _previewLogicalWidth(canvas) {
+    return Math.max(1, Number(canvas?.dataset?.logicalWidth) || canvas?.clientWidth || canvas?.width || 1);
+}
+
+function _previewLogicalHeight(canvas) {
+    return Math.max(1, Number(canvas?.dataset?.logicalHeight) || canvas?.clientHeight || canvas?.height || 1);
+}
+
+function _previewRenderScale(ctx) {
+    const canvas = ctx?.canvas;
+    return Math.max(1, Number(canvas?.dataset?.previewDpr) || window.devicePixelRatio || 1);
 }
 
 function _hitFromTargets(targets, point) {
@@ -543,178 +561,46 @@ function _drawPreviewBiologyCell(
     mode = "general"
 ) {
     const normalizedMode = String(mode ?? "general").toLowerCase();
-    const diagnosticMode = normalizedMode === "health" || normalizedMode === "energy";
-    const sourceCytosolColor = visual.cytosolColor ?? visual.cellColor;
-    const sourceMembraneColor = visual.membraneColor;
-    const sourceChloroplastColor = visual.chloroplastColor;
-    const sourceLysosomeColor = visual.lysosomeColor;
-    const sourceNucleoidColor = visual.nucleoidColor;
-
-    const illum = normalizedMode === "general" ? _previewIlluminance(worldCell) : 1.0;
-
-    const cytosolColor = _modulatePreviewRgb(sourceCytosolColor, illum);
-    const membraneColor = _modulatePreviewRgb(sourceMembraneColor, illum);
-    const chloroplastColor = _modulatePreviewRgb(sourceChloroplastColor, illum);
-    const lysosomeColor = _modulatePreviewRgb(sourceLysosomeColor, illum);
-    const nucleoidColor = _modulatePreviewRgb(sourceNucleoidColor, illum);
-
-    const cytosolOpacity = _previewAlpha(
-        sourceCytosolColor?.opacity ?? visual.cellColor?.opacity ?? worldCell?.opacity ?? 0.1
-    );
-    const membraneOpacity = _previewAlpha(sourceMembraneColor?.opacity ?? DEFAULT_MEMBRANE_OPACITY, 0.05, 0.88);
-    const chloroplastOpacity = diagnosticMode
-        ? _diagnosticOrganelleAlpha(sourceChloroplastColor?.opacity ?? 0)
-        : _previewOrganelleAlpha(sourceChloroplastColor?.opacity ?? 0, "chloroplast");
-    const lysosomeOpacity = diagnosticMode
-        ? _diagnosticOrganelleAlpha(sourceLysosomeColor?.opacity ?? 0)
-        : _previewOrganelleAlpha(sourceLysosomeColor?.opacity ?? 0, "lysosome");
-    const nucleoidOpacity = diagnosticMode
-        ? _diagnosticOrganelleAlpha(sourceNucleoidColor?.opacity ?? 0.62)
-        : _previewOrganelleAlpha(sourceNucleoidColor?.opacity ?? 0.62, "nucleoid");
-
-    const layers = diagnosticMode ? 3 : _previewLayerCount(layerCount);
-    const organellesOnly = !diagnosticMode && layers === 1;
-    const showCytosol = true;
-    const showOrganelles = true;
-    const canSelectCytosol = !organellesOnly;
-    const canSelectMembrane = !organellesOnly;
-    const showMembrane = diagnosticMode || layers >= 2;
-    const showShading = !diagnosticMode && layers >= 3;
-    const decorative = normalizedMode === "general";
-    const showGfp = decorative;
+    const layers = normalizedMode === "health" || normalizedMode === "energy" ? 3 : _previewLayerCount(layerCount);
     const previewKind = worldCell ? "selected" : "create";
     const activeScope = _activePreviewScope(worldCell);
     const hoverOrganelle = hover?.kind === "organelle" ? hover.id : null;
     const selectedHighlightAlpha = _previewScopeHighlightAlpha(previewKind, activeScope, hoverOrganelle);
     const activeOrganelle = hoverOrganelle ?? (selectedHighlightAlpha > 0.001 ? activeScope : "general");
     const activeOrganelleAlpha = hoverOrganelle ? 1.0 : selectedHighlightAlpha;
+
     if (!hoverOrganelle && activeScope !== "general" && selectedHighlightAlpha > 0.001) {
         _requestPreviewDraw(previewKind);
     }
-    const cytosolLayerColor = cytosolColor;
-    const cytosolLayerOpacity = cytosolOpacity;
 
-    if (canSelectCytosol) {
-        hitTargets.push({
-            type: "circle",
-            kind: "organelle",
-            id: "cytosol",
-            label: t("Cytosol"),
-            tooltip: _organelleTooltip("cytosol", worldCell),
-            x: cx,
-            y: cy,
-            radius,
-        });
-    }
+    const renderCell = worldCell ?? {
+        id: -1,
+        x: cx,
+        y: cy,
+        radius,
+        visual,
+        genome: state.cellDraft?.genome ?? {},
+        localLight: 1.0,
+    };
 
-    if (canSelectMembrane) {
-        hitTargets.push({
-            type: "ring",
-            kind: "organelle",
-            id: "membrane",
-            label: t("Membrane"),
-            tooltip: _organelleTooltip("membrane", worldCell),
-            x: cx,
-            y: cy,
-            inner: radius * 0.78,
-            outer: radius + 5,
-        });
-    }
-
-    if (showCytosol) {
-        _fillPreviewSolidCircle(ctx, cx, cy, radius, cytosolLayerColor, cytosolLayerOpacity);
-        if (!diagnosticMode) {
-            _drawPreviewCytosolTexture(ctx, cx, cy, radius, cytosolLayerColor, cytosolLayerOpacity);
-        }
-    }
-
-    if (!diagnosticMode && showGfp) {
-        _drawPreviewGfpGlowRgb(
-            ctx,
-            cx,
-            cy,
-            radius,
-            visual.gfpColor,
-            visual.gfpExpression ?? 0,
-            cytosolOpacity
-        );
-    }
-
-    if (showOrganelles) {
-        const rotation = 0;
-        _drawPreviewNucleoid(
-            ctx,
-            cx,
-            cy,
-            radius,
-            nucleoidColor,
-            nucleoidOpacity,
-            worldCell,
-            hitTargets,
-            activeOrganelle === "nucleus" || activeOrganelle === "nucleoid" ? {kind: "organelle", id: "nucleus", alpha: activeOrganelleAlpha} : null,
-            visual,
-            normalizedMode
-        );
-
-        _drawPreviewLysosomes(
-            ctx,
-            cx,
-            cy,
-            radius,
-            lysosomeColor,
-            lysosomeOpacity,
-            visual.lysosomeAmount ?? 0,
-            visual.lysosomeGlowColor,
-            visual.lysosomeGlowStrength ?? 0,
-            worldCell,
-            hitTargets,
-            activeOrganelle === "lysosome" ? {kind: "organelle", id: "lysosome", alpha: activeOrganelleAlpha} : null,
-            0,
-            normalizedMode
-        );
-
-        _drawPreviewChloroplasts(
-            ctx,
-            cx,
-            cy,
-            radius,
-            chloroplastColor,
-            chloroplastOpacity,
-            visual.chloroplastAmount ?? 0,
-            worldCell,
-            hitTargets,
-            activeOrganelle === "chloroplast" ? {kind: "organelle", id: "chloroplast", alpha: activeOrganelleAlpha} : null,
-            rotation,
-            normalizedMode
-        );
-    }
-
-    if (canSelectCytosol && activeOrganelle === "cytosol") {
-        _drawCytosolHoverFill(ctx, cx, cy, radius, activeOrganelleAlpha);
-    }
-
-    if (showMembrane) {
-        if (activeOrganelle === "membrane") {
-            _drawMembraneHoverFill(ctx, cx, cy, radius, activeOrganelleAlpha);
-        }
-        _drawPreviewMembrane(ctx, cx, cy, radius, membraneColor, membraneOpacity);
-    }
-
-    if (showShading) {
-        _drawPreviewExternalLight(ctx, cx, cy, radius, visual, cursorLight, {
-            showShadow: true,
-            showHighlight: true,
-            cellOpacity: _previewAlpha(visual.cellColor?.opacity ?? worldCell?.opacity ?? sourceCytosolColor?.opacity ?? 0.1),
-        });
-    }
-
-    if (canSelectCytosol && activeOrganelle === "cytosol") {
-        _drawCytosolHoverOutline(ctx, cx, cy, radius, activeOrganelleAlpha);
-    }
-
-    if (canSelectMembrane && activeOrganelle === "membrane") {
-        _drawMembraneHoverOutline(ctx, cx, cy, radius, activeOrganelleAlpha);
-    }
+    drawBiologyCell(ctx, renderCell, {
+        x: cx,
+        y: cy,
+        radius,
+        sourceRadius: Number(worldCell?.radius) > 0 ? Number(worldCell.radius) : radius,
+        visual,
+        layerCount: layers,
+        mode: normalizedMode,
+        preview: true,
+        cursorLight,
+        capturedFoods: state.world?.foods ?? null,
+        hitTargets,
+        activeOrganelle,
+        activeOrganelleAlpha,
+        labelFor: id => id === "nucleus" || id === "nucleoid" ? t("Nucleus") : t(_cap(id)),
+        tooltipFor: id => _organelleTooltip(id, worldCell),
+        renderScale: _previewRenderScale(ctx),
+    });
 }
 function _drawOrganellesOnlyCellOutline(ctx, cx, cy, radius) {
     ctx.save();
@@ -887,7 +773,7 @@ function _drawPreviewChloroplasts(ctx, cx, cy, radius, color, opacity, amount, w
     ctx.strokeStyle = _rgba(_darkenRgb(fillColor, 34), opacity * 0.55);
     ctx.lineWidth = 0.55;
     for (let i = 0; i < visibleCount; i++) {
-        const layout = _chloroplastLayout(seed, i, radius, cellRotation);
+        const layout = _chloroplastLayout(seed, i, radius, cellRotation, visibleCount);
         const x = cx + layout.x;
         const y = cy + layout.y;
         ctx.save();
@@ -911,16 +797,23 @@ function _drawPreviewChloroplasts(ctx, cx, cy, radius, color, opacity, amount, w
     ctx.restore();
 }
 
-function _chloroplastLayout(seed, i, radius, cellRotation = 0) {
-    const baseAngle = _hash01(seed, i * 2 + 1) * Math.PI * 2;
-    const angle = baseAngle + cellRotation;
-    const radial01 = Math.sqrt(_hash01(seed, i * 2 + 2));
-    const distance = radial01 * radius * 0.84;
+function _chloroplastLayout(seed, i, radius, cellRotation = 0, count = 1) {
+    const visibleCount = Math.max(1, Math.round(count ?? 1));
+    const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+    const seedAngle = _hash01(seed, 911) * Math.PI * 2;
+    const density = Math.min(1.0, Math.max(0.0, (visibleCount - 1) / 23));
+    const jitterScale = 1.0 - density * 0.48;
+    const slotT = (i + 0.5) / visibleCount;
+    const radialJitter = (_hash01(seed, i * 4 + 2) - 0.5) * Math.min(0.42 / visibleCount, 0.055) * jitterScale;
+    const radial01 = Math.sqrt(_clamp(slotT + radialJitter, 0.035, 0.965));
+    const angleJitter = (_hash01(seed, i * 4 + 1) - 0.5) * goldenAngle * Math.min(0.58, 1.25 / Math.sqrt(visibleCount)) * jitterScale;
+    const angle = seedAngle + i * goldenAngle + angleJitter + cellRotation;
+    const distance = radial01 * radius * 0.82;
     const edgeT = _smoothstep((radial01 - 0.66) / 0.24);
     return {
         x: Math.cos(angle) * distance,
         y: Math.sin(angle) * distance,
-        rotation: angle + Math.PI / 2,
+        rotation: angle + Math.PI / 2 + (_hash01(seed, i * 4 + 3) - 0.5) * 0.28,
         normalScale: 0.78 - edgeT * 0.34,
     };
 }
@@ -1622,21 +1515,44 @@ function _motionColors(motion) {
 }
 
 function _drawArrow(ctx, x1, y1, x2, y2, color, lineWidth, alpha = 1, active = false) {
-    const angle = Math.atan2(y2 - y1, x2 - x1);
-    const headSize = active ? 6.1 : 5.5;
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const len = Math.hypot(dx, dy);
+    if (!Number.isFinite(len) || len <= 0.001) return;
+
+    const ux = dx / len;
+    const uy = dy / len;
+    const px = -uy;
+    const py = ux;
+    const strokeWidth = active ? lineWidth + 0.35 : lineWidth;
+    const headLength = Math.min(active ? 8.2 : 7.4, Math.max(3.2, len * 0.42));
+    const headHalfWidth = Math.max(strokeWidth * 1.25, headLength * 0.42);
+    const baseX = x2 - ux * headLength;
+    const baseY = y2 - uy * headLength;
+    const shaftEndX = baseX;
+    const shaftEndY = baseY;
+
     ctx.save();
     ctx.globalAlpha = alpha;
     ctx.strokeStyle = color;
-    ctx.lineWidth = active ? lineWidth + 0.35 : lineWidth;
-    ctx.lineCap = 'round';
+    ctx.fillStyle = color;
+    ctx.lineWidth = strokeWidth;
+    ctx.lineCap = 'butt';
     ctx.lineJoin = 'round';
-    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+
+    if (len > headLength + 1.0) {
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(shaftEndX, shaftEndY);
+        ctx.stroke();
+    }
+
     ctx.beginPath();
     ctx.moveTo(x2, y2);
-    ctx.lineTo(x2 - Math.cos(angle - Math.PI / 6) * headSize, y2 - Math.sin(angle - Math.PI / 6) * headSize);
-    ctx.moveTo(x2, y2);
-    ctx.lineTo(x2 - Math.cos(angle + Math.PI / 6) * headSize, y2 - Math.sin(angle + Math.PI / 6) * headSize);
-    ctx.stroke();
+    ctx.lineTo(baseX + px * headHalfWidth, baseY + py * headHalfWidth);
+    ctx.lineTo(baseX - px * headHalfWidth, baseY - py * headHalfWidth);
+    ctx.closePath();
+    ctx.fill();
     ctx.restore();
 }
 
@@ -2122,5 +2038,9 @@ function _clamp01(value) {
     if (!Number.isFinite(Number(value))) return 0;
     return Math.max(0, Math.min(1, Number(value)));
 }
+
+
+
+
 
 

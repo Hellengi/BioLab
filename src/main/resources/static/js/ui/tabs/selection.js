@@ -26,6 +26,16 @@ export function selectCell(cell) {
 }
 
 export function clearSelection() {
+    const hadSelection = state.selectedCellId != null
+        || state.selectedStrain != null
+        || lastSelectionPanelCellId != null
+        || getActiveTab() === "selected";
+
+    if (!hadSelection) {
+        setSelectedTabEnabled(false);
+        return;
+    }
+
     syncSelectedCellTitle(null);
     state.selectedCellId = null;
     state.selectedStrain = null;
@@ -43,6 +53,12 @@ export function clearSelection() {
 export function refreshSelection(force = false) {
     const cell = getSelectedCell();
     if (!cell) {
+        if (state.selectedCellId == null) {
+            lastSelectionPanelCellId = null;
+            lastSelectionPanelRefreshMs = 0;
+            return;
+        }
+
         clearSelection();
         return;
     }
@@ -389,6 +405,8 @@ function rgbaString(color) {
     if (!color) return "—";
     return `${Math.round(color.r ?? 0)}, ${Math.round(color.g ?? 0)}, ${Math.round(color.b ?? 0)} / ${formatTwoDecimals(color.opacity ?? 0)}`;
 }
+
+
 
 
 

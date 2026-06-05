@@ -25,6 +25,7 @@ import {
 } from "./tabs/creation.js";
 import { onCanvasClick }                from "./panels/canvas.js";
 import { bindCanvasMouseEvents }        from "./panels/cursor.js";
+import { bindCanvasCameraEvents }       from "./panels/canvas-camera.js";
 import { bindInputs, closeModal, bindAsyncClick } from "./panels/_panels.js";
 import { initTabs }                     from "./tabs/_tabs.js";
 import {
@@ -319,6 +320,7 @@ function _canOpenCreateOrganelle(scope) {
 // ── Canvas-события ────────────────────────────────────────────────────────────
 
 function bindCanvasEvents() {
+    bindCanvasCameraEvents();
     dom.canvas.addEventListener("click", onCanvasClick);
     bindCanvasMouseEvents(dom.canvas);
 }
@@ -402,5 +404,10 @@ function bindSidebarToggle() {
         }
     });
 }
+
+
+
+
+
 
 
