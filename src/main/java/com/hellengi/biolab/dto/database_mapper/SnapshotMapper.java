@@ -2,11 +2,11 @@ package com.hellengi.biolab.dto.database_mapper;
 
 import com.hellengi.biolab.database.entity.SnapshotEntity;
 import com.hellengi.biolab.database.entity.common.*;
-import com.hellengi.biolab.database.entity.settings.*;
 import com.hellengi.biolab.database.entity.snapshot.*;
 import com.hellengi.biolab.dto.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -15,6 +15,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SnapshotMapper {
     private final GenomeEntityMapper genomeMapper;
+    private final JsonMapper objectMapper;
 
     public SnapshotEntity toEntity(String name, LocalDateTime createdAt, SnapshotDto snapshot) {
         if (snapshot == null || snapshot.world() == null || snapshot.settings() == null) {
@@ -25,7 +26,7 @@ public class SnapshotMapper {
         entity.setName(name);
         entity.setCreatedAt(createdAt);
         entity.setWorldState(worldState(snapshot.world()));
-        entity.setSettings(settings(snapshot.settings()));
+        entity.setSettingsJson(settingsJson(snapshot.settings()));
         entity.setLighting(lighting(snapshot.world().lighting()));
 
         int cellIndex = 0;
@@ -43,7 +44,7 @@ public class SnapshotMapper {
 
     public SnapshotDto toDto(SnapshotEntity entity) {
         SimulationWorldDto world = world(entity);
-        SimulationSettingsDto settings = settings(entity.getSettings());
+        SimulationSettingsDto settings = settings(entity.getSettingsJson());
         return new SnapshotDto(entity.getId(), entity.getName(), entity.getCreatedAt(), world, settings);
     }
 
@@ -271,91 +272,20 @@ public class SnapshotMapper {
         );
     }
 
-    private SnapshotSettingsEntity settings(SimulationSettingsDto dto) {
-        SnapshotSettingsEntity entity = new SnapshotSettingsEntity();
-        entity.setTubeDiameter(dto.tubeDiameter());
-        entity.setTickRateMs(dto.tickRateMs());
-        entity.setPaused(dto.paused());
-        entity.setSpeedFactor(dto.speedFactor());
-        entity.setTemperatureCelsius(dto.temperatureCelsius());
-        entity.setViscosity(dto.viscosity());
-        entity.setGravity(dto.gravity());
-
-        entity.getTime().setTimeSlider(ranged(dto.timeSlider()));
-        entity.getEnvironment().setInitialCellCount(ranged(dto.initialCellCount()));
-        entity.getEnvironment().setFoodSpawnIntensity(ranged(dto.foodSpawnIntensity()));
-        entity.getEnvironment().setGravitySlider(ranged(dto.gravitySlider()));
-        entity.getEnvironment().setViscositySlider(ranged(dto.viscositySlider()));
-        entity.getEnvironment().setTurbiditySlider(ranged(dto.turbiditySlider()));
-        entity.getEnvironment().setRadiationSlider(ranged(dto.radiationSlider()));
-        entity.getLightCycle().setGlobalLightPercent(ranged(dto.globalLightPercent()));
-        entity.getLightCycle().setEnabled(dto.globalLightCycleEnabled());
-        entity.getLightCycle().setMinPercent(ranged(dto.globalLightCycleMinPercent()));
-        entity.getLightCycle().setPeriodSeconds(ranged(dto.globalLightCyclePeriodSeconds()));
-        entity.getLocalLights().setEnabled(dto.localLightSourcesEnabled());
-        entity.getLocalLights().setSourceCount(ranged(dto.lightSourceCount()));
-        entity.getLocalLights().setStartAngle(ranged(dto.lightSourceStartAngle()));
-        entity.getLocalLights().setBrightness(ranged(dto.lightSourceBrightness()));
-        entity.getLocalLights().setOrbitRadius(ranged(dto.lightSourceOrbitRadius()));
-        entity.getLocalLights().setOrbitSpeed(ranged(dto.lightSourceOrbitSpeed()));
-        entity.getFood().setBaseRadius(dto.foodBaseRadius());
-        entity.getFood().setInitialCount(dto.initialFoodCount());
-        entity.getFood().setEnergyMin(dto.foodEnergyMin());
-        entity.getFood().setEnergyMax(dto.foodEnergyMax());
-        entity.getCell().setBaseRadius(dto.cellBaseRadius());
-        entity.getCell().setRadiusScale(dto.cellRadiusScale());
-        entity.getCell().setMinEnergy(dto.minCellEnergy());
-        entity.getCell().setEnergyDecayPerTick(dto.cellEnergyDecayPerTick());
-        entity.getCell().setInitialSpeed(ranged(dto.initialCellSpeed()));
-        entity.getCell().setInitialDirection(ranged(dto.initialCellDirection()));
-        entity.setInitialGenome(genomeSettings(dto.initialGenome()));
-        return entity;
+    private String settingsJson(SimulationSettingsDto dto) {
+        try {
+            return objectMapper.writeValueAsString(dto);
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to serialize snapshot settings", e);
+        }
     }
 
-    private SimulationSettingsDto settings(SnapshotSettingsEntity e) {
-        return new SimulationSettingsDto(
-                ranged(e.getTime().getTimeSlider()),
-                ranged(e.getEnvironment().getInitialCellCount()), ranged(e.getEnvironment().getFoodSpawnIntensity()),
-                ranged(e.getEnvironment().getGravitySlider()), ranged(e.getEnvironment().getViscositySlider()), ranged(e.getEnvironment().getTurbiditySlider()), ranged(e.getEnvironment().getRadiationSlider()),
-                ranged(e.getLightCycle().getGlobalLightPercent()), e.getLightCycle().isEnabled(), ranged(e.getLightCycle().getMinPercent()), ranged(e.getLightCycle().getPeriodSeconds()),
-                e.getLocalLights().isEnabled(), ranged(e.getLocalLights().getSourceCount()), ranged(e.getLocalLights().getStartAngle()), ranged(e.getLocalLights().getBrightness()), ranged(e.getLocalLights().getOrbitRadius()), ranged(e.getLocalLights().getOrbitSpeed()),
-                e.getTubeDiameter(), e.getTickRateMs(), e.isPaused(), e.getSpeedFactor(), e.getTemperatureCelsius(), e.getViscosity(), e.getGravity(),
-                e.getCell().getBaseRadius(), e.getCell().getRadiusScale(), e.getFood().getBaseRadius(), e.getFood().getInitialCount(), e.getFood().getEnergyMin(), e.getFood().getEnergyMax(), e.getCell().getMinEnergy(), e.getCell().getEnergyDecayPerTick(),
-                genomeSettings(e.getInitialGenome()), ranged(e.getCell().getInitialSpeed()), ranged(e.getCell().getInitialDirection())
-        );
-    }
-
-    private GenomeSettingsEntity genomeSettings(GenomeSettingsDto dto) {
-        GenomeSettingsEntity g = new GenomeSettingsEntity();
-        g.getNucleus().setDivisionThreshold(ranged(dto.divisionThreshold()));
-        g.getNucleus().setDivisionImpulse(ranged(dto.divisionImpulse()));
-        g.getNucleus().setDivisionAngle(ranged(dto.divisionAngle()));
-        g.getNucleus().setStartCellDamage(ranged(dto.startCellDamage()));
-        g.getCytosol().setMaxEnergy(ranged(dto.maxEnergy()));
-        g.getCytosol().setDryMass(ranged(dto.dryMass()));
-        g.getCytosol().setGfp(ranged(dto.gfp()));
-        g.getMembrane().setElasticity(ranged(dto.elasticity()));
-        g.getMembrane().setMelaninEnabled(dto.melaninEnabled());
-        g.getMembrane().setMelaninPercent(ranged(dto.melaninPercent()));
-        g.getChloroplasts().setEnabled(dto.chloroplastEnabled());
-        g.getChloroplasts().setAmount(ranged(dto.chloroplastAmount()));
-        g.getChloroplasts().setChlorophyll(ranged(dto.chlorophyll()));
-        g.getChloroplasts().setCarotenoids(ranged(dto.carotenoids()));
-        g.getChloroplasts().setStartDamage(ranged(dto.startCpDamage()));
-        g.getLysosomes().setEnabled(dto.lysosomeEnabled());
-        g.getLysosomes().setAmount(ranged(dto.lysosomeAmount()));
-        g.getLysosomes().setEnzymeActivity(ranged(dto.lysosomeEnzymeActivity()));
-        return g;
-    }
-
-    private GenomeSettingsDto genomeSettings(GenomeSettingsEntity g) {
-        return new GenomeSettingsDto(
-                ranged(g.getNucleus().getDivisionThreshold()), ranged(g.getNucleus().getDivisionImpulse()), ranged(g.getNucleus().getDivisionAngle()), ranged(g.getNucleus().getStartCellDamage()),
-                ranged(g.getCytosol().getMaxEnergy()), ranged(g.getCytosol().getDryMass()), ranged(g.getMembrane().getElasticity()), ranged(g.getCytosol().getGfp()),
-                g.getMembrane().isMelaninEnabled(), ranged(g.getMembrane().getMelaninPercent()),
-                g.getChloroplasts().isEnabled(), ranged(g.getChloroplasts().getAmount()), ranged(g.getChloroplasts().getChlorophyll()), ranged(g.getChloroplasts().getCarotenoids()), ranged(g.getChloroplasts().getStartDamage()),
-                g.getLysosomes().isEnabled(), ranged(g.getLysosomes().getAmount()), ranged(g.getLysosomes().getEnzymeActivity()), null
-        );
+    private SimulationSettingsDto settings(String json) {
+        try {
+            return objectMapper.readValue(json, SimulationSettingsDto.class);
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to deserialize snapshot settings", e);
+        }
     }
 
     private PhysicalStateEntity physical(double x, double y, double vx, double vy, double radius, double mass, double density, Double opacity, double directionAngle) {
@@ -380,18 +310,6 @@ public class SnapshotMapper {
         LayoutStateEntity state = new LayoutStateEntity();
         state.setX(x); state.setY(y); state.setRadius(radius); state.setRotation(rotation); state.setTargetX(targetX); state.setTargetY(targetY); state.setTargetRadius(targetRadius); state.setTargetRotation(targetRotation);
         return state;
-    }
-
-    private RangedValueEntity ranged(RangedValueDto dto) {
-        RangedValueEntity entity = new RangedValueEntity();
-        if (dto != null) {
-            entity.setValue(dto.value()); entity.setMin(dto.min()); entity.setMax(dto.max()); entity.setStep(dto.step()); entity.setInitial(dto.initial());
-        }
-        return entity;
-    }
-
-    private RangedValueDto ranged(RangedValueEntity entity) {
-        return new RangedValueDto(entity.getValue(), entity.getMin(), entity.getMax(), entity.getStep(), entity.getInitial());
     }
 
     private <T> List<T> safe(List<T> list) {

@@ -61,36 +61,26 @@ public class SocketHandler extends TextWebSocketHandler {
     }
 
     public void broadcastWorld(Function<DisplayLayersDto, TextMessage> messageFactory) {
-        Iterator<WebSocketSession> iterator = sessions.iterator();
-
-        while (iterator.hasNext()) {
-            WebSocketSession session = iterator.next();
-
-            try {
-                if (session.isOpen()) {
-                    session.sendMessage(messageFactory.apply(displayLayersOf(session)));
-                } else {
-                    iterator.remove();
-                }
-            } catch (Exception e) {
-                closeSession(session);
-                iterator.remove();
-            }
-        }
+        broadcast(session -> messageFactory.apply(displayLayersOf(session)));
     }
 
     public void broadcastToAll(TextMessage message) {
+        broadcast(session -> message);
+    }
+
+    private void broadcast(Function<WebSocketSession, TextMessage> messageFactory) {
         Iterator<WebSocketSession> iterator = sessions.iterator();
 
         while (iterator.hasNext()) {
             WebSocketSession session = iterator.next();
 
             try {
-                if (session.isOpen()) {
-                    session.sendMessage(message);
-                } else {
+                if (!session.isOpen()) {
                     iterator.remove();
+                    continue;
                 }
+
+                session.sendMessage(messageFactory.apply(session));
             } catch (Exception e) {
                 closeSession(session);
                 iterator.remove();

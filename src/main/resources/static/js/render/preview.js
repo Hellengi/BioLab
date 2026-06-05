@@ -1,6 +1,8 @@
 import {preparePreviewCanvas} from "../core/utils.js";
 import {drawInternalGfpGlow} from "./gfp.js";
 import {drawBiologyCell} from "./cell-renderer.js";
+import {buildSlotIndex, radialOrganelleLayouts} from "./organelle-layout.js";
+import {hash01} from "./render-utils.js";
 import {t} from "../localization/localization.js";
 import {dom} from "../ui/dom.js";
 import {setCreateInfoScope, setSelectedInfoScope, state} from "../store/state.js";
@@ -52,7 +54,6 @@ const DEFAULT_ARROW_COLORS = Object.freeze({
 });
 
 let _forceViewEnabled = false;
-let _selectedPreviewCursor = null;
 let _createPreviewCursor = null;
 let _selectedHover = null;
 let _createHover = null;
@@ -88,25 +89,13 @@ export function setSelectedPreviewMode(mode) {
     _updatePreviewLayout();
 }
 
-export function setForceViewEnabled(enabled) {
-    setSelectedPreviewMode(enabled ? "forces" : "general");
-}
 
-export function setSelectedPreviewCursor(position) {
-    _selectedPreviewCursor = position;
-}
 
-export function setCreatePreviewCursor(position) {
-    _createPreviewCursor = position;
-}
 
 export function markSelectedPreviewScopeSelected(scope) {
     _markPreviewScopeSelected("selected", scope);
 }
 
-export function syncSelectedPreviewScopeSelectionWithoutFade(scope) {
-    _syncPreviewScopeSelectionWithoutFade("selected", scope);
-}
 
 export function markCreatePreviewScopeSelected(scope) {
     _markPreviewScopeSelected("create", scope);
@@ -800,20 +789,20 @@ function _drawPreviewChloroplasts(ctx, cx, cy, radius, color, opacity, amount, w
 function _chloroplastLayout(seed, i, radius, cellRotation = 0, count = 1) {
     const visibleCount = Math.max(1, Math.round(count ?? 1));
     const goldenAngle = Math.PI * (3 - Math.sqrt(5));
-    const seedAngle = _hash01(seed, 911) * Math.PI * 2;
+    const seedAngle = hash01(seed, 911) * Math.PI * 2;
     const density = Math.min(1.0, Math.max(0.0, (visibleCount - 1) / 23));
     const jitterScale = 1.0 - density * 0.48;
     const slotT = (i + 0.5) / visibleCount;
-    const radialJitter = (_hash01(seed, i * 4 + 2) - 0.5) * Math.min(0.42 / visibleCount, 0.055) * jitterScale;
+    const radialJitter = (hash01(seed, i * 4 + 2) - 0.5) * Math.min(0.42 / visibleCount, 0.055) * jitterScale;
     const radial01 = Math.sqrt(_clamp(slotT + radialJitter, 0.035, 0.965));
-    const angleJitter = (_hash01(seed, i * 4 + 1) - 0.5) * goldenAngle * Math.min(0.58, 1.25 / Math.sqrt(visibleCount)) * jitterScale;
+    const angleJitter = (hash01(seed, i * 4 + 1) - 0.5) * goldenAngle * Math.min(0.58, 1.25 / Math.sqrt(visibleCount)) * jitterScale;
     const angle = seedAngle + i * goldenAngle + angleJitter + cellRotation;
     const distance = radial01 * radius * 0.82;
     const edgeT = _smoothstep((radial01 - 0.66) / 0.24);
     return {
         x: Math.cos(angle) * distance,
         y: Math.sin(angle) * distance,
-        rotation: angle + Math.PI / 2 + (_hash01(seed, i * 4 + 3) - 0.5) * 0.28,
+        rotation: angle + Math.PI / 2 + (hash01(seed, i * 4 + 3) - 0.5) * 0.28,
         normalScale: 0.78 - edgeT * 0.34,
     };
 }
@@ -841,6 +830,7 @@ function _drawPreviewLysosomes(ctx, cx, cy, radius, color, opacity, amount, glow
     const active = hover?.kind === "organelle" && hover?.id === "lysosome";
     const highlightAlpha = active ? _clamp01(hover?.alpha ?? 1.0) : 0.0;
     const slots = _lysosomeSlots(worldCell);
+    const slotIndex = buildSlotIndex(slots);
     const normalizedMode = String(mode ?? "general").toLowerCase();
     const drawCapturedFood = normalizedMode !== "health";
     const energyFoodColor = {r: 255, g: 218, b: 38};
@@ -852,7 +842,7 @@ function _drawPreviewLysosomes(ctx, cx, cy, radius, color, opacity, amount, glow
 
     ctx.save();
     for (let i = 0; i < visibleCount; i++) {
-        const slot = slots.find(item => Math.round(Number(item.index)) === i) ?? null;
+        const slot = slotIndex.get(i) ?? null;
         let layout = _lysosomeLayoutFromSlot(slot, slotScale);
         if (!layout) {
             if (!fallbackLayouts) {
@@ -939,72 +929,22 @@ function _capturedPreviewFoodForSlot(worldCell, slotIndex, cx, cy, previewRadius
 }
 
 function _lysosomeLayouts(seed, count, radius, slots = []) {
-    const visibleCount = Math.min(6, Math.max(0, Math.round(count ?? 0)));
-    const positions = [];
-    const radii = [];
-    const nucleusRadius = radius * 0.28;
-    const margin = Math.max(0.18, radius * 0.018);
-    const goldenAngle = Math.PI * (3 - Math.sqrt(5));
-
-    for (let i = 0; i < visibleCount; i++) {
-        radii[i] = _lysosomeLayoutRadius(radius, slots.find(slot => Math.round(Number(slot.index)) === i));
-    }
-
-    for (let i = 0; i < visibleCount; i++) {
-        const r = radii[i];
-        let minDistance = Math.min(radius * 0.82, nucleusRadius + r + margin);
-        const maxDistance = Math.max(0, radius - r - margin);
-        if (maxDistance < minDistance) minDistance = maxDistance;
-
-        const baseAngle = _hash01(seed + 1709, i * 3 + 1) * Math.PI * 2;
-        const radialHash = _hash01(seed + 1709, i * 3 + 2);
-        const desiredDistance = minDistance + (maxDistance - minDistance) * (0.18 + 0.76 * radialHash);
-        let best = {
-            x: Math.cos(baseAngle) * desiredDistance,
-            y: Math.sin(baseAngle) * desiredDistance,
-            score: Number.POSITIVE_INFINITY,
-        };
-
-        for (let attempt = 0; attempt < 12; attempt++) {
-            const angle = baseAngle + goldenAngle * attempt;
-            const distanceT = _hash01(seed + 1709, i * 97 + attempt * 7 + 11);
-            const distance = attempt === 0 ? desiredDistance : minDistance + (maxDistance - minDistance) * distanceT;
-            const x = Math.cos(angle) * distance;
-            const y = Math.sin(angle) * distance;
-            let score = Math.abs(distance - desiredDistance) * 0.20 + Math.abs(Math.sin((angle - baseAngle) * 0.5)) * radius * 0.04;
-
-            const nucleusGap = Math.hypot(x, y) - nucleusRadius - r - margin;
-            if (nucleusGap < 0) score += 10000 + Math.abs(nucleusGap) * 1000;
-
-            const edgeGap = radius - Math.hypot(x, y) - r - margin;
-            if (edgeGap < 0) score += 10000 + Math.abs(edgeGap) * 1000;
-
-            for (let j = 0; j < positions.length; j++) {
-                const gap = Math.hypot(x - positions[j].x, y - positions[j].y) - r - radii[j] - margin;
-                if (gap < 0) score += 10000 + Math.abs(gap) * 1000;
-            }
-
-            if (score < best.score) best = {x, y, score};
+    return radialOrganelleLayouts(
+        seed,
+        count,
+        radius,
+        slots,
+        (cellRadius, slot) => {
+            const base = Math.max(
+                Math.sqrt(PREVIEW_LYSOSOME_AREA_FACTOR / Math.PI),
+                cellRadius * PREVIEW_EMPTY_LYSOSOME_RADIUS_FACTOR
+            );
+            const foodRadius = Number(slot?.foodRadius ?? slot?.targetFoodRadius ?? 0) || 0;
+            const stretched = foodRadius > 0 ? foodRadius * 1.22 : base;
+            return Math.max(Math.max(1.8, cellRadius * 0.055), Math.max(base, stretched));
         }
-
-        positions[i] = {x: best.x, y: best.y, r, rotation: baseAngle * 0.25};
-    }
-
-    return positions;
-}
-
-function _lysosomeLayoutRadius(cellRadius, slot) {
-    const base = Math.max(
-        Math.sqrt(PREVIEW_LYSOSOME_AREA_FACTOR / Math.PI),
-        cellRadius * PREVIEW_EMPTY_LYSOSOME_RADIUS_FACTOR
     );
-
-    const foodRadius = Number(slot?.foodRadius ?? slot?.targetFoodRadius ?? 0) || 0;
-    const stretched = foodRadius > 0 ? foodRadius * 1.22 : base;
-
-    return Math.max(Math.max(1.8, cellRadius * 0.055), Math.max(base, stretched));
 }
-
 
 function _drawPreviewCytosolTexture(ctx, cx, cy, radius, color, alpha) {
     const a = _clamp01(alpha) * PREVIEW_CYTOSOL_TEXTURE.alpha;
@@ -1015,12 +955,12 @@ function _drawPreviewCytosolTexture(ctx, cx, cy, radius, color, alpha) {
     ctx.arc(cx, cy, radius * 0.96, 0, Math.PI * 2);
     ctx.clip();
     for (let i = 0; i < PREVIEW_CYTOSOL_TEXTURE.granules; i++) {
-        const angle = _hash01(811, i * 2 + 1) * Math.PI * 2;
-        const radial = Math.sqrt(_hash01(811, i * 2 + 2)) * radius * 0.82;
+        const angle = hash01(811, i * 2 + 1) * Math.PI * 2;
+        const radial = Math.sqrt(hash01(811, i * 2 + 2)) * radius * 0.82;
         const x = cx + Math.cos(angle) * radial;
         const y = cy + Math.sin(angle) * radial;
-        const r = Math.max(0.35, radius * (0.004 + 0.010 * _hash01(811, i * 3 + 5)));
-        ctx.fillStyle = _rgba({r: Math.min(255, c.r + 18), g: Math.min(255, c.g + 18), b: Math.min(255, c.b + 18)}, a * (0.65 + 0.35 * _hash01(811, i * 5 + 7)));
+        const r = Math.max(0.35, radius * (0.004 + 0.010 * hash01(811, i * 3 + 5)));
+        ctx.fillStyle = _rgba({r: Math.min(255, c.r + 18), g: Math.min(255, c.g + 18), b: Math.min(255, c.b + 18)}, a * (0.65 + 0.35 * hash01(811, i * 5 + 7)));
         ctx.beginPath();
         ctx.arc(x, y, r, 0, Math.PI * 2);
         ctx.fill();
@@ -1443,7 +1383,7 @@ function _drawBlurredLightArrows(ctx, cell, cx, cy, sourceAngle, clarity, length
         // Blurred direction: tips spread around the whole cell and directions
         // gradually become radial, so the transition to "all arrows look at cell"
         // is smooth instead of snapping.
-        const jitter = (_hash01(Math.round((cell.id ?? 1) * 97), i + 41) - 0.5) * 0.05 * blur;
+        const jitter = (hash01(Math.round((cell.id ?? 1) * 97), i + 41) - 0.5) * 0.05 * blur;
         const radialTipAngle = sourceAngle - spread / 2 + spread * t + jitter;
         const mix = _smoothstep(blur);
         const tipAngle = _lerpAngle(parallelTipAngle, radialTipAngle, mix);
@@ -1992,14 +1932,6 @@ function _darkenRgb(color, amount) {
     return {r: Math.max(0, Math.round((color?.r ?? 255) - amount)), g: Math.max(0, Math.round((color?.g ?? 255) - amount)), b: Math.max(0, Math.round((color?.b ?? 255) - amount))};
 }
 
-function _hash01(seed, salt) {
-    let x = ((Math.floor(seed) * 374761393) ^ (Math.floor(salt) * 668265263)) >>> 0;
-    x = (x ^ (x >>> 13)) >>> 0;
-    x = Math.imul(x, 1274126177) >>> 0;
-    x = (x ^ (x >>> 16)) >>> 0;
-    return x / 0x100000000;
-}
-
 function _lerpAngle(a, b, t) {
     return a + _angleDiff(b, a) * _clamp01(t);
 }
@@ -2038,9 +1970,5 @@ function _clamp01(value) {
     if (!Number.isFinite(Number(value))) return 0;
     return Math.max(0, Math.min(1, Number(value)));
 }
-
-
-
-
 
 

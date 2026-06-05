@@ -2,6 +2,7 @@ package com.hellengi.biolab.domain.model;
 
 import lombok.Getter;
 import lombok.Setter;
+import static com.hellengi.biolab.util.Utils.clamp01;
 
 @Getter
 @Setter
@@ -80,15 +81,6 @@ public class LysosomeSlot {
         foodInsideLysosome = food.isInsideLysosome();
     }
 
-    public LysosomeSlot copyWithoutFood(int newIndex) {
-        LysosomeSlot copy = new LysosomeSlot(newIndex, null, damage);
-        copy.setLayoutX(layoutX);
-        copy.setLayoutY(layoutY);
-        copy.setLayoutRadius(layoutRadius);
-        copy.setLayoutRotation(layoutRotation);
-        copy.setTargetLayout(targetLayoutX, targetLayoutY, targetLayoutRadius, targetLayoutRotation);
-        return copy;
-    }
 
     public void setLayout(double x, double y, double radius, double rotation) {
         this.layoutX = finite(x);
@@ -147,9 +139,6 @@ public class LysosomeSlot {
     private double finite(double value) {
         return Double.isFinite(value) ? value : 0.0;
     }
-
-    private double clamp01(double value) {
-        if (!Double.isFinite(value)) return 0.0;
-        return Math.max(0.0, Math.min(1.0, value));
-    }
 }
+
+

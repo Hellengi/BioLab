@@ -15,7 +15,7 @@ const ABSOLUTE_MIN_ZOOM = 0.025;
 const MAX_ZOOM = 14.0;
 const WHEEL_ZOOM_SPEED = 0.00135;
 const WHEEL_SETTLE_DELAY_MS = 120;
-const TEMPORARY_ZOOM_OUT_FACTOR = 0.58;
+const ZOOM_OUT_RELAXATION_FACTOR = 0.58;
 const ZOOM_SMOOTH_TIME_CONSTANT_MS = 78;
 const ZOOM_STOP_EPS = 0.00055;
 
@@ -30,7 +30,7 @@ const MOMENTUM_STOP_SPEED_PX_PER_MS = 0.018;
 const MOMENTUM_SAMPLE_WINDOW_MS = 90;
 const MOMENTUM_RELEASE_GRACE_MS = 80;
 const MOMENTUM_MIN_SAMPLE_DT_MS = 10;
-const STALE_POINTER_EVENT_MS = 120;
+const POINTER_SAMPLE_TIMEOUT_MS = 120;
 
 const camera = {
     x: 0,
@@ -339,7 +339,7 @@ function onPointerMove(event) {
     camera.lastClientY = event.clientY;
     camera.lastMoveTime = now;
 
-    if (dt > STALE_POINTER_EVENT_MS) {
+    if (dt > POINTER_SAMPLE_TIMEOUT_MS) {
         resetDragSamples(now, event.clientX, event.clientY);
         return;
     }
@@ -722,8 +722,8 @@ function settledMinimumZoom() {
     return clampZoom(Math.min(1.0, Math.max(ABSOLUTE_MIN_ZOOM, fit)));
 }
 
-function temporaryMinimumZoom() {
-    return Math.max(ABSOLUTE_MIN_ZOOM, settledMinimumZoom() * TEMPORARY_ZOOM_OUT_FACTOR);
+function relaxedMinimumZoom() {
+    return Math.max(ABSOLUTE_MIN_ZOOM, settledMinimumZoom() * ZOOM_OUT_RELAXATION_FACTOR);
 }
 
 function ensureCameraInitialized() {
@@ -806,7 +806,7 @@ function preventRightAuxClick(event) {
 }
 
 function clampWheelZoom(value) {
-    return clamp(Number(value) || 1, temporaryMinimumZoom(), MAX_ZOOM);
+    return clamp(Number(value) || 1, relaxedMinimumZoom(), MAX_ZOOM);
 }
 
 function clampZoom(value) {
@@ -816,6 +816,3 @@ function clampZoom(value) {
 function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
 }
-
-
-

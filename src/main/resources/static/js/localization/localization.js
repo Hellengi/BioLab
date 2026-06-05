@@ -29,9 +29,6 @@ export function t(key, params = {}) {
     return interpolate(template, params);
 }
 
-export function currentLanguage() {
-    return currentLanguageCode;
-}
 
 export function currentDateLocale() {
     return currentLanguageCode === "ru" ? "ru-RU" : "en-US";
@@ -69,9 +66,6 @@ export async function setLanguage(language) {
     }));
 }
 
-export function isLocalizationLoaded() {
-    return loaded;
-}
 
 async function loadLanguageFile(language) {
     const normalized = normalizeLanguage(language);

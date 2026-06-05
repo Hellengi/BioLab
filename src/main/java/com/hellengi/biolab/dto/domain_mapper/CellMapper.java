@@ -12,11 +12,8 @@ import com.hellengi.biolab.dto.LysosomeSlotDto;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import static com.hellengi.biolab.util.Utils.clamp01;
 
-/**
- * Maps between Cell domain objects and CellDto.
- * localLight is sampled from the prepared light map once per frame.
- */
 @Component
 @RequiredArgsConstructor
 public class CellMapper {
@@ -58,9 +55,6 @@ public class CellMapper {
     private int cachedGridStep;
     private double cachedGlobalLight;
 
-    public void useLightMap(double[] lightMap, int cols, int rows, int gridStep) {
-        useLightMaps(lightMap, null, null, cols, rows, gridStep, 0.0);
-    }
 
     public void useLightMaps(
             double[] lightMap,
@@ -90,17 +84,6 @@ public class CellMapper {
         this.cachedGlobalLight = 0.0;
     }
 
-    public void prepareLightMap() {
-        useLightMaps(
-                lighting.getLightMap(),
-                lighting.getLightDirXMap(),
-                lighting.getLightDirYMap(),
-                lighting.getLightGridCols(),
-                lighting.getLightGridRows(),
-                lighting.getLightGridStep(),
-                0.0
-        );
-    }
 
     public CellDto toDto(Cell cell) {
         return toDto(cell, DisplayLayersDto.off());
@@ -555,15 +538,6 @@ public class CellMapper {
         }
         return lighting.sampleLightAt(x, y);
     }
-
-    private double clamp01(double value) {
-        if (!Double.isFinite(value)) return 0.0;
-        return Math.max(0.0, Math.min(1.0, value));
-    }
 }
-
-
-
-
 
 

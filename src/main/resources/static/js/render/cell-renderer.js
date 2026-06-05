@@ -1,5 +1,6 @@
 import { drawInternalGfpGlow } from "./gfp.js";
-import { ORGANIC_BROWN_COLOR } from "./colors.js";
+import { clamp01, grayscaleRgb, hash01, organicBrownHsla, rgb, seededRandom, smoothstep } from "./render-utils.js";
+import { buildSlotIndex, radialOrganelleLayouts } from "./organelle-layout.js";
 
 const CELL_MIN_LIGHT = 0.38;
 const REAL_CELL_OPACITY_TO_RENDER_ALPHA = 9.6;
@@ -328,10 +329,6 @@ export function drawBiologyCell(ctx, cell, options = {}) {
 }
 
 
-export function clearCellRendererCache() {
-    staticCellBaseCache.clear();
-    foodPathCache.clear();
-}
 
 function shouldUseStaticCellBaseCache(params) {
     const {
@@ -1098,58 +1095,18 @@ function lysosomeLayoutFromSlot(slot, scale = 1.0) {
 }
 
 function lysosomeLayouts(seed, count, radius, slots = [], slotScale = 1.0) {
-    const visibleCount = Math.min(6, Math.max(0, Math.round(count ?? 0)));
-    const positions = [];
-    const radii = [];
-    const slotIndex = buildSlotIndex(slots);
-    const nucleusRadius = radius * 0.28;
-    const margin = Math.max(0.18, radius * 0.018);
-    const goldenAngle = Math.PI * (3 - Math.sqrt(5));
-
-    for (let i = 0; i < visibleCount; i++) {
-        radii[i] = lysosomeLayoutRadius(radius, slotIndex.get(i), slotScale);
-    }
-
-    for (let i = 0; i < visibleCount; i++) {
-        const r = radii[i];
-        let minDistance = Math.min(radius * 0.82, nucleusRadius + r + margin);
-        const maxDistance = Math.max(0, radius - r - margin);
-        if (maxDistance < minDistance) minDistance = maxDistance;
-
-        const baseAngle = hash01(seed + 1709, i * 3 + 1) * Math.PI * 2;
-        const radialHash = hash01(seed + 1709, i * 3 + 2);
-        const desiredDistance = minDistance + (maxDistance - minDistance) * (0.18 + 0.76 * radialHash);
-        let best = {x: Math.cos(baseAngle) * desiredDistance, y: Math.sin(baseAngle) * desiredDistance, score: Number.POSITIVE_INFINITY};
-
-        for (let attempt = 0; attempt < 12; attempt++) {
-            const angle = baseAngle + goldenAngle * attempt;
-            const distanceT = hash01(seed + 1709, i * 97 + attempt * 7 + 11);
-            const distance = attempt === 0 ? desiredDistance : minDistance + (maxDistance - minDistance) * distanceT;
-            const px = Math.cos(angle) * distance;
-            const py = Math.sin(angle) * distance;
-            let score = Math.abs(distance - desiredDistance) * 0.20 + Math.abs(Math.sin((angle - baseAngle) * 0.5)) * radius * 0.04;
-
-            const nucleusGap = Math.hypot(px, py) - nucleusRadius - r - margin;
-            if (nucleusGap < 0) score += 10000 + Math.abs(nucleusGap) * 1000;
-            const edgeGap = radius - Math.hypot(px, py) - r - margin;
-            if (edgeGap < 0) score += 10000 + Math.abs(edgeGap) * 1000;
-            for (let j = 0; j < positions.length; j++) {
-                const gap = Math.hypot(px - positions[j].x, py - positions[j].y) - r - radii[j] - margin;
-                if (gap < 0) score += 10000 + Math.abs(gap) * 1000;
-            }
-            if (score < best.score) best = {x: px, y: py, score};
+    return radialOrganelleLayouts(
+        seed,
+        count,
+        radius,
+        slots,
+        (cellRadius, slot) => {
+            const base = cellRadius * 0.112;
+            const foodRadius = Math.max(0, Number(slot?.foodRadius ?? slot?.targetFoodRadius ?? 0) || 0) * slotScale;
+            const stretched = foodRadius > 0 ? foodRadius * 1.22 : base;
+            return Math.max(base, stretched);
         }
-        positions[i] = {x: best.x, y: best.y, r, rotation: baseAngle * 0.25};
-    }
-
-    return positions;
-}
-
-function lysosomeLayoutRadius(cellRadius, slot, slotScale = 1.0) {
-    const base = cellRadius * 0.112;
-    const foodRadius = Math.max(0, Number(slot?.foodRadius ?? slot?.targetFoodRadius ?? 0) || 0) * slotScale;
-    const stretched = foodRadius > 0 ? foodRadius * 1.22 : base;
-    return Math.max(base, stretched);
+    );
 }
 
 export function buildCapturedFoodSlotMap(foods = []) {
@@ -1162,15 +1119,6 @@ export function buildCapturedFoodSlotMap(foods = []) {
         captured.set(`${cellId}:${slotIndex}`, food);
     }
     return captured;
-}
-
-function buildSlotIndex(slots = []) {
-    const map = new Map();
-    for (const slot of slots ?? []) {
-        const index = Math.round(Number(slot?.index));
-        if (Number.isFinite(index)) map.set(index, slot);
-    }
-    return map;
 }
 
 function capturedFoodForSlot(cell, capturedFoods, index) {
@@ -1277,24 +1225,6 @@ function modulateRgb(color, illum) {
     };
 }
 
-function grayscaleRgb(color) {
-    if (!color) return color;
-    const y = Math.round((color.r ?? 0) * 0.299 + (color.g ?? 0) * 0.587 + (color.b ?? 0) * 0.114);
-    return {r: y, g: y, b: y, opacity: color.opacity};
-}
-
-function rgb(color, alpha = 1.0) {
-    return `rgba(${Math.round(color?.r ?? 255)}, ${Math.round(color?.g ?? 255)}, ${Math.round(color?.b ?? 255)}, ${clamp01(alpha).toFixed(3)})`;
-}
-
-function hsla(hue, saturation, lightness, alpha) {
-    return `hsla(${hue}, ${saturation}%, ${lightness}%, ${clamp01(alpha).toFixed(3)})`;
-}
-
-function organicBrownHsla(lightness, alpha) {
-    return hsla(ORGANIC_BROWN_COLOR.h, ORGANIC_BROWN_COLOR.s, lightness, alpha);
-}
-
 function darkenRgb(color, amount) {
     return {r: Math.max(0, Math.round((color?.r ?? 255) - amount)), g: Math.max(0, Math.round((color?.g ?? 255) - amount)), b: Math.max(0, Math.round((color?.b ?? 255) - amount))};
 }
@@ -1351,27 +1281,6 @@ function midpoint(a, b) {
     return {x: (a.x + b.x) * 0.5, y: (a.y + b.y) * 0.5};
 }
 
-function seededRandom(seed) {
-    let value = (seed >>> 0) || 1;
-    return () => {
-        value = (value * 1664525 + 1013904223) >>> 0;
-        return value / 0x100000000;
-    };
-}
-
-function hash01(seed, salt) {
-    let x = ((Math.floor(seed) * 374761393) ^ (Math.floor(salt) * 668265263)) >>> 0;
-    x = (x ^ (x >>> 13)) >>> 0;
-    x = Math.imul(x, 1274126177) >>> 0;
-    x = (x ^ (x >>> 16)) >>> 0;
-    return x / 0x100000000;
-}
-
-function smoothstep(value) {
-    const t = clamp01(value);
-    return t * t * (3.0 - 2.0 * t);
-}
-
 function finiteNumber(value, fallback = 0) {
     const number = Number(value);
     return Number.isFinite(number) ? number : Number(fallback) || 0;
@@ -1380,11 +1289,6 @@ function finiteNumber(value, fallback = 0) {
 function clamp(value, min, max) {
     if (!Number.isFinite(Number(value))) return min;
     return Math.max(min, Math.min(max, Number(value)));
-}
-
-function clamp01(value) {
-    if (!Number.isFinite(Number(value))) return 0;
-    return Math.max(0, Math.min(1, Number(value)));
 }
 
 

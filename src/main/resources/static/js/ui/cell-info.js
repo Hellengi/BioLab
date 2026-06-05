@@ -73,23 +73,6 @@ export function clearTooltipElement(element) {
     clearElement(element);
 }
 
-export function setTooltipPair(element, leftValue, leftTooltip, rightValue, rightTooltip) {
-    if (!element) return;
-
-    if (!element._tooltipPair) {
-        clearElement(element);
-        element._tooltipPair = {
-            left: appendTooltipValue(element, leftValue, leftTooltip),
-            right: null,
-        };
-        appendSeparator(element);
-        element._tooltipPair.right = appendTooltipValue(element, rightValue, rightTooltip);
-        return;
-    }
-
-    updateTooltipValue(element._tooltipPair.left, leftValue, leftTooltip);
-    updateTooltipValue(element._tooltipPair.right, rightValue, rightTooltip);
-}
 
 export function setTooltipValue(element, value, tooltipText) {
     if (!element) return;
@@ -102,5 +85,3 @@ export function setTooltipValue(element, value, tooltipText) {
 
     updateTooltipValue(element._tooltipValue, value, tooltipText);
 }
-
-

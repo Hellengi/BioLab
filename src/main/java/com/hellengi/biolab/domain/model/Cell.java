@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static com.hellengi.biolab.util.Utils.EPSILON;
+import static com.hellengi.biolab.util.Utils.clamp01;
 import static com.hellengi.biolab.util.Utils.avoidZero;
 
 @Setter
@@ -888,13 +889,8 @@ public class Cell {
 
     private record InternalLayout(double nucleusX, double nucleusY, LayoutCircle[] lysosomes, double score) {
     }
-
-    private double clamp01(double value) {
-        if (!Double.isFinite(value)) {
-            return 0.0;
-        }
-        return Math.max(0.0, Math.min(1.0, value));
-    }
 }
+
+
 
 

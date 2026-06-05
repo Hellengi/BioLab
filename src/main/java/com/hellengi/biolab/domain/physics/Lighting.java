@@ -865,9 +865,6 @@ public class Lighting {
         return Math.max(1, gridStep) * Math.max(1, FLUORESCENT_CLUSTER_GRID_CELLS);
     }
 
-    private boolean isInsideGrid(int col, int row, int cols, int rows) {
-        return col >= 0 && col < cols && row >= 0 && row < rows;
-    }
 
     private int rayCountForSource(int baseRayCount, boolean edgeSource) {
         return edgeSource

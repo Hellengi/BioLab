@@ -103,13 +103,10 @@ public class CellFactory {
         );
     }
 
-    private double clamp01(double value) {
-        if (!Double.isFinite(value)) return 0.0;
-        return Math.max(0.0, Math.min(1.0, value));
-    }
-
     private double randomOffset(double halfRange) {
         return random.nextDouble() * 2.0 * halfRange - halfRange;
     }
 }
+
+
 

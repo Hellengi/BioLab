@@ -4,6 +4,7 @@ import com.hellengi.biolab.config.YamlConfig;
 import com.hellengi.biolab.domain.model.Cell;
 import lombok.Getter;
 import lombok.Setter;
+import static com.hellengi.biolab.util.Utils.percent01;
 
 @Getter
 @Setter
@@ -57,9 +58,6 @@ public class CytosolOrganelle implements Organelle {
         return Math.max(0.0, dryMass) * config.getCytosolAreaFactor()
                 + Math.max(0.0, cell.getEnergy()) * config.getEnergyToRadiusFactor();
     }
-
-    private double percent01(double value) {
-        if (!Double.isFinite(value)) return 0.0;
-        return Math.max(0.0, Math.min(1.0, value / 100.0));
-    }
 }
+
+

@@ -1,6 +1,6 @@
 package com.hellengi.biolab.dto.database_mapper;
 
-import com.hellengi.biolab.config.YamlConfig;
+import com.hellengi.biolab.dto.mapper.GenomeDefaults;
 import com.hellengi.biolab.database.entity.genome.*;
 import com.hellengi.biolab.dto.GenomeDto;
 import lombok.RequiredArgsConstructor;
@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class GenomeEntityMapper {
-    private final YamlConfig config;
+    private final GenomeDefaults defaults;
 
     public GenomeEntity toEntity(GenomeDto dto) {
         GenomeEntity genome = new GenomeEntity();
@@ -22,27 +22,27 @@ public class GenomeEntityMapper {
 
         CytosolEntity cytosol = new CytosolEntity();
         cytosol.setMaxEnergy(dto.maxEnergy());
-        cytosol.setDryMass(dryMassOrDefault(dto.dryMass()));
-        cytosol.setGfp(gfpOrDefault(dto.gfp()));
+        cytosol.setDryMass(defaults.dryMass(dto.dryMass()));
+        cytosol.setGfp(defaults.gfp(dto.gfp()));
         genome.setCytosol(cytosol);
 
         MembraneEntity membrane = new MembraneEntity();
-        membrane.setElasticity(elasticityOrDefault(dto.elasticity()));
+        membrane.setElasticity(defaults.elasticity(dto.elasticity()));
         membrane.setMelaninEnabled(dto.melaninEnabled());
-        membrane.setMelaninPercent(melaninPercentOrDefault(dto.melaninPercent()));
+        membrane.setMelaninPercent(defaults.melaninPercent(dto.melaninPercent()));
         genome.setMembrane(membrane);
 
         ChloroplastsEntity chloroplasts = new ChloroplastsEntity();
         chloroplasts.setEnabled(dto.chloroplastEnabled());
-        chloroplasts.setAmount(chloroplastAmountOrDefault(dto.chloroplastAmount()));
-        chloroplasts.setChlorophyll(chlorophyllOrDefault(dto.chlorophyll()));
-        chloroplasts.setCarotenoids(carotenoidsOrDefault(dto.carotenoids()));
+        chloroplasts.setAmount(defaults.chloroplastAmount(dto.chloroplastAmount()));
+        chloroplasts.setChlorophyll(defaults.chlorophyll(dto.chlorophyll()));
+        chloroplasts.setCarotenoids(defaults.carotenoids(dto.carotenoids()));
         genome.setChloroplasts(chloroplasts);
 
         LysosomesEntity lysosomes = new LysosomesEntity();
         lysosomes.setEnabled(dto.lysosomeEnabled());
-        lysosomes.setAmount(lysosomeAmountOrDefault(dto.lysosomeAmount()));
-        lysosomes.setEnzymeActivity(lysosomeEnzymeActivityOrDefault(dto.lysosomeEnzymeActivity()));
+        lysosomes.setAmount(defaults.lysosomeAmount(dto.lysosomeAmount()));
+        lysosomes.setEnzymeActivity(defaults.lysosomeEnzymeActivity(dto.lysosomeEnzymeActivity()));
         genome.setLysosomes(lysosomes);
 
         return genome;
@@ -79,40 +79,4 @@ public class GenomeEntityMapper {
         );
     }
 
-    private double dryMassOrDefault(Double dryMass) {
-        return dryMass != null ? dryMass : config.getGenome().getDryMass().getInitial();
-    }
-
-    private double elasticityOrDefault(Double elasticity) {
-        return elasticity != null ? elasticity : config.getGenome().getElasticity().getInitial();
-    }
-
-    private double gfpOrDefault(Double gfp) {
-        return gfp != null ? gfp : config.getGenome().getGfp().getInitial();
-    }
-
-    private double melaninPercentOrDefault(Double value) {
-        return value != null ? value : config.getGenome().getMelaninPercent().getInitial();
-    }
-
-    private double chloroplastAmountOrDefault(Double value) {
-        return value != null ? value : config.getGenome().getChloroplastAmount().getInitial();
-    }
-
-    private double chlorophyllOrDefault(Double value) {
-        double raw = value != null ? value : config.getGenome().getChlorophyll().getInitial();
-        return Math.max(config.getGenome().getChlorophyll().getMin(), raw);
-    }
-
-    private double carotenoidsOrDefault(Double value) {
-        return value != null ? value : config.getGenome().getCarotenoids().getInitial();
-    }
-
-    private double lysosomeAmountOrDefault(Double value) {
-        return value != null ? value : config.getGenome().getLysosomeAmount().getInitial();
-    }
-
-    private double lysosomeEnzymeActivityOrDefault(Double value) {
-        return value != null ? value : config.getGenome().getLysosomeEnzymeActivity().getInitial();
-    }
 }

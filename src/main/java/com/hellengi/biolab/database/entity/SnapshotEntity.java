@@ -1,6 +1,5 @@
 package com.hellengi.biolab.database.entity;
 
-import com.hellengi.biolab.database.entity.settings.SnapshotSettingsEntity;
 import com.hellengi.biolab.database.entity.snapshot.*;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -13,7 +12,7 @@ import java.util.List;
 @Getter
 @Setter
 @Entity
-@Table(name = "environment_snapshot")
+@Table(name = "snapshot")
 public class SnapshotEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -29,9 +28,9 @@ public class SnapshotEntity {
     @JoinColumn(name = "world_state_id", nullable = false)
     private SnapshotWorldStateEntity worldState = new SnapshotWorldStateEntity();
 
-    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true, optional = false)
-    @JoinColumn(name = "settings_id", nullable = false)
-    private SnapshotSettingsEntity settings = new SnapshotSettingsEntity();
+    @Lob
+    @Column(name = "settings_json", nullable = false, columnDefinition = "TEXT")
+    private String settingsJson;
 
     @OneToMany(mappedBy = "snapshot", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("positionInSnapshot ASC")

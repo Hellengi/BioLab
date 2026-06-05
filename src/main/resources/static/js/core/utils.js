@@ -1,4 +1,3 @@
-
 function roundTo(value, digits) {
     const factor = 10 ** digits;
     return Math.round(value * factor) / factor;
@@ -12,12 +11,6 @@ export function formatTwoDecimals(value) {
     return roundTo(value, 2).toFixed(2);
 }
 
-export function formatPercent(value) {
-    if (!Number.isFinite(value)) {
-        return "—";
-    }
-    return `${formatTwoDecimals(value)}%`;
-}
 
 export function getCellRgbString(cell) {
     const rgb = cell?.visual?.cellColor;
@@ -26,10 +19,6 @@ export function getCellRgbString(cell) {
     return `${rgb.r}, ${rgb.g}, ${rgb.b}${opacity}`;
 }
 
-export function rgbString(rgb, alpha = 1.0) {
-    if (!rgb) return `rgba(255,255,255,${clamp01(alpha).toFixed(3)})`;
-    return `rgba(${rgb.r ?? 0}, ${rgb.g ?? 0}, ${rgb.b ?? 0}, ${clamp01(alpha).toFixed(3)})`;
-}
 
 export function preparePreviewCanvas(previewCtx, previewCanvas) {
     if (!previewCtx || !previewCanvas) {
@@ -37,14 +26,8 @@ export function preparePreviewCanvas(previewCtx, previewCanvas) {
     }
 
     const rect = previewCanvas.getBoundingClientRect?.();
-    const cssWidth = Math.max(
-        1,
-        Math.round(rect?.width || previewCanvas.clientWidth || previewCanvas.width || 1)
-    );
-    const cssHeight = Math.max(
-        1,
-        Math.round(rect?.height || previewCanvas.clientHeight || previewCanvas.height || 1)
-    );
+    const cssWidth = resolvePreviewCanvasCssSize(previewCanvas, rect?.width, "width");
+    const cssHeight = resolvePreviewCanvasCssSize(previewCanvas, rect?.height, "height");
     const dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
     const backingWidth = Math.max(1, Math.round(cssWidth * dpr));
     const backingHeight = Math.max(1, Math.round(cssHeight * dpr));
@@ -68,6 +51,47 @@ export function preparePreviewCanvas(previewCtx, previewCanvas) {
     return { width: cssWidth, height: cssHeight, dpr };
 }
 
+function resolvePreviewCanvasCssSize(previewCanvas, measuredSize, axis) {
+    if (Number.isFinite(measuredSize) && measuredSize > 0) {
+        return Math.max(1, Math.round(measuredSize));
+    }
+
+    const clientSize = axis === "width" ? previewCanvas.clientWidth : previewCanvas.clientHeight;
+    if (Number.isFinite(clientSize) && clientSize > 0) {
+        return Math.max(1, Math.round(clientSize));
+    }
+
+    const computed = window.getComputedStyle?.(previewCanvas);
+    const computedSize = parseCssPixels(axis === "width" ? computed?.width : computed?.height);
+    if (computedSize > 0) {
+        return Math.max(1, Math.round(computedSize));
+    }
+
+    const previewSize = parseCssPixels(computed?.getPropertyValue?.("--preview-size"));
+    if (previewSize > 0) {
+        return Math.max(1, Math.round(previewSize));
+    }
+
+    const storedSize = Number(previewCanvas.dataset?.[axis === "width" ? "logicalWidth" : "logicalHeight"]);
+    if (Number.isFinite(storedSize) && storedSize > 0) {
+        return Math.max(1, Math.round(storedSize));
+    }
+
+    const attributeSize = Number(previewCanvas.getAttribute?.(axis));
+    if (Number.isFinite(attributeSize) && attributeSize > 0) {
+        return Math.max(1, Math.round(attributeSize));
+    }
+
+    const backingSize = axis === "width" ? previewCanvas.width : previewCanvas.height;
+    return Math.max(1, Math.round(backingSize || 1));
+}
+
+function parseCssPixels(value) {
+    if (typeof value !== "string") return 0;
+    const parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+}
+
 export function setText(element, value) {
     if (!element) return;
 
@@ -81,9 +105,5 @@ export function cssVar(name) {
     return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
 
-function clamp01(value) {
-    if (!Number.isFinite(value)) return 0;
-    return Math.max(0, Math.min(1, value));
-}
 
 

@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 
 import static com.hellengi.biolab.util.Utils.EPSILON;
+import static com.hellengi.biolab.util.Utils.clamp01;
 
 @Component
 @RequiredArgsConstructor
@@ -440,13 +441,6 @@ public class FoodDigestion {
         return distanceSq(cell.getX(), cell.getY(), food.getX(), food.getY()) <= radius * radius;
     }
 
-    private Cell findCell(SimulationWorld world, Long id) {
-        if (id == null) return null;
-        for (Cell cell : world.getCells()) {
-            if (cell.getId() == id) return cell;
-        }
-        return null;
-    }
 
     private Food findFood(Map<Long, Food> foodById, Long id) {
         return id == null ? null : foodById.get(id);
@@ -477,11 +471,6 @@ public class FoodDigestion {
         return x * x * (3.0 - 2.0 * x);
     }
 
-    private double clamp01(double value) {
-        if (!Double.isFinite(value)) return 0.0;
-        return Math.max(0.0, Math.min(1.0, value));
-    }
-
     private double clamp(double value, double min, double max) {
         if (!Double.isFinite(value)) return min;
         return Math.max(min, Math.min(max, value));
@@ -496,7 +485,5 @@ public class FoodDigestion {
     private record DigestionResult(double grossEnergyGain, double energyCost, double damageAdded) {
     }
 }
-
-
 
 

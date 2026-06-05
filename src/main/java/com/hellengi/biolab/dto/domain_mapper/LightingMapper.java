@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import static com.hellengi.biolab.util.Utils.clamp01;
 
 @Component
 @RequiredArgsConstructor
@@ -212,11 +213,6 @@ public class LightingMapper {
                 Math.abs(source.getOrbitRadius() - config.worldRadius()) < 0.001 ? "EDGE" : "POINT"
         );
     }
-
-    private double clamp01(double value) {
-        if (!Double.isFinite(value)) {
-            return 0.0;
-        }
-        return Math.max(0.0, Math.min(1.0, value));
-    }
 }
+
+

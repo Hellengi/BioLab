@@ -4,6 +4,8 @@ import com.hellengi.biolab.config.YamlConfig;
 import com.hellengi.biolab.domain.model.Cell;
 import lombok.Getter;
 import lombok.Setter;
+import static com.hellengi.biolab.util.Utils.clamp01;
+import static com.hellengi.biolab.util.Utils.percent01;
 
 @Getter
 @Setter
@@ -68,14 +70,6 @@ public class MembraneOrganelle implements Organelle {
     public double area(Cell cell, YamlConfig.CellProperties config) {
         return cell.getMembraneLength() * config.getMembraneAreaFactor();
     }
-
-    private double percent01(double value) {
-        if (!Double.isFinite(value)) return 0.0;
-        return Math.max(0.0, Math.min(1.0, value / 100.0));
-    }
-
-    private double clamp01(double value) {
-        if (!Double.isFinite(value)) return 0.0;
-        return Math.max(0.0, Math.min(1.0, value));
-    }
 }
+
+

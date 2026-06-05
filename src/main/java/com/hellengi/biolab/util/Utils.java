@@ -9,6 +9,17 @@ public final class Utils {
         return Math.max(number, EPSILON);
     }
 
+    public static double clamp01(double value) {
+        if (!Double.isFinite(value)) {
+            return 0.0;
+        }
+        return Math.max(0.0, Math.min(1.0, value));
+    }
+
+    public static double percent01(double value) {
+        return clamp01(value / 100.0);
+    }
+
     public static double wrapDegrees(double angle) {
         double wrapped = angle % 360.0;
         return wrapped < 0.0 ? wrapped + 360.0 : wrapped;
@@ -41,3 +52,5 @@ public final class Utils {
 
     public record Velocity(double vx, double vy) {}
 }
+
+

@@ -1,6 +1,7 @@
 import { drawDeadCellEffects, updateDeadCellEffects } from "./effects.js";
 import { drawBackground, drawDisplayLayers, drawLightSourceBodies } from "./lighting.js";
 import { ORGANIC_BROWN_COLOR } from "./colors.js";
+import { clamp01, grayscaleRgb, hash01, hsla, organicBrownHsla, rgb, seededRandom, smoothstep } from "./render-utils.js";
 import { buildCapturedFoodSlotMap, drawBiologyCell } from "./cell-renderer.js";
 import { cssVar } from "../core/utils.js";
 import { getCanvasCameraState, getVisibleWorldBounds } from "../ui/panels/canvas-camera.js";
@@ -377,14 +378,6 @@ function cellRenderAlpha(cell) {
     return clamp(realOpacity * REAL_CELL_OPACITY_TO_RENDER_ALPHA, MIN_CELL_RENDER_ALPHA, MAX_CELL_RENDER_ALPHA);
 }
 
-function hash01(seed, salt) {
-    let x = ((Math.floor(seed) * 374761393) ^ (Math.floor(salt) * 668265263)) >>> 0;
-    x = (x ^ (x >>> 13)) >>> 0;
-    x = Math.imul(x, 1274126177) >>> 0;
-    x = (x ^ (x >>> 16)) >>> 0;
-    return x / 0x100000000;
-}
-
 function modulateRgb(color, illum) {
     const i = clamp01(illum);
     const min = 24;
@@ -393,24 +386,6 @@ function modulateRgb(color, illum) {
         g: Math.round(min + (Number(color?.g ?? 255) - min) * i),
         b: Math.round(min + (Number(color?.b ?? 255) - min) * i),
     };
-}
-
-function grayscaleRgb(color) {
-    if (!color) return color;
-    const y = Math.round((color.r ?? 0) * 0.299 + (color.g ?? 0) * 0.587 + (color.b ?? 0) * 0.114);
-    return {r: y, g: y, b: y, opacity: color.opacity};
-}
-
-function rgb(color, alpha = 1.0) {
-    return `rgba(${Math.round(color?.r ?? 255)}, ${Math.round(color?.g ?? 255)}, ${Math.round(color?.b ?? 255)}, ${clamp01(alpha).toFixed(3)})`;
-}
-
-function hsla(hue, saturation, lightness, alpha) {
-    return `hsla(${hue}, ${saturation}%, ${lightness}%, ${clamp01(alpha).toFixed(3)})`;
-}
-
-function organicBrownHsla(lightness, alpha) {
-    return hsla(ORGANIC_BROWN_COLOR.h, ORGANIC_BROWN_COLOR.s, lightness, alpha);
 }
 
 function fillFoodShape(ctx, food, fillStyle, scale = 1.0) {
@@ -477,14 +452,6 @@ function midpoint(a, b) {
     return {
         x: (a.x + b.x) * 0.5,
         y: (a.y + b.y) * 0.5,
-    };
-}
-
-function seededRandom(seed) {
-    let value = (seed >>> 0) || 1;
-    return () => {
-        value = (value * 1664525 + 1013904223) >>> 0;
-        return value / 0x100000000;
     };
 }
 
@@ -658,22 +625,9 @@ function hasOpticalDensityLayer(state) {
     );
 }
 
-function smoothstep(value) {
-    const t = clamp01(value);
-    return t * t * (3.0 - 2.0 * t);
-}
-
 function clamp(value, min, max) {
     if (!Number.isFinite(value)) return min;
     return Math.max(min, Math.min(max, value));
 }
-
-function clamp01(value) {
-    if (!Number.isFinite(value)) return 0;
-    return Math.max(0, Math.min(1, value));
-}
-
-
-
 
 
