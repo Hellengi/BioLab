@@ -86,3 +86,5 @@ public class Food {
         return config.getFood().getBaseRadius() * Math.sqrt(Math.max(0.0, energy / minEnergy));
     }
 }
+
+

@@ -44,7 +44,15 @@ export function spawnCell(x, y, cell) {
         genome:           cell.genome,
         initialSpeed:     cell.initialSpeed     ?? 0,
         initialDirection: cell.initialDirection ?? 0,
-        startCellDamage:  cell.startCellDamage  ?? 0,
-        startCpDamage:    cell.startCpDamage    ?? 0,
+        startNucleusDamage:       cell.startNucleusDamage       ?? 0,
+        startCytosolDamage:       cell.startCytosolDamage       ?? 0,
+        startCpDamage:         cell.startCpDamage         ?? 0,
+        startMembraneDamage:   cell.startMembraneDamage   ?? 0,
+        startLysosomeDamage:   cell.startLysosomeDamage   ?? 0,
+        startFlagellumDamage:  cell.startFlagellumDamage  ?? 0,
     });
 }
+
+
+
+

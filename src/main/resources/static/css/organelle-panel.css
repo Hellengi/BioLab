@@ -111,6 +111,17 @@
     gap: var(--gap-sm);
 }
 
+.organelle-developer-group {
+    border: 1px dashed var(--c-border-soft);
+    border-radius: var(--radius-sm);
+    padding: var(--gap-sm);
+    background: rgba(148, 163, 184, 0.045);
+}
+
+.organelle-developer-group .organelle-slider-group-label {
+    color: var(--c-warning);
+}
+
 .organelle-panel .settings-field { margin: 0; }
 .organelle-panel .settings-field label {
     display: block;
@@ -136,5 +147,40 @@
     padding: 2px 5px;
     font-size: 11px;
 }
+
+
+
+
+
+
+.organelle-subscope-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--gap-xs);
+    padding: 2px 0 var(--gap-xs);
+}
+
+.organelle-subscope-btn {
+    flex: 1 1 calc(50% - var(--gap-xs));
+}
+
+.organelle-subscope-btn:disabled {
+    opacity: 0.34;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.flagellum-symmetry-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--c-text-sub);
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: none;
+    letter-spacing: 0.02em;
+}
+
+
 
 

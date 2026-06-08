@@ -11,6 +11,7 @@
 import { dom } from "../dom.js";
 
 const CAMERA_PADDING = 28;
+const ORGANELLE_PANEL_WIDTH_PX = 320;
 const ABSOLUTE_MIN_ZOOM = 0.025;
 const MAX_ZOOM = 14.0;
 const WHEEL_ZOOM_SPEED = 0.00135;
@@ -92,6 +93,7 @@ export function bindCanvasCameraEvents() {
     window.addEventListener("pointercancel", onPointerCancel, { capture: true });
     window.addEventListener("resize", scheduleViewportSync);
     window.addEventListener("blur", cancelActiveDragWithoutMomentum);
+    window.addEventListener("biolab:organelle-panel-visibility-change", onOrganellePanelVisibilityChange);
 }
 
 export function setCanvasWorldSize(width, height = width) {
@@ -190,6 +192,12 @@ export function isWorldPointInsideCanvas(point) {
         && point.y <= camera.worldHeight;
 }
 
+function onOrganellePanelVisibilityChange(event) {
+    if (event?.detail?.open === true) return;
+    if (!camera.initialized) return;
+    animateCameraBackIntoBounds();
+}
+
 function scheduleViewportSync() {
     if (camera.resizeAnimationId) return;
     camera.resizeAnimationId = requestAnimationFrame(() => {
@@ -280,6 +288,9 @@ function onWheel(event) {
     camera.targetZoom = nextZoom;
     camera.targetX = local.x - anchorWorld.x * nextZoom;
     camera.targetY = local.y - anchorWorld.y * nextZoom;
+    const clampedTarget = clampedCameraPosition(camera.targetX, camera.targetY, camera.targetZoom);
+    camera.targetX = clampedTarget.x;
+    camera.targetY = clampedTarget.y;
     camera.velocityX = 0;
     camera.velocityY = 0;
 
@@ -557,6 +568,13 @@ function startSmoothZoomAnimation() {
         camera.x += (camera.targetX - camera.x) * alpha;
         camera.y += (camera.targetY - camera.y) * alpha;
 
+        const clampedCurrent = clampedCameraPosition(camera.x, camera.y, camera.zoom);
+        camera.x = clampedCurrent.x;
+        camera.y = clampedCurrent.y;
+        const clampedTarget = clampedCameraPosition(camera.targetX, camera.targetY, camera.targetZoom);
+        camera.targetX = clampedTarget.x;
+        camera.targetY = clampedTarget.y;
+
         applyCameraState();
 
         const zoomDelta = Math.abs(camera.targetZoom - camera.zoom);
@@ -687,13 +705,27 @@ function applyCameraState() {
 function clampedCameraPosition(x, y, zoom) {
     const width = camera.worldWidth * zoom;
     const height = camera.worldHeight * zoom;
-    const viewportW = camera.viewportWidth;
+    const viewportW = effectiveClampViewportWidth();
     const viewportH = camera.viewportHeight;
 
     return {
         x: clampAxis(x, viewportW, width),
         y: clampAxis(y, viewportH, height),
     };
+}
+
+function effectiveClampViewportWidth() {
+    const occlusion = rightOrganellePanelOcclusionWidth();
+    return Math.max(1, camera.viewportWidth - occlusion);
+}
+
+function rightOrganellePanelOcclusionWidth() {
+    const panel = document.querySelector?.(".organelle-panel.panel-open");
+    if (!panel) return 0;
+
+    const cssWidth = getComputedStyle(document.documentElement).getPropertyValue("--organelle-panel-w");
+    const parsed = Number.parseFloat(cssWidth);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : ORGANELLE_PANEL_WIDTH_PX;
 }
 
 function clampAxis(value, viewportSize, contentSize) {
@@ -816,3 +848,7 @@ function clampZoom(value) {
 function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
 }
+
+
+
+

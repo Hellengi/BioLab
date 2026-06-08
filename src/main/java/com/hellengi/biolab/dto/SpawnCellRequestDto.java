@@ -3,10 +3,14 @@ package com.hellengi.biolab.dto;
 public record SpawnCellRequestDto(
         double x,
         double y,
-        GenomeDto genome,
-        double initialSpeed,
         double initialDirection,
-        Double startCellDamage,
-        Double startCpDamage
+        double initialSpeed,
+        Double startNucleusDamage,
+        Double startCytosolDamage,
+        Double startCpDamage,
+        Double startMembraneDamage,
+        Double startLysosomeDamage,
+        Double startFlagellumDamage,
+        GenomeDto genome
 ) {
 }

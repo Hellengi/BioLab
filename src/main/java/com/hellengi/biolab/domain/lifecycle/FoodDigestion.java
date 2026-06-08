@@ -1,3 +1,4 @@
+
 package com.hellengi.biolab.domain.lifecycle;
 
 import com.hellengi.biolab.config.YamlConfig;
@@ -51,7 +52,7 @@ public class FoodDigestion {
         cell.rememberDigestion(
                 result.grossEnergyGain() / tickScale,
                 result.energyCost() / tickScale,
-                result.damageAdded() / tickScale
+                0.0
         );
     }
 
@@ -115,7 +116,7 @@ public class FoodDigestion {
             }
 
             LysosomeSlot childSlot = target.getLysosomeSlot(childSlotIndex);
-            childSlot.setDamage(parentSlot.getDamage());
+            childSlot.setDamage(com.hellengi.biolab.domain.model.DamageModel.inheritedDamage(parentSlot.getDamage(), config.getCell()));
 
             Food food = findFood(world, parentSlot.getFoodId());
             if (food != null && food.isCapturedBy(parent.getId())) {
@@ -132,7 +133,7 @@ public class FoodDigestion {
 
     private boolean canCaptureNewFood(Cell cell) {
         if (!cell.hasFreeLysosomeSlot()) return false;
-        double maxEnergy = Math.max(cell.getGenome().getMaxEnergy(), EPSILON);
+        double maxEnergy = Math.max(cell.getMaxEnergy(), EPSILON);
         double energyDeficit01 = (maxEnergy - cell.getEnergy()) / maxEnergy;
         return energyDeficit01 > CAPTURE_ENERGY_DEFICIT_THRESHOLD;
     }
@@ -170,8 +171,6 @@ public class FoodDigestion {
     private DigestionResult updateCapturedFood(Cell cell, Map<Long, Food> foodById, double tickScale) {
         double grossEnergyGain = 0.0;
         double energyCost = 0.0;
-        double damageAdded = 0.0;
-
         for (LysosomeSlot slot : cell.getLysosomeSlots()) {
             Food food = findFood(foodById, slot.getFoodId());
             if (food == null || food.isMarkedForRemoval() || !food.isCapturedBy(cell.getId())) {
@@ -182,10 +181,6 @@ public class FoodDigestion {
             food.translateWithCapturedCell(cell.getX(), cell.getY());
             slot.syncFood(food);
 
-            if (isRuptured(slot)) {
-                releaseSlotFood(cell, food, slot);
-                continue;
-            }
 
             if (!food.isInsideLysosome()) {
                 moveFoodToLysosome(cell, food, slot, tickScale);
@@ -193,20 +188,11 @@ public class FoodDigestion {
                 continue;
             }
 
-            if (willRuptureDuringDigestion(cell, slot, tickScale)) {
-                releaseSlotFood(cell, food, slot);
-                continue;
-            }
 
             DigestionResult result = digestInsideLysosome(cell, food, slot, tickScale);
             grossEnergyGain += result.grossEnergyGain();
             energyCost += result.energyCost();
-            damageAdded += result.damageAdded();
 
-            if (isRuptured(slot)) {
-                releaseSlotFood(cell, food, slot);
-                continue;
-            }
 
             if (food.getEnergy() <= EPSILON) {
                 food.setMarkedForRemoval(true);
@@ -216,7 +202,7 @@ public class FoodDigestion {
             }
         }
 
-        return new DigestionResult(grossEnergyGain, energyCost, damageAdded);
+        return new DigestionResult(grossEnergyGain, energyCost);
     }
 
     private DigestionResult digestInsideLysosome(Cell cell, Food food, LysosomeSlot slot, double tickScale) {
@@ -242,7 +228,7 @@ public class FoodDigestion {
         if (digestedEnergy <= 0.0) {
             slot.syncFood(food);
             slot.rememberDigestionRates(0.0, 0.0, 0.0);
-            return new DigestionResult(0.0, 0.0, 0.0);
+            return new DigestionResult(0.0, 0.0);
         }
 
         // Food energy itself is transferred with 100% gross efficiency.
@@ -252,19 +238,15 @@ public class FoodDigestion {
         double grossEnergyGain = digestedEnergy * grossYield;
         double digestionCost = c.getLysosomeDigestCostFactor()
                 * digestedEnergy
-                * (0.35 + 1.65 * enzyme * enzyme)
-                * (1.0 + slot.getDamage() * 0.60);
+                * (0.35 + 1.65 * enzyme * enzyme);
 
-        cell.setEnergy(clamp(cell.getEnergy() + grossEnergyGain - digestionCost, 0.0, cell.getGenome().getMaxEnergy()));
+        cell.setEnergy(clamp(cell.getEnergy() + grossEnergyGain - digestionCost, 0.0, cell.getMaxEnergy()));
         food.setEnergy(Math.max(0.0, food.getEnergy() - digestedEnergy));
 
-        double damageRate = lysosomeDamageRate(cell);
-        double damageAdded = damageRate * tickScale;
-        slot.addDamage(damageAdded);
-        slot.rememberDigestionRates(grossEnergyGain / tickScale, digestionCost / tickScale, damageRate);
+        slot.rememberDigestionRates(grossEnergyGain / tickScale, digestionCost / tickScale, 0.0);
         slot.syncFood(food);
 
-        return new DigestionResult(grossEnergyGain, digestionCost, damageAdded);
+        return new DigestionResult(grossEnergyGain, digestionCost);
     }
 
     private void moveFoodToLysosome(Cell cell, Food food, LysosomeSlot slot, double tickScale) {
@@ -325,25 +307,6 @@ public class FoodDigestion {
         slot.clearFood();
     }
 
-    private boolean isRuptured(LysosomeSlot slot) {
-        return slot.getDamage() >= config.getCell().getLysosomeRuptureThreshold();
-    }
-
-    private boolean willRuptureDuringDigestion(Cell cell, LysosomeSlot slot, double tickScale) {
-        if (tickScale <= 0.0) {
-            return false;
-        }
-        double threshold = config.getCell().getLysosomeRuptureThreshold();
-        return slot.getDamage() + lysosomeDamageRate(cell) * tickScale >= threshold;
-    }
-
-    private double lysosomeDamageRate(Cell cell) {
-        YamlConfig.CellProperties c = config.getCell();
-        double enzyme = cell.getLysosomeEnzymeActivity01();
-        return c.getLysosomeDamageFactor()
-                * (0.30 + 0.70 * enzyme * enzyme)
-                * (1.0 + energyStress(cell));
-    }
 
     private void releaseFood(Cell cell, Food food, boolean pushOutside) {
         if (pushOutside) {
@@ -455,16 +418,11 @@ public class FoodDigestion {
     }
 
     private double smoothEnergyDeficitFactor(Cell cell) {
-        double maxEnergy = Math.max(cell.getGenome().getMaxEnergy(), EPSILON);
+        double maxEnergy = Math.max(cell.getMaxEnergy(), EPSILON);
         double deficit01 = clamp01((maxEnergy - cell.getEnergy()) / maxEnergy);
         return MIN_SATURATION_DIGESTION_FACTOR + (1.0 - MIN_SATURATION_DIGESTION_FACTOR) * smoothstep(deficit01 / 0.25);
     }
 
-    private double energyStress(Cell cell) {
-        double maxEnergy = Math.max(cell.getGenome().getMaxEnergy(), EPSILON);
-        double safeFloor = Math.max(maxEnergy * 0.15, EPSILON);
-        return 1.0 - clamp01(cell.getEnergy() / safeFloor);
-    }
 
     private double smoothstep(double t) {
         double x = clamp01(t);
@@ -482,8 +440,14 @@ public class FoodDigestion {
         return dx * dx + dy * dy;
     }
 
-    private record DigestionResult(double grossEnergyGain, double energyCost, double damageAdded) {
+    private record DigestionResult(double grossEnergyGain, double energyCost) {
     }
 }
+
+
+
+
+
+
 
 

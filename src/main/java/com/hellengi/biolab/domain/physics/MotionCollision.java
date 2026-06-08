@@ -216,3 +216,7 @@ public class MotionCollision {
         return Math.max(0.0, Math.min(1.0, value));
     }
 }
+
+
+
+

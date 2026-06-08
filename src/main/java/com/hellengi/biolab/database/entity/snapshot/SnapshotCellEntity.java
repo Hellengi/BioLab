@@ -44,6 +44,7 @@ public class SnapshotCellEntity {
             @AttributeOverride(name = "y", column = @Column(name = "physical_state_y", nullable = false)),
             @AttributeOverride(name = "vx", column = @Column(name = "physical_state_vx", nullable = false)),
             @AttributeOverride(name = "vy", column = @Column(name = "physical_state_vy", nullable = false)),
+            @AttributeOverride(name = "angularVelocity", column = @Column(name = "physical_state_angular_velocity", nullable = false)),
             @AttributeOverride(name = "radius", column = @Column(name = "physical_state_radius", nullable = false)),
             @AttributeOverride(name = "mass", column = @Column(name = "physical_state_mass", nullable = false)),
             @AttributeOverride(name = "density", column = @Column(name = "physical_state_density", nullable = false)),
@@ -87,6 +88,10 @@ public class SnapshotCellEntity {
     private List<SnapshotLysosomeSlotEntity> lysosomeSlots = new ArrayList<>();
 
     @OneToMany(mappedBy = "cell", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("slotIndex ASC")
+    private List<SnapshotFlagellumSlotEntity> flagellumSlots = new ArrayList<>();
+
+    @OneToMany(mappedBy = "cell", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("positionInCell ASC")
     private List<SnapshotCellEventEntity> events = new ArrayList<>();
 
@@ -120,8 +125,15 @@ public class SnapshotCellEntity {
         slot.setCell(this);
     }
 
+    public void addFlagellumSlot(SnapshotFlagellumSlotEntity slot) {
+        flagellumSlots.add(slot);
+        slot.setCell(this);
+    }
+
     public void addEvent(SnapshotCellEventEntity event) {
         events.add(event);
         event.setCell(this);
     }
 }
+
+

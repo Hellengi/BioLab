@@ -2,6 +2,7 @@ package com.hellengi.biolab.domain.model.organelle;
 
 import com.hellengi.biolab.config.YamlConfig;
 import com.hellengi.biolab.domain.model.Cell;
+import com.hellengi.biolab.domain.model.DamageModel;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -13,6 +14,9 @@ import static com.hellengi.biolab.util.Utils.percent01;
 @Setter
 public class ChloroplastsOrganelle implements Organelle {
     private static final double MIN_CHLOROPHYLL_PERCENT = 15.0;
+    private static final double PHOTOSYNTHETIC_EFFICIENCY = 0.34;
+    private static final double LIGHT_HALF_SATURATION_FACTOR = 1.9;
+    private static final double LOW_LIGHT_RESPONSE_POWER = 1.7;
 
     private boolean enabled;
     private double amount;
@@ -99,15 +103,21 @@ public class ChloroplastsOrganelle implements Organelle {
                 * config.getChloroplastAreaFactor()
                 * chlorophyll01()
                 * config.getMaxPhotosynthesisFactor()
-                * Math.exp(-cpDamage);
+                * PHOTOSYNTHETIC_EFFICIENCY
+                * DamageModel.performance(cpDamage);
     }
 
     public double usefulLight(Cell cell, YamlConfig.CellProperties config, double irradiance, double cpDamage) {
-        return Math.min(photochemicalLight(cell, config, irradiance), photosynthesisCapacity(config, cpDamage));
+        if (!present()) return 0.0;
+        double capacity = photosynthesisCapacity(config, cpDamage);
+        double photochemical = photochemicalLight(cell, config, irradiance);
+        double normalizedLight = photochemical / Math.max(capacity * LIGHT_HALF_SATURATION_FACTOR, EPSILON);
+        double hill = Math.pow(Math.max(0.0, normalizedLight), LOW_LIGHT_RESPONSE_POWER);
+        return capacity * hill / (1.0 + hill);
     }
 
     public double excessLight(Cell cell, YamlConfig.CellProperties config, double irradiance, double cpDamage) {
-        return Math.max(0.0, photochemicalLight(cell, config, irradiance) - photosynthesisCapacity(config, cpDamage));
+        return Math.max(0.0, photochemicalLight(cell, config, irradiance) - usefulLight(cell, config, irradiance, cpDamage));
     }
 
     public double carotProtection(YamlConfig.CellProperties config) {
@@ -152,6 +162,12 @@ public class ChloroplastsOrganelle implements Organelle {
         return totalArea(config);
     }
 }
+
+
+
+
+
+
 
 
 

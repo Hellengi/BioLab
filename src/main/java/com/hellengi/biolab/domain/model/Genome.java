@@ -1,6 +1,8 @@
+
 package com.hellengi.biolab.domain.model;
 
 import com.hellengi.biolab.domain.model.organelle.ChloroplastsOrganelle;
+import com.hellengi.biolab.domain.model.organelle.FlagellaOrganelle;
 import com.hellengi.biolab.domain.model.organelle.CytosolOrganelle;
 import com.hellengi.biolab.domain.model.organelle.LysosomeOrganelle;
 import com.hellengi.biolab.domain.model.organelle.MembraneOrganelle;
@@ -20,15 +22,17 @@ public class Genome {
     private MembraneOrganelle membrane;
     private ChloroplastsOrganelle chloroplasts;
     private LysosomeOrganelle lysosomes;
+    private FlagellaOrganelle flagella;
 
     public Genome(
             double divisionThreshold,
             double divisionImpulse,
             double divisionAngle,
-            double maxEnergy,
-            double dryMass,
-            double elasticity,
+            double cytosolArea,
+            double cytosolDensity,
+            boolean gfpEnabled,
             double gfp,
+            double elasticity,
             boolean melaninEnabled,
             double melaninPercent,
             boolean chloroplastEnabled,
@@ -37,14 +41,28 @@ public class Genome {
             double carotenoids,
             boolean lysosomeEnabled,
             double lysosomeAmount,
-            double lysosomeEnzymeActivity
+            double lysosomeEnzymeActivity,
+            boolean flagellumEnabled,
+            double flagellumCount,
+            double flagellumLength,
+            double flagellumMotorPower,
+            double flagellumPairSpreadAngle,
+            double flagellumSteeringAsymmetry
     ) {
         this(
                 new NucleusOrganelle(divisionThreshold, divisionImpulse, divisionAngle),
-                new CytosolOrganelle(maxEnergy, dryMass, gfp),
+                new CytosolOrganelle(cytosolArea, cytosolDensity, gfpEnabled, gfp),
                 new MembraneOrganelle(elasticity, melaninEnabled, melaninPercent),
                 new ChloroplastsOrganelle(chloroplastEnabled, chloroplastAmount, chlorophyll, carotenoids),
-                new LysosomeOrganelle(lysosomeEnabled, lysosomeAmount, lysosomeEnzymeActivity)
+                new LysosomeOrganelle(lysosomeEnabled, lysosomeAmount, lysosomeEnzymeActivity),
+                new FlagellaOrganelle(
+                        flagellumEnabled,
+                        flagellumCount,
+                        flagellumLength,
+                        flagellumMotorPower,
+                        flagellumPairSpreadAngle,
+                        flagellumSteeringAsymmetry
+                )
         );
     }
 
@@ -53,17 +71,19 @@ public class Genome {
             CytosolOrganelle cytosol,
             MembraneOrganelle membrane,
             ChloroplastsOrganelle chloroplasts,
-            LysosomeOrganelle lysosomes
+            LysosomeOrganelle lysosomes,
+            FlagellaOrganelle flagella
     ) {
         this.nucleus = nucleus;
         this.cytosol = cytosol;
         this.membrane = membrane;
         this.chloroplasts = chloroplasts;
         this.lysosomes = lysosomes;
+        this.flagella = flagella;
     }
 
     public List<Organelle> organelles() {
-        return List.of(nucleus, cytosol, membrane, chloroplasts, lysosomes);
+        return List.of(nucleus, cytosol, membrane, chloroplasts, lysosomes, flagella);
     }
 
     public String getCode() {
@@ -76,7 +96,8 @@ public class Genome {
                 cytosol.copy(),
                 membrane.copy(),
                 chloroplasts.copy(),
-                lysosomes.copy()
+                lysosomes.copy(),
+                flagella.copy()
         );
     }
 
@@ -89,14 +110,19 @@ public class Genome {
     public double getDivisionAngle() { return nucleus.getDivisionAngle(); }
     public void setDivisionAngle(double value) { nucleus.setDivisionAngle(value); }
 
-    public double getMaxEnergy() { return cytosol.getMaxEnergy(); }
-    public void setMaxEnergy(double value) { cytosol.setMaxEnergy(value); }
+    public double getCytosolArea() { return cytosol.getArea(); }
+    public void setCytosolArea(double value) { cytosol.setArea(value); }
 
-    public double getDryMass() { return cytosol.getDryMass(); }
-    public void setDryMass(double value) { cytosol.setDryMass(value); }
+    public double getCytosolDensity() { return cytosol.getDensity(); }
+    public void setCytosolDensity(double value) { cytosol.setDensity(value); }
+
+    public boolean isGfpEnabled() { return cytosol.isGfpEnabled(); }
+    public void setGfpEnabled(boolean value) { cytosol.setGfpEnabled(value); }
 
     public double getGfp() { return cytosol.getGfp(); }
     public void setGfp(double value) { cytosol.setGfp(value); }
+
+    public double getMaxEnergy() { return cytosol.maxEnergy(); }
 
     public double getElasticity() { return membrane.getElasticity(); }
     public void setElasticity(double value) { membrane.setElasticity(value); }
@@ -127,4 +153,28 @@ public class Genome {
 
     public double getLysosomeEnzymeActivity() { return lysosomes.getEnzymeActivity(); }
     public void setLysosomeEnzymeActivity(double value) { lysosomes.setEnzymeActivity(value); }
+
+    public boolean isFlagellumEnabled() { return flagella.isEnabled(); }
+    public void setFlagellumEnabled(boolean value) { flagella.setEnabled(value); }
+
+    public double getFlagellumCount() { return flagella.getCount(); }
+    public void setFlagellumCount(double value) { flagella.setCount(Math.max(1, Math.min(FlagellaOrganelle.MAX_FLAGELLA, (int) Math.round(value)))); }
+
+    public double getFlagellumLength() { return flagella.getLength(); }
+    public void setFlagellumLength(double value) { flagella.setLength(value); }
+
+    public double getFlagellumMotorPower() { return flagella.getMotorPower(); }
+    public void setFlagellumMotorPower(double value) { flagella.setMotorPower(value); }
+
+
+    public double getFlagellumPairSpreadAngle() { return flagella.getPairSpreadAngle(); }
+    public void setFlagellumPairSpreadAngle(double value) { flagella.setPairSpreadAngle(value); }
+
+    public double getFlagellumSteeringAsymmetry() { return flagella.getSteeringAsymmetry(); }
+    public void setFlagellumSteeringAsymmetry(double value) { flagella.setSteeringAsymmetry(value); }
 }
+
+
+
+
+

@@ -15,6 +15,7 @@ public class Motion {
         for (Cell cell : world.getCells()) {
             if (cell.isMarkedForRemoval()) continue;
             motionForces.applyViscosity(cell, tickScale);
+            motionForces.applyFlagella(cell, tickScale);
             motionForces.applyGravity(cell, tickScale);
         }
 
@@ -31,3 +32,5 @@ public class Motion {
         }
     }
 }
+
+

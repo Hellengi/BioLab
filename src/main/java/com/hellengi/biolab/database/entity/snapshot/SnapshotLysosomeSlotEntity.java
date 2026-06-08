@@ -74,3 +74,5 @@ public class SnapshotLysosomeSlotEntity {
     })
     private DamageFlowEntity damageFlow = new DamageFlowEntity();
 }
+
+

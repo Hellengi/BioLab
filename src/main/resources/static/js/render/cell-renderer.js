@@ -1,12 +1,43 @@
 import { drawInternalGfpGlow } from "./gfp.js";
+import { ORGANIC_BROWN_COLOR } from "./colors.js";
 import { clamp01, grayscaleRgb, hash01, organicBrownHsla, rgb, seededRandom, smoothstep } from "./render-utils.js";
 import { buildSlotIndex, radialOrganelleLayouts } from "./organelle-layout.js";
 
 const CELL_MIN_LIGHT = 0.38;
-const REAL_CELL_OPACITY_TO_RENDER_ALPHA = 9.6;
-const MIN_CELL_RENDER_ALPHA = 0.18;
-const MAX_CELL_RENDER_ALPHA = 0.82;
 const DEFAULT_MEMBRANE_OPACITY = 0.095;
+const DEFAULT_FLAGELLUM_MIN_SPACING_ANGLE = 20;
+
+const COLORLESS_MEMBRANE_COLOR = Object.freeze({ r: 238, g: 240, b: 232 });
+
+const FLAGELLUM_VISUAL = Object.freeze({
+    pointCount: 22,
+    rootStraightFraction: 0.16,
+    rootBlendPointFraction: 0.20,
+    minBlendPointIndex: 4,
+    strokeAsymmetry: 0.18,
+    rootWidthBoost: 1.10,
+    widthExponent: 2.30,
+    minTipWidthPx: 0.30,
+    amplitudeBaseFraction: 0.19,
+    amplitudeDriveFraction: 0.05,
+    amplitudeDrivePower: 0.72,
+    beatFrequencyBase: 2.0,
+    beatFrequencyRange: 26.0,
+    envelopeWaveCycles: 4.8,
+    envelopeWaveCycleSpread: 1.25,
+    rootBezierInPull: 0.58,
+    rootBezierOutPull: 0.42,
+    membraneLayerAlpha: 0.88,
+    rootFlareWidthBoost: 2.35,
+    rootFlareLengthFraction: 0.18,
+    clipUnderlapPx: 0.6,
+    rootInsetFactor: 0.16,
+    rootInsetMaxWidthFactor: 1.25,
+    minThicknessFactor: 0.050,
+    maxThicknessFactor: 0.112,
+    thicknessLengthPower: 0.82,
+    pairThicknessScale: 0.92,
+});
 
 const CYTOSOL_TEXTURE = Object.freeze({
     worldGranules: 10,
@@ -104,31 +135,32 @@ export function drawBiologyCell(ctx, cell, options = {}) {
     const showMembrane = options.showMembrane !== false && (diagnosticMode || layerCount >= 2);
     const showShading = options.showShading !== false && !diagnosticMode && layerCount >= 3;
     const showGfp = options.showGfp !== false && !diagnosticMode;
+    const showFlagella = options.showFlagella !== false && showOrganelles;
 
     const sourceCytosolColor = visual.cytosolColor ?? visual.cellColor;
     const sourceMembraneColor = visual.membraneColor;
     const sourceChloroplastColor = visual.chloroplastColor;
     const sourceLysosomeColor = visual.lysosomeColor;
+    const sourceFlagellumColor = visual.flagellumColor;
     const sourceNucleoidColor = visual.nucleoidColor;
 
     const cytosolColor = colorForRender(sourceCytosolColor, illum, grayscale);
     const membraneColor = colorForRender(sourceMembraneColor, illum, grayscale);
     const chloroplastColor = colorForRender(sourceChloroplastColor, illum, grayscale);
     const lysosomeColor = colorForRender(sourceLysosomeColor, illum, grayscale);
+    const flagellumColor = colorForRender(sourceFlagellumColor, illum, grayscale);
     const nucleoidColor = colorForRender(sourceNucleoidColor, illum, grayscale);
 
-    const cytosolOpacity = renderAlpha(
-        sourceCytosolColor?.opacity ?? visual.cellColor?.opacity ?? cell?.opacity ?? 0.1,
-        MIN_CELL_RENDER_ALPHA,
-        MAX_CELL_RENDER_ALPHA
-    );
-    const membraneOpacity = renderAlpha(
-        sourceMembraneColor?.opacity ?? (preview ? DEFAULT_MEMBRANE_OPACITY : 0.0),
-        0.05,
-        0.88
-    );
+    const cytosolOpacity = layerAlpha(sourceCytosolColor?.opacity ?? visual.cellColor?.opacity ?? cell?.opacity ?? 0.1);
+    const membraneOpacity = layerAlpha(sourceMembraneColor?.opacity ?? (preview ? DEFAULT_MEMBRANE_OPACITY : 0.0));
     const chloroplastOpacity = organelleAlpha(sourceChloroplastColor?.opacity ?? 0, "chloroplast", diagnosticMode);
     const lysosomeOpacity = organelleAlpha(sourceLysosomeColor?.opacity ?? 0, "lysosome", diagnosticMode);
+    const flagellumOpacity = organelleAlpha(
+        sourceFlagellumColor?.opacity
+            ?? Math.max(sourceCytosolColor?.opacity ?? 0, sourceMembraneColor?.opacity ?? 0),
+        "flagellum",
+        diagnosticMode
+    );
     const nucleoidOpacity = organelleAlpha(sourceNucleoidColor?.opacity ?? 0.62, "nucleoid", diagnosticMode);
 
     const labels = options.labels ?? {};
@@ -137,6 +169,36 @@ export function drawBiologyCell(ctx, cell, options = {}) {
     const hitTargets = Array.isArray(options.hitTargets) ? options.hitTargets : null;
     const activeOrganelle = normalizeOrganelleId(options.activeOrganelle);
     const activeOrganelleAlpha = clamp01(options.activeOrganelleAlpha ?? 0.0);
+
+    const hasVisibleFlagella = showFlagella && Number(visual?.flagellumCount ?? (cell?.genome?.flagellumEnabled ? cell?.genome?.flagellumCount : 0) ?? 0) > 0;
+
+    const drawExternalFlagella = (flagellaLayerOptions = {}) => drawFlagella(ctx, {
+        cell,
+        visual,
+        x,
+        y,
+        radius,
+        sourceRadius,
+        scale,
+        color: flagellumColor,
+        opacity: flagellumOpacity,
+        amount: visual.flagellumCount ?? (cell?.genome?.flagellumEnabled ? cell?.genome?.flagellumCount : 0) ?? 0,
+        hitTargets,
+        active: activeOrganelle === "flagellum",
+        activeAlpha: activeOrganelleAlpha,
+        labelFor,
+        tooltipFor,
+        preview,
+        renderScale,
+        mode: normalizedMode,
+        showMembrane,
+        showShading,
+        illum,
+        grayscale,
+        animationTime: Number.isFinite(Number(options.animationTime)) ? Number(options.animationTime) : 0,
+        visibleBounds: options.visibleBounds ?? null,
+        ...flagellaLayerOptions,
+    });
 
     if (shouldUseStaticCellBaseCache({
         options,
@@ -171,10 +233,19 @@ export function drawBiologyCell(ctx, cell, options = {}) {
             membraneOpacity,
             chloroplastOpacity,
             lysosomeOpacity,
+            flagellumOpacity,
             nucleoidOpacity,
+            showFlagella: false,
         });
 
         if (cached) {
+            if (hasVisibleFlagella && !diagnosticMode) {
+                drawExternalFlagella({
+                    drawCytosolLayer: true,
+                    drawMembraneLayer: false,
+                    drawEffects: false,
+                });
+            }
             ctx.drawImage(
                 cached.canvas,
                 x - cached.center,
@@ -182,6 +253,13 @@ export function drawBiologyCell(ctx, cell, options = {}) {
                 cached.sizeWorld,
                 cached.sizeWorld
             );
+            if (hasVisibleFlagella) {
+                drawExternalFlagella({
+                    drawCytosolLayer: diagnosticMode,
+                    drawMembraneLayer: diagnosticMode ? false : showMembrane,
+                    drawEffects: true,
+                });
+            }
             if (showShading) {
                 drawCellLightCrescents(ctx, {
                     x,
@@ -189,7 +267,7 @@ export function drawBiologyCell(ctx, cell, options = {}) {
                     radius,
                     visual,
                     cursorLight: options.cursorLight ?? null,
-                    cellOpacity: renderAlpha(visual.cellColor?.opacity ?? cell?.opacity ?? sourceCytosolColor?.opacity ?? 0.1),
+                    cellOpacity: layerAlpha(visual.cellColor?.opacity ?? cell?.opacity ?? sourceCytosolColor?.opacity ?? 0.1),
                 });
             }
             return;
@@ -220,6 +298,14 @@ export function drawBiologyCell(ctx, cell, options = {}) {
             y,
             inner: radius * 0.78,
             outer: radius + 5,
+        });
+    }
+
+    if (hasVisibleFlagella && !diagnosticMode) {
+        drawExternalFlagella({
+            drawCytosolLayer: true,
+            drawMembraneLayer: false,
+            drawEffects: false,
         });
     }
 
@@ -309,6 +395,14 @@ export function drawBiologyCell(ctx, cell, options = {}) {
         drawMembraneOverlay(ctx, x, y, radius, membraneColor, membraneOpacity, preview);
     }
 
+    if (hasVisibleFlagella) {
+        drawExternalFlagella({
+            drawCytosolLayer: diagnosticMode,
+            drawMembraneLayer: diagnosticMode ? false : showMembrane,
+            drawEffects: true,
+        });
+    }
+
     if (showShading) {
         drawCellLightCrescents(ctx, {
             x,
@@ -316,7 +410,7 @@ export function drawBiologyCell(ctx, cell, options = {}) {
             radius,
             visual,
             cursorLight: options.cursorLight ?? null,
-            cellOpacity: renderAlpha(visual.cellColor?.opacity ?? cell?.opacity ?? sourceCytosolColor?.opacity ?? 0.1),
+            cellOpacity: layerAlpha(visual.cellColor?.opacity ?? cell?.opacity ?? sourceCytosolColor?.opacity ?? 0.1),
         });
     }
 
@@ -356,7 +450,8 @@ function shouldUseStaticCellBaseCache(params) {
 }
 
 function cachedStaticCellBase(ctx, cell, options, meta) {
-    const key = staticCellBaseCacheKey(cell, options, meta);
+    const cacheMeta = {...meta, showFlagella: false, flagellumOpacity: 0};
+    const key = staticCellBaseCacheKey(cell, options, cacheMeta);
     const cached = staticCellBaseCache.get(key);
     if (cached) {
         // Refresh insertion order so the oldest truly unused entries are evicted first.
@@ -365,9 +460,9 @@ function cachedStaticCellBase(ctx, cell, options, meta) {
         return cached;
     }
 
-    const renderScale = renderCacheScale(meta.renderScale);
-    const paddingWorld = Math.max(STATIC_CELL_CACHE.padding, meta.radius * 0.10);
-    const sizeWorld = Math.max(1.0e-6, meta.radius * 2 + paddingWorld * 2);
+    const renderScale = renderCacheScale(cacheMeta.renderScale);
+    const paddingWorld = Math.max(STATIC_CELL_CACHE.padding, cacheMeta.radius * 0.10);
+    const sizeWorld = Math.max(1.0e-6, cacheMeta.radius * 2 + paddingWorld * 2);
     const sizePx = Math.max(1, Math.ceil(sizeWorld * renderScale));
     const canvas = createCellRenderCanvas(sizePx, sizePx);
     if (!canvas) return null;
@@ -383,10 +478,11 @@ function cachedStaticCellBase(ctx, cell, options, meta) {
         ...options,
         x: center,
         y: center,
-        radius: meta.radius,
-        sourceRadius: meta.sourceRadius,
-        visual: meta.visual,
+        radius: cacheMeta.radius,
+        sourceRadius: cacheMeta.sourceRadius,
+        visual: cacheMeta.visual,
         cacheStaticBase: false,
+        showFlagella: false,
         hitTargets: null,
         activeOrganelle: null,
         activeOrganelleAlpha: 0,
@@ -424,7 +520,7 @@ function createCellRenderCanvas(width, height) {
 function staticCellBaseCacheKey(cell, options, meta) {
     const visual = meta.visual ?? {};
     return [
-        "v2",
+        "v3",
         cell?.id ?? "draft",
         meta.normalizedMode,
         meta.preview ? 1 : 0,
@@ -434,6 +530,7 @@ function staticCellBaseCacheKey(cell, options, meta) {
         q(meta.sourceRadius, STATIC_CELL_CACHE.radiusStep),
         q(meta.renderScale, STATIC_CELL_CACHE.renderScaleStep),
         q(meta.illum, STATIC_CELL_CACHE.lightStep),
+        q(cell?.directionAngle ?? 0, 1),
         bool(meta.showCytosol),
         bool(meta.showGfp),
         bool(meta.showOrganelles),
@@ -442,17 +539,21 @@ function staticCellBaseCacheKey(cell, options, meta) {
         q(meta.membraneOpacity),
         q(meta.chloroplastOpacity),
         q(meta.lysosomeOpacity),
+        q(meta.showFlagella ? meta.flagellumOpacity ?? 0 : 0),
         q(meta.nucleoidOpacity),
         colorSignature(visual.cellColor),
         colorSignature(visual.cytosolColor),
         colorSignature(visual.membraneColor),
         colorSignature(visual.chloroplastColor),
         colorSignature(visual.lysosomeColor),
+        colorSignature(meta.showFlagella ? visual.flagellumColor : null),
         colorSignature(visual.nucleoidColor),
         colorSignature(visual.gfpColor),
         q(visual.gfpExpression ?? normalizedGfp(cell)),
         q(visual.chloroplastAmount ?? 0),
         q(visual.lysosomeAmount ?? 0),
+        q(meta.showFlagella ? visual.flagellumCount ?? 0 : 0),
+        meta.showFlagella ? flagellumSlotSignature(cell) : "-",
         q(cell?.nucleusRadius ?? 0),
         q(cell?.nucleusOffsetX ?? 0),
         q(cell?.nucleusOffsetY ?? 0),
@@ -471,13 +572,24 @@ function colorSignature(color) {
     ].join(",");
 }
 
+function flagellumSlotSignature(cell) {
+    const slots = Array.isArray(cell?.flagellumSlots) ? cell.flagellumSlots : [];
+    if (!slots.length) return "-";
+    let result = "";
+    for (let i = 0; i < slots.length; i++) {
+        const slot = slots[i];
+        result += `${slot.index ?? i}:${q(slot.damage ?? 0)}:${q(slot.baseX ?? 0)}:${q(slot.baseY ?? 0)}:${q(slot.directionX ?? 0)}:${q(slot.directionY ?? 0)}|`;
+    }
+    return result;
+}
+
 function lysosomeSlotSignature(cell) {
     const slots = Array.isArray(cell?.lysosomeSlots) ? cell.lysosomeSlots : [];
     if (!slots.length) return "-";
     let result = "";
     for (let i = 0; i < slots.length; i++) {
         const slot = slots[i];
-        result += `${Math.round(Number(slot?.index ?? i))}:${q(slot?.x ?? 0)}:${q(slot?.y ?? 0)}:${q(slot?.radius ?? 0)}:${q(slot?.targetX ?? 0)}:${q(slot?.targetY ?? 0)}:${q(slot?.targetRadius ?? 0)}:${q(slot?.foodRadius ?? 0)}:${q(slot?.targetFoodRadius ?? 0)}:${q(slot?.damage ?? 0)}:${bool(slot?.ruptured)}:${slot?.foodId ?? "-"};`;
+        result += `${Math.round(Number(slot?.index ?? i))}:${q(slot?.x ?? 0)}:${q(slot?.y ?? 0)}:${q(slot?.radius ?? 0)}:${q(slot?.targetX ?? 0)}:${q(slot?.targetY ?? 0)}:${q(slot?.targetRadius ?? 0)}:${q(slot?.foodRadius ?? 0)}:${q(slot?.targetFoodRadius ?? 0)}:${q(slot?.damage ?? 0)}:${slot?.foodId ?? "-"};`;
     }
     return result;
 }
@@ -517,8 +629,13 @@ function drawNucleoid(ctx, params) {
     const r = Number(cell?.nucleusRadius ?? 0) > 0 ? Number(cell.nucleusRadius) * scale : radius * 0.28;
     if (!Number.isFinite(r) || r <= DRAW_THRESHOLDS.minOrganelleRadius || opacity <= 0.001) return;
 
-    const nx = x + (Number(cell?.nucleusOffsetX ?? 0) || 0) * scale;
-    const ny = y + (Number(cell?.nucleusOffsetY ?? 0) || 0) * scale;
+    const offset = rotateCellLocalOffset(
+        (Number(cell?.nucleusOffsetX ?? 0) || 0) * scale,
+        (Number(cell?.nucleusOffsetY ?? 0) || 0) * scale,
+        cell
+    );
+    const nx = x + offset.x;
+    const ny = y + offset.y;
     const alpha = clamp01(opacity) * (active ? 1.0 : 0.92);
 
     ctx.save();
@@ -562,6 +679,7 @@ function drawChloroplasts(ctx, params) {
 
     const seed = seedFor(cell, {chloroplastAmount: count}, false, count * 97 + 17);
     const fillColor = color ?? {r:170,g:174,b:126};
+    const cellRotation = cellRotationRadians(cell);
 
     ctx.save();
     ctx.fillStyle = rgb(fillColor, opacity);
@@ -570,14 +688,16 @@ function drawChloroplasts(ctx, params) {
 
     for (let i = 0; i < visibleCount; i++) {
         const layout = chloroplastLayout(seed, i, radius, visibleCount);
-        const px = x + layout.x;
-        const py = y + layout.y;
+        const rotated = rotateOffset(layout.x, layout.y, cellRotation);
+        const px = x + rotated.x;
+        const py = y + rotated.y;
         const sx = organelleRadius * 1.34;
         const sy = organelleRadius * layout.normalScale;
+        const rotation = layout.rotation + cellRotation;
 
         ctx.save();
         ctx.translate(px, py);
-        ctx.rotate(layout.rotation);
+        ctx.rotate(rotation);
         ctx.beginPath();
         ctx.ellipse(0, 0, sx, sy, 0, 0, Math.PI * 2);
         ctx.fill();
@@ -622,6 +742,7 @@ function drawLysosomes(ctx, params) {
     const slotIndex = buildSlotIndex(slots);
     const normalizedMode = String(mode ?? "general").toLowerCase();
     const shouldDrawCapturedFood = normalizedMode !== "health";
+    const cellRotation = cellRotationRadians(cell);
     let fallbackLayouts = null;
 
     ctx.save();
@@ -635,18 +756,20 @@ function drawLysosomes(ctx, params) {
         layout ??= {x: 0, y: 0, r: radius * 0.12, rotation: 0};
         if (!Number.isFinite(layout.r) || layout.r <= DRAW_THRESHOLDS.minOrganelleRadius) continue;
 
-        const px = x + layout.x;
-        const py = y + layout.y;
+        const rotated = rotateOffset(layout.x, layout.y, cellRotation);
+        const px = x + rotated.x;
+        const py = y + rotated.y;
         const r = layout.r;
+        const layoutRotation = layout.rotation + cellRotation;
 
         if (normalizedMode === "general") {
-            fillLysosomeRadial(ctx, px, py, r, layout.rotation, fillColor, opacity * (active ? 1.0 : 0.88));
+            fillLysosomeRadial(ctx, px, py, r, layoutRotation, fillColor, opacity * (active ? 1.0 : 0.88));
         } else {
-            fillEllipse(ctx, px, py, r * 1.05, r * 0.92, layout.rotation, fillColor, opacity * (active ? 1.0 : 0.88));
+            fillEllipse(ctx, px, py, r * 1.05, r * 0.92, layoutRotation, fillColor, opacity * (active ? 1.0 : 0.88));
         }
 
         if (active && activeAlpha > 0.001) {
-            fillHatchEllipseDown(ctx, px, py, r * 1.05, r * 0.92, layout.rotation, `rgba(255,255,255,${(0.18 * activeAlpha).toFixed(3)})`);
+            fillHatchEllipseDown(ctx, px, py, r * 1.05, r * 0.92, layoutRotation, `rgba(255,255,255,${(0.18 * activeAlpha).toFixed(3)})`);
             ctx.strokeStyle = `rgba(255,255,255,${(0.90 * activeAlpha).toFixed(3)})`;
             ctx.lineWidth = 1.15;
         } else {
@@ -654,7 +777,7 @@ function drawLysosomes(ctx, params) {
             ctx.lineWidth = Math.max(0.25, Math.min(0.55, radius * 0.01));
         }
         ctx.beginPath();
-        ctx.ellipse(px, py, r * 1.05, r * 0.92, layout.rotation, 0, Math.PI * 2);
+        ctx.ellipse(px, py, r * 1.05, r * 0.92, layoutRotation, 0, Math.PI * 2);
         ctx.stroke();
 
         if (shouldDrawCapturedFood && slot?.occupied) {
@@ -680,6 +803,604 @@ function drawLysosomes(ctx, params) {
         });
     }
     ctx.restore();
+}
+
+
+function drawFlagella(ctx, params) {
+    const {
+        cell,
+        visual = {},
+        x,
+        y,
+        radius,
+        scale,
+        color,
+        opacity,
+        amount,
+        hitTargets,
+        active,
+        activeAlpha,
+        labelFor,
+        tooltipFor,
+        renderScale = 1,
+        animationTime = 0,
+        mode = "general",
+        showMembrane = true,
+        showShading = false,
+        illum = 1.0,
+        grayscale = false,
+        visibleBounds = null,
+        drawCytosolLayer = true,
+        drawMembraneLayer = showMembrane,
+        drawEffects = true,
+    } = params;
+    const count = Math.max(0, Math.min(64, Math.round(amount ?? 0)));
+    if (count <= 0 || opacity <= 0.001 || radius <= DRAW_THRESHOLDS.minBodyRadius) return;
+
+    const diagnosticMode = mode === "health" || mode === "energy";
+    const cytosolColor = colorForRender(visual.cytosolColor ?? visual.cellColor ?? color, diagnosticMode ? 1.0 : illum, grayscale);
+    const membraneColor = colorForRender(visual.membraneColor ?? COLORLESS_MEMBRANE_COLOR, diagnosticMode ? 1.0 : illum, grayscale);
+    const diagnosticColor = color ?? membraneColor ?? COLORLESS_MEMBRANE_COLOR;
+    const cytosolLayerAlpha = layerAlpha(visual.cytosolColor?.opacity ?? visual.cellColor?.opacity ?? cell?.opacity ?? 0.1);
+    const membraneLayerAlpha = showMembrane ? 1.0 : 0;
+    const slots = flagellumSlotsForRender(cell, count, radius, scale);
+    const screenScale = Math.max(1.0, Number(renderScale) || 1.0);
+
+    ctx.save();
+    ctx.lineCap = "butt";
+    ctx.lineJoin = "round";
+
+    for (const slot of slots) {
+        const damage = clamp01(slot.damage ?? 0);
+        const forceScale = flagellumSlotForceScale(slot, cell, radius);
+        const functionalDrive = forceScale;
+        const visibleAlpha = clamp01(1.0 - damage * 0.18);
+        if (visibleAlpha <= 0.001) continue;
+
+        const bx = x + slot.baseX;
+        const by = y + slot.baseY;
+        const thrustX = Number(slot.directionX) || 0;
+        const thrustY = Number(slot.directionY) || -1;
+        const len = Math.hypot(thrustX, thrustY) || 1;
+        const tailX = -thrustX / len;
+        const tailY = -thrustY / len;
+        const normalX = -tailY;
+        const normalY = tailX;
+        const length = Math.max(radius * 0.08, Number(slot.length) || radius * flagellumLengthFactorFromGenome(cell?.genome));
+        const baseThickness = Math.max(1.2 / screenScale, Number(slot.thickness) || radius * flagellumThicknessFactorFromGenome(cell?.genome, count));
+        const strokeAsymmetry = FLAGELLUM_VISUAL.strokeAsymmetry;
+        const lengthRatio = Math.max(0.08, length / Math.max(radius, 1.0e-6));
+        const thicknessRatio = Math.max(0.01, baseThickness / Math.max(radius, 1.0e-6));
+        const beatDrive = Math.sqrt(clamp01(forceScale));
+        const beatFrequency = forceScale <= 0.001
+            ? 0
+            : (FLAGELLUM_VISUAL.beatFrequencyBase + beatDrive * FLAGELLUM_VISUAL.beatFrequencyRange)
+                * (0.25 + 0.75 * forceScale)
+                / Math.sqrt(lengthRatio)
+                / Math.sqrt(Math.max(0.32, thicknessRatio / 0.08));
+        const phase = Number(animationTime || 0) * beatFrequency
+            + (slot.index ?? 0) * (0.52 + 1.45 * strokeAsymmetry);
+        const ampBase = Math.max(0.9 / screenScale, length * FLAGELLUM_VISUAL.amplitudeBaseFraction);
+        const amp = ampBase
+            * Math.pow(forceScale, FLAGELLUM_VISUAL.amplitudeDrivePower)
+            * (0.24 + 0.76 * beatDrive)
+            * (0.86 + FLAGELLUM_VISUAL.amplitudeDriveFraction * functionalDrive);
+        const rootWidth = baseThickness * FLAGELLUM_VISUAL.rootWidthBoost;
+        const tipWidth = Math.max(FLAGELLUM_VISUAL.minTipWidthPx / screenScale, baseThickness * 0.06);
+        const clipRadius = radius - FLAGELLUM_VISUAL.clipUnderlapPx / screenScale;
+        if (visibleBounds && !flagellumSegmentVisible(bx, by, bx + tailX * length, by + tailY * length, visibleBounds, Math.max(rootWidth, amp) + 2 / screenScale)) {
+            continue;
+        }
+        const points = [];
+        const pointCount = FLAGELLUM_VISUAL.pointCount;
+
+        for (let p = 0; p <= pointCount; p++) {
+            const t = p / pointCount;
+            const wavePhase = t * Math.PI * (FLAGELLUM_VISUAL.envelopeWaveCycles + FLAGELLUM_VISUAL.envelopeWaveCycleSpread * strokeAsymmetry) + phase;
+            const smoothWave = Math.sin(wavePhase);
+            const powerStroke = Math.sin(wavePhase) * (0.62 + 0.38 * Math.max(0, Math.sin(wavePhase - Math.PI / 2)))
+                + 0.30 * Math.sin(wavePhase * 2.0 + phase * 0.25);
+            const distalGain = smoothstep((t - FLAGELLUM_VISUAL.rootStraightFraction) / Math.max(1.0e-6, 1.0 - FLAGELLUM_VISUAL.rootStraightFraction));
+            const envelope = Math.sin(t * Math.PI * 0.92) * (0.10 + 0.90 * distalGain);
+            const wobble = (smoothWave * (1.0 - strokeAsymmetry) + powerStroke * strokeAsymmetry) * amp * envelope;
+            points.push({
+                t,
+                x: bx + tailX * length * t + normalX * wobble,
+                y: by + tailY * length * t + normalY * wobble,
+                width: flagellumWidthAt(t, rootWidth, tipWidth),
+            });
+        }
+
+        const bodyPath = flagellumOutlinePath(points, normalX, normalY, x, y, radius);
+        const effectiveFlagellumAlpha = clamp01(visibleAlpha * opacity);
+
+        if (diagnosticMode) {
+            if (drawCytosolLayer || drawMembraneLayer) {
+                ctx.fillStyle = rgb(diagnosticColor, effectiveFlagellumAlpha);
+                fillFlagellumPath(ctx, bodyPath);
+            }
+        } else {
+            if (effectiveFlagellumAlpha > 0.001) {
+                if (drawCytosolLayer) {
+                    ctx.save();
+                    clipOutsideCell(ctx, x, y, clipRadius);
+                    ctx.fillStyle = rgb(cytosolColor, clamp01(cytosolLayerAlpha * effectiveFlagellumAlpha));
+                    fillFlagellumPath(ctx, bodyPath);
+                    ctx.restore();
+                }
+                if (drawMembraneLayer && showMembrane) {
+                    ctx.save();
+                    clipOutsideCell(ctx, x, y, clipRadius);
+                    ctx.fillStyle = rgb(membraneColor, clamp01(membraneLayerAlpha * effectiveFlagellumAlpha));
+                    fillFlagellumPath(ctx, bodyPath);
+                    ctx.restore();
+                }
+            }
+            if (drawEffects && showShading) {
+                drawFlagellumShadowLayer(ctx, bodyPath, x, y, radius, visual, visibleAlpha, Math.max(cytosolLayerAlpha, membraneLayerAlpha) * effectiveFlagellumAlpha);
+            }
+            if (drawEffects && cell?.dead) {
+                drawDeadFlagellumFilterLayer(ctx, bodyPath, cell, illum, grayscale);
+            }
+        }
+
+        if (drawEffects && active && activeAlpha > 0.001) {
+            ctx.save();
+            ctx.strokeStyle = `rgba(255,255,255,${(0.90 * activeAlpha).toFixed(3)})`;
+            ctx.lineWidth = 1.15 / screenScale;
+            ctx.stroke(bodyPath);
+            ctx.restore();
+        }
+
+        if (drawEffects) hitTargets?.push({
+            type: "segment",
+            kind: "organelle",
+            id: "flagellum",
+            index: slot.index ?? 0,
+            label: labelFor("flagellum"),
+            tooltip: tooltipFor("flagellum"),
+            x1: bx,
+            y1: by,
+            x2: bx + tailX * length,
+            y2: by + tailY * length,
+            hitRadius: Math.max(4, rootWidth * 1.6),
+        });
+    }
+
+    ctx.restore();
+}
+
+function flagellumSegmentVisible(x1, y1, x2, y2, bounds, padding = 0) {
+    if (!bounds) return true;
+    const minX = Math.min(x1, x2) - padding;
+    const maxX = Math.max(x1, x2) + padding;
+    const minY = Math.min(y1, y2) - padding;
+    const maxY = Math.max(y1, y2) + padding;
+    return maxX >= bounds.minX && minX <= bounds.maxX && maxY >= bounds.minY && minY <= bounds.maxY;
+}
+
+function flagellumOutlinePath(points, normalX, normalY, cellX, cellY, cellRadius) {
+    const path = new Path2D();
+    if (!Array.isArray(points) || points.length < 2) return path;
+
+    const sideA = flagellumSidePoints(points, normalX, normalY, 1);
+    const sideB = flagellumSidePoints(points, normalX, normalY, -1);
+    const anchorA = membraneAnchorForFlagellumSide(sideA, cellX, cellY, cellRadius);
+    const anchorB = membraneAnchorForFlagellumSide(sideB, cellX, cellY, cellRadius);
+    if (!anchorA || !anchorB) return path;
+
+    const blendIndex = Math.min(
+        points.length - 1,
+        Math.max(FLAGELLUM_VISUAL.minBlendPointIndex, Math.round(points.length * FLAGELLUM_VISUAL.rootBlendPointFraction))
+    );
+    const blendA = sideA[blendIndex];
+    const blendB = sideB[blendIndex];
+    const sideAPath = sideA.slice(blendIndex);
+    const sideBPath = sideB.slice(blendIndex).reverse();
+    const rootTravelX = anchorA.x - anchorB.x;
+    const rootTravelY = anchorA.y - anchorB.y;
+
+    path.moveTo(anchorA.x, anchorA.y);
+    appendFlagellumRootBezier(
+        path,
+        anchorA,
+        sideA[0],
+        blendA,
+        sideA[Math.min(sideA.length - 1, blendIndex + 1)],
+        cellX,
+        cellY,
+        rootTravelX,
+        rootTravelY
+    );
+    appendSmoothPolyline(path, sideAPath);
+    appendSmoothPolyline(path, sideBPath);
+    appendFlagellumRootBezierToAnchor(
+        path,
+        anchorB,
+        sideB[0],
+        blendB,
+        sideB[Math.min(sideB.length - 1, blendIndex + 1)],
+        cellX,
+        cellY,
+        rootTravelX,
+        rootTravelY
+    );
+    appendFlagellumMembraneRootTransition(path, anchorB, anchorA, points[0], sideA[0], sideB[0], cellX, cellY, cellRadius);
+    path.closePath();
+    return path;
+}
+
+function flagellumWidthAt(t, rootWidth, tipWidth) {
+    const stemWidth = tipWidth + (rootWidth - tipWidth) * Math.pow(1.0 - t, FLAGELLUM_VISUAL.widthExponent);
+    const flareFade = 1.0 - smoothstep(t / Math.max(1.0e-6, FLAGELLUM_VISUAL.rootFlareLengthFraction));
+    return stemWidth + rootWidth * (FLAGELLUM_VISUAL.rootFlareWidthBoost - 1.0) * flareFade;
+}
+
+function appendFlagellumMembraneRootTransition(path, anchorB, anchorA, rootCenter, rootA, rootB, cellX, cellY, cellRadius) {
+    const anchorMidX = (anchorA.x + anchorB.x) * 0.5;
+    const anchorMidY = (anchorA.y + anchorB.y) * 0.5;
+    const rootMidX = Number.isFinite(rootCenter?.x) ? rootCenter.x : ((rootA?.x ?? anchorA.x) + (rootB?.x ?? anchorB.x)) * 0.5;
+    const rootMidY = Number.isFinite(rootCenter?.y) ? rootCenter.y : ((rootA?.y ?? anchorA.y) + (rootB?.y ?? anchorB.y)) * 0.5;
+    const inward = normalizeVector(cellX - rootMidX, cellY - rootMidY, cellX - anchorMidX, cellY - anchorMidY);
+    const travelX = anchorA.x - anchorB.x;
+    const travelY = anchorA.y - anchorB.y;
+    const tangentB = rootTangentForTravel(anchorB, cellX, cellY, travelX, travelY);
+    const tangentA = rootTangentForTravel(anchorA, cellX, cellY, travelX, travelY);
+    const span = Math.max(1.0e-6, Math.hypot(travelX, travelY));
+    const rootWidth = Math.max(span * 0.5, Math.hypot((rootA?.x ?? anchorA.x) - (rootB?.x ?? anchorB.x), (rootA?.y ?? anchorA.y) - (rootB?.y ?? anchorB.y)) * 0.5);
+    const overlap = Math.max(
+        span * 0.20,
+        Math.min(cellRadius * 0.12, rootWidth * 0.30 + cellRadius * 0.015)
+    );
+    const saddle = {
+        x: anchorMidX + inward.x * overlap,
+        y: anchorMidY + inward.y * overlap,
+    };
+    const across = normalizeVector(travelX, travelY, tangentB.x, tangentB.y);
+    const tangentPull = Math.min(span * 0.38, Math.max(span * 0.16, rootWidth * 0.28));
+    const saddlePull = Math.min(span * 0.24, Math.max(span * 0.10, rootWidth * 0.20));
+
+    path.bezierCurveTo(
+        anchorB.x + tangentB.x * tangentPull + inward.x * overlap * 0.18,
+        anchorB.y + tangentB.y * tangentPull + inward.y * overlap * 0.18,
+        saddle.x - across.x * saddlePull,
+        saddle.y - across.y * saddlePull,
+        saddle.x,
+        saddle.y
+    );
+    path.bezierCurveTo(
+        saddle.x + across.x * saddlePull,
+        saddle.y + across.y * saddlePull,
+        anchorA.x - tangentA.x * tangentPull + inward.x * overlap * 0.18,
+        anchorA.y - tangentA.y * tangentPull + inward.y * overlap * 0.18,
+        anchorA.x,
+        anchorA.y
+    );
+}
+
+function appendSmoothPolyline(path, points) {
+    if (!Array.isArray(points) || points.length < 2) return;
+    path.lineTo(points[0].x, points[0].y);
+    for (let i = 1; i < points.length - 1; i++) {
+        const current = points[i];
+        const next = points[i + 1];
+        const midX = (current.x + next.x) * 0.5;
+        const midY = (current.y + next.y) * 0.5;
+        path.quadraticCurveTo(current.x, current.y, midX, midY);
+    }
+    const penultimate = points[points.length - 2];
+    const last = points[points.length - 1];
+    path.quadraticCurveTo(penultimate.x, penultimate.y, last.x, last.y);
+}
+
+function appendFlagellumRootBezier(path, anchor, root, blend, next, cellX, cellY, travelX, travelY) {
+    const tangent = rootTangentForTravel(anchor, cellX, cellY, travelX, travelY);
+    const dirAtBlend = normalizeVector(next.x - root.x, next.y - root.y, tangent.x, tangent.y);
+    const rootDistance = Math.hypot(root.x - anchor.x, root.y - anchor.y);
+    const blendDistance = Math.hypot(blend.x - root.x, blend.y - root.y);
+    const controlPull = Math.min(rootDistance * FLAGELLUM_VISUAL.rootBezierInPull, Math.hypot(blend.x - anchor.x, blend.y - anchor.y) * 0.62);
+    path.bezierCurveTo(
+        anchor.x + tangent.x * controlPull,
+        anchor.y + tangent.y * controlPull,
+        blend.x - dirAtBlend.x * blendDistance * FLAGELLUM_VISUAL.rootBezierOutPull,
+        blend.y - dirAtBlend.y * blendDistance * FLAGELLUM_VISUAL.rootBezierOutPull,
+        blend.x,
+        blend.y
+    );
+}
+
+function appendFlagellumRootBezierToAnchor(path, anchor, root, blend, prev, cellX, cellY, travelX, travelY) {
+    const tangent = rootTangentForTravel(anchor, cellX, cellY, travelX, travelY);
+    const dirFromPrev = normalizeVector(blend.x - prev.x, blend.y - prev.y, tangent.x, tangent.y);
+    const rootDistance = Math.hypot(root.x - anchor.x, root.y - anchor.y);
+    const blendDistance = Math.hypot(blend.x - root.x, blend.y - root.y);
+    const controlPull = Math.min(rootDistance * FLAGELLUM_VISUAL.rootBezierInPull, Math.hypot(blend.x - anchor.x, blend.y - anchor.y) * 0.62);
+    path.bezierCurveTo(
+        blend.x + dirFromPrev.x * blendDistance * FLAGELLUM_VISUAL.rootBezierOutPull,
+        blend.y + dirFromPrev.y * blendDistance * FLAGELLUM_VISUAL.rootBezierOutPull,
+        anchor.x - tangent.x * controlPull,
+        anchor.y - tangent.y * controlPull,
+        anchor.x,
+        anchor.y
+    );
+}
+
+function rootTangentForTravel(anchor, cellX, cellY, travelX, travelY) {
+    const radial = normalizeVector(anchor.x - cellX, anchor.y - cellY, 1, 0);
+    return chooseTangentDirection(radial, travelX, travelY);
+}
+
+function chooseTangentDirection(radial, towardX, towardY) {
+    const tangentCw = {x: radial.y, y: -radial.x};
+    const tangentCcw = {x: -radial.y, y: radial.x};
+    return (tangentCw.x * towardX + tangentCw.y * towardY) >= (tangentCcw.x * towardX + tangentCcw.y * towardY)
+        ? tangentCw
+        : tangentCcw;
+}
+
+function normalizeVector(x, y, fallbackX = 1, fallbackY = 0) {
+    const len = Math.hypot(x, y);
+    if (len <= 1.0e-9) return normalizeFallbackVector(fallbackX, fallbackY);
+    return {x: x / len, y: y / len};
+}
+
+function normalizeFallbackVector(x, y) {
+    const len = Math.hypot(x, y);
+    if (len <= 1.0e-9) return {x: 1, y: 0};
+    return {x: x / len, y: y / len};
+}
+
+function flagellumSlotPerformance(slot) {
+    const explicit = Number(slot?.performance);
+    if (Number.isFinite(explicit)) return clamp01(explicit);
+    return damagePerformance(slot?.damage);
+}
+
+function damagePerformance(damage) {
+    return clamp01(Math.exp(-Math.max(0, Number(damage) || 0)));
+}
+
+function flagellumSlotForceScale(slot, cell, radius = 1) {
+    if (cell?.dead) return 0;
+    const force = Math.max(0, Number(slot?.force ?? 0) || 0);
+    const base = Math.max(1.0e-6, 0.045 * Math.max(radius, 1) * Math.max(radius, 1) * Math.max(1.0, Number(slot?.length ?? radius) / Math.max(radius, 1.0e-6)));
+    return clamp01(force / base);
+}
+
+function fillFlagellumPath(ctx, path) {
+    ctx.fill(path);
+}
+
+function flagellumSidePoints(points, normalX, normalY, sign) {
+    return points.map(point => ({
+        x: point.x + normalX * point.width * sign,
+        y: point.y + normalY * point.width * sign,
+    }));
+}
+
+function membraneAnchorForFlagellumSide(side, cellX, cellY, cellRadius) {
+    for (let i = 0; i < side.length - 1; i++) {
+        const intersection = segmentCircleIntersection(side[i], side[i + 1], cellX, cellY, cellRadius);
+        if (intersection) return pointWithAngle(intersection, cellX, cellY);
+    }
+
+    return pointWithAngle(projectPointToCircle(side[0], cellX, cellY, cellRadius), cellX, cellY);
+}
+
+function segmentCircleIntersection(a, b, cx, cy, radius) {
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const fx = a.x - cx;
+    const fy = a.y - cy;
+    const aa = dx * dx + dy * dy;
+    if (aa <= 1.0e-12) return null;
+
+    const bb = 2 * (fx * dx + fy * dy);
+    const cc = fx * fx + fy * fy - radius * radius;
+    const disc = bb * bb - 4 * aa * cc;
+    if (disc < 0) return null;
+
+    const root = Math.sqrt(disc);
+    const t1 = (-bb - root) / (2 * aa);
+    const t2 = (-bb + root) / (2 * aa);
+    const candidates = [t1, t2]
+        .filter(t => t >= -1.0e-6 && t <= 1 + 1.0e-6)
+        .sort((left, right) => left - right);
+    if (!candidates.length) return null;
+
+    const t = clamp(candidates[0], 0, 1);
+    return {x: a.x + dx * t, y: a.y + dy * t};
+}
+
+function projectPointToCircle(point, cx, cy, radius) {
+    const dx = point.x - cx;
+    const dy = point.y - cy;
+    const len = Math.hypot(dx, dy);
+    if (len <= 1.0e-9) return {x: cx + radius, y: cy};
+    return {x: cx + dx / len * radius, y: cy + dy / len * radius};
+}
+
+function pointWithAngle(point, cx, cy) {
+    return {
+        x: point.x,
+        y: point.y,
+        angle: Math.atan2(point.y - cy, point.x - cx),
+    };
+}
+
+function appendShortestArc(path, cx, cy, radius, startAngle, endAngle) {
+    let delta = ((endAngle - startAngle) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+    if (delta > Math.PI) delta -= Math.PI * 2;
+    path.arc(cx, cy, radius, startAngle, startAngle + delta, delta < 0);
+}
+
+function drawFlagellumShadowLayer(ctx, path, cellX, cellY, cellRadius, visual, visibleAlpha, layerAlpha) {
+    const shadowAngle = radiansFromDegrees(visual?.lightDirectionAngle);
+    const rawGradient = Number(visual?.lightGradient);
+    const strength = Number.isFinite(rawGradient) ? clamp01(Math.max(0, rawGradient) * CELL_LIGHTING_DETAIL.gradientScale) : 0.0;
+    const softenedStrength = strength * 0.58;
+    const alpha = CELL_LIGHTING_DETAIL.maxShadowAlpha * softenedStrength * clamp01(layerAlpha) * clamp01(visibleAlpha) * 0.42;
+    if (!Number.isFinite(shadowAngle) || alpha <= 0.001 || cellRadius <= 0) return;
+
+    ctx.save();
+    clipOutsideCell(ctx, cellX, cellY, cellRadius);
+    ctx.clip(path);
+    ctx.translate(cellX, cellY);
+    ctx.rotate(shadowAngle);
+    drawSoftSideShadowRect(ctx, cellRadius * 3.2, alpha, softenedStrength * clamp01(layerAlpha));
+    ctx.restore();
+}
+
+function drawDeadFlagellumFilterLayer(ctx, path, cell, illum, grayscale) {
+    const lightness = modulateLightness(ORGANIC_BROWN_COLOR.l, illum);
+    const overlayAlpha = clamp01(0.42 + Math.min(0.35, (cell?.lifetimeTicks ?? 0) / 180));
+    if (overlayAlpha <= 0.001) return;
+
+    ctx.save();
+    ctx.globalCompositeOperation = grayscale ? "source-over" : "multiply";
+    ctx.fillStyle = grayscale
+        ? `hsla(0, 0%, ${lightness}%, ${overlayAlpha.toFixed(3)})`
+        : organicBrownHsla(lightness, overlayAlpha);
+    fillFlagellumPath(ctx, path);
+    ctx.restore();
+}
+
+function clipOutsideCell(ctx, x, y, radius) {
+    const effectiveRadius = Math.max(0, Number(radius) || 0);
+    const size = Math.max(effectiveRadius * 5.0, 6000);
+    ctx.beginPath();
+    ctx.rect(x - size, y - size, size * 2, size * 2);
+    ctx.arc(x, y, effectiveRadius, 0, Math.PI * 2, true);
+    ctx.clip("evenodd");
+}
+
+function fillFlagellumHatchCircle(ctx, x, y, radius, color) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1;
+    for (let p = -radius * 2; p <= radius * 2; p += 4) {
+        ctx.beginPath();
+        ctx.moveTo(x + p - radius, y - radius);
+        ctx.lineTo(x + p + radius, y + radius);
+        ctx.stroke();
+    }
+    ctx.restore();
+}
+
+function flagellumSlotsForRender(cell, count, radius, scale) {
+    const fallback = fallbackFlagellumSlots(cell, count, radius);
+    const slots = Array.isArray(cell?.flagellumSlots) ? cell.flagellumSlots : [];
+    if (!slots.length) return fallback;
+
+    return fallback.map((base, i) => {
+        const slot = slots[i] ?? {};
+        const rawBaseX = Number(slot.baseX);
+        const rawBaseY = Number(slot.baseY);
+        const rawDirX = Number(slot.directionX);
+        const rawDirY = Number(slot.directionY);
+        const baseValid = Number.isFinite(rawBaseX) && Number.isFinite(rawBaseY) && Math.hypot(rawBaseX, rawBaseY) > 1.0e-6;
+        const dirValid = Number.isFinite(rawDirX) && Number.isFinite(rawDirY) && Math.hypot(rawDirX, rawDirY) > 1.0e-6;
+        return {
+            ...base,
+            index: Number(slot.index ?? i),
+            damage: Number(slot.damage ?? base.damage ?? 0) || 0,
+            motorPower: Number(slot.motorPower ?? cell?.genome?.flagellumMotorPower ?? base.motorPower ?? 30) || 30,
+            baseX: baseValid ? rawBaseX * scale : base.baseX,
+            baseY: baseValid ? rawBaseY * scale : base.baseY,
+            directionX: dirValid ? rawDirX : base.directionX,
+            directionY: dirValid ? rawDirY : base.directionY,
+            length: Number(slot.length ?? base.length ?? 0) * (Number(slot.length) ? scale : 1),
+            thickness: Number(slot.thickness ?? base.thickness ?? 0) * (Number(slot.thickness) ? scale : 1),
+        };
+    });
+}
+
+function fallbackFlagellumSlots(cell, count, radius) {
+    const genome = cell?.genome ?? {};
+    const forward = ((Number(cell?.directionAngle ?? 0) || 0) - 90) * Math.PI / 180;
+    const amount = Boolean(genome.flagellumEnabled ?? count > 0)
+        ? Math.max(0, Math.min(2, Math.round(count ?? genome.flagellumCount ?? 0)))
+        : 0;
+    const rearPlacement = Math.PI;
+    const spread = effectiveFlagellumPairSpreadRadians(genome);
+    const steering = Math.max(-1, Math.min(1, (Number(genome.flagellumSteeringAsymmetry ?? 0) || 0) / 100));
+    const motorActivity = clamp01((Number(genome.flagellumMotorPower ?? 30) || 0) / 100);
+    const damage = clamp01(Number(cell?.startFlagellumDamage ?? cell?.flagellumDamage ?? 0) || 0);
+    const performance = damagePerformance(damage);
+    const lengthBase = radius * flagellumLengthFactorFromGenome(genome);
+    const thicknessBase = radius * flagellumThicknessFactorFromGenome(genome);
+    const result = [];
+
+    for (let i = 0; i < amount; i++) {
+        const side = amount > 1 ? (i === 0 ? -1 : 1) : 0;
+        const relative = amount > 1 ? rearPlacement + side * spread * 0.5 : rearPlacement;
+        const attachment = forward + relative;
+        const thrust = amount > 1 ? forward : forward + steering * 28 * Math.PI / 180;
+        const sideBias = amount > 1 ? Math.max(0.15, Math.min(1.85, 1 + side * steering * 0.45)) : 1.0;
+        const fallbackForce = 0.045 * radius * radius * motorActivity * sideBias * performance * Math.max(1.0, lengthBase / Math.max(radius, 1.0e-6));
+        result.push({
+            index: i,
+            damage,
+            performance,
+            motorPower: motorActivity * sideBias * 100,
+            baseX: Math.cos(attachment) * radius,
+            baseY: Math.sin(attachment) * radius,
+            directionX: Math.cos(thrust),
+            directionY: Math.sin(thrust),
+            length: lengthBase,
+            thickness: thicknessBase,
+            force: fallbackForce,
+        });
+    }
+    return result;
+}
+
+
+function flagellumLengthFactorFromGenome(genome = {}) {
+    const raw = Number(genome.flagellumLength ?? 1.8);
+    if (!Number.isFinite(raw)) return 1.8;
+    if (raw > 5) return 1.0 + 3.0 * clamp01(raw / 100);
+    return Math.max(1.0, Math.min(4.0, raw));
+}
+
+function flagellumThicknessFactorFromGenome(genome = {}) {
+    const length = flagellumLengthFactorFromGenome(genome);
+    const t = clamp01((length - 1.0) / 3.0);
+    const thickness = FLAGELLUM_VISUAL.maxThicknessFactor
+        - (FLAGELLUM_VISUAL.maxThicknessFactor - FLAGELLUM_VISUAL.minThicknessFactor)
+            * Math.pow(t, FLAGELLUM_VISUAL.thicknessLengthPower);
+    const pairScale = Math.round(Number(genome?.flagellumCount ?? 1)) >= 2
+        ? FLAGELLUM_VISUAL.pairThicknessScale
+        : 1.0;
+    return thickness * pairScale;
+}
+
+function minFlagellumPairSpreadRadians(genome = {}) {
+    const rootHalfWidthToRadius = flagellumThicknessFactorFromGenome(genome) * FLAGELLUM_VISUAL.rootWidthBoost;
+    return 2 * Math.asin(Math.max(0, Math.min(0.95, rootHalfWidthToRadius)));
+}
+
+function maxFlagellumPairSpreadRadians(genome = {}) {
+    const rootHalfWidthToRadius = flagellumThicknessFactorFromGenome(genome) * FLAGELLUM_VISUAL.rootWidthBoost;
+    const margin = 2 * Math.asin(Math.max(0, Math.min(0.95, rootHalfWidthToRadius)));
+    return Math.max(minFlagellumPairSpreadRadians(genome), Math.PI - margin);
+}
+
+function effectiveFlagellumPairSpreadRadians(genome = {}) {
+    const minSpread = minFlagellumPairSpreadRadians(genome);
+    const maxSpread = maxFlagellumPairSpreadRadians(genome);
+    const raw = Number(genome.flagellumPairSpreadAngle ?? 36);
+    const t = clamp01((Number.isFinite(raw) ? raw : 36) / 180);
+    return minSpread + (maxSpread - minSpread) * t;
+}
+
+function lerpAngle(a, b, t) {
+    let delta = ((b - a) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+    if (delta > Math.PI) delta -= Math.PI * 2;
+    return a + delta * clamp01(t);
 }
 
 function drawCapturedFood(ctx, slot, capturedFood, position, mode, illum = 1.0, preview = false) {
@@ -717,7 +1438,7 @@ function drawCytosolTexture(ctx, x, y, radius, color, alpha, seed, preview) {
     const granuleLimit = preview
         ? CYTOSOL_TEXTURE.previewGranules
         : Math.min(CYTOSOL_TEXTURE.worldGranules, Math.max(4, Math.round(radius * 0.30)));
-    const c = color ?? {r: 200, g: 194, b: 170};
+    const c = color ?? {r: 238, g: 240, b: 232};
 
     ctx.save();
     ctx.beginPath();
@@ -746,11 +1467,11 @@ function drawMembraneOverlay(ctx, x, y, radius, color, alpha, preview = false) {
     if (a <= 0.001) return;
     const c = color ?? {r: 206, g: 197, b: 172};
     const gradient = ctx.createRadialGradient(x, y, radius * 0.08, x, y, radius);
-    gradient.addColorStop(0.00, rgb(c, a * 0.18));
-    gradient.addColorStop(0.68, rgb(c, a * 0.34));
-    gradient.addColorStop(0.90, rgb(c, a * 0.70));
-    gradient.addColorStop(0.98, rgb(c, a * 0.96));
-    gradient.addColorStop(1.00, rgb(c, a));
+    gradient.addColorStop(0.00, rgb(c, a));
+    gradient.addColorStop(0.68, rgb(c, a + (1.0 - a) * 0.24));
+    gradient.addColorStop(0.90, rgb(c, a + (1.0 - a) * 0.62));
+    gradient.addColorStop(0.98, rgb(c, a + (1.0 - a) * 0.90));
+    gradient.addColorStop(1.00, rgb(c, 1.0));
 
     ctx.save();
     ctx.fillStyle = gradient;
@@ -846,6 +1567,24 @@ function drawSoftCellSideShadow(ctx, radius, alpha, strength) {
     ctx.beginPath();
     ctx.arc(0, 0, radius, 0, Math.PI * 2);
     ctx.fill();
+    ctx.restore();
+}
+
+function drawSoftSideShadowRect(ctx, extent, alpha, strength) {
+    const safeExtent = Math.max(1.0, Number(extent) || 1.0);
+    const edgeAlpha = clamp01(Math.max(alpha * CELL_LIGHTING_DETAIL.shadowEdgeAlpha, CELL_LIGHTING_DETAIL.shadowEdgeAlpha * strength));
+    const midAlpha = clamp01(CELL_LIGHTING_DETAIL.shadowMidAlpha * strength);
+    if (edgeAlpha <= 0.001 && midAlpha <= 0.001) return;
+
+    ctx.save();
+    ctx.globalCompositeOperation = "multiply";
+    const gradient = ctx.createLinearGradient(-safeExtent, 0, safeExtent, 0);
+    gradient.addColorStop(0.00, `rgba(0, 0, 0, ${edgeAlpha.toFixed(3)})`);
+    gradient.addColorStop(0.32, `rgba(0, 0, 0, ${midAlpha.toFixed(3)})`);
+    gradient.addColorStop(CELL_LIGHTING_DETAIL.shadowReach, "rgba(0, 0, 0, 0)");
+    gradient.addColorStop(1.00, "rgba(0, 0, 0, 0)");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(-safeExtent, -safeExtent, safeExtent * 2, safeExtent * 2);
     ctx.restore();
 }
 
@@ -1135,6 +1874,32 @@ function capturedFoodForSlot(cell, capturedFoods, index) {
     return null;
 }
 
+
+function rotateCellLocalOffset(offsetX, offsetY, cell) {
+    return rotateOffset(offsetX, offsetY, cellRotationRadians(cell));
+}
+
+function cellRotationRadians(cell) {
+    const degrees = Number(cell?.directionAngle ?? 0);
+    return Number.isFinite(degrees) ? degrees * Math.PI / 180 : 0.0;
+}
+
+function rotateOffset(offsetX, offsetY, angle) {
+    if (!Number.isFinite(angle) || Math.abs(angle) <= 1.0e-12) {
+        return {x: offsetX, y: offsetY};
+    }
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    return {
+        x: offsetX * cos - offsetY * sin,
+        y: offsetX * sin + offsetY * cos,
+    };
+}
+
+function lerp(a, b, t) {
+    return a + (b - a) * clamp01(t);
+}
+
 export function cellIlluminance(cell, lighting) {
     const rawLight = typeof cell?.localLight === "number"
         ? cell.localLight
@@ -1170,7 +1935,7 @@ function modulateLightness(baseLightness, illuminance) {
 
 function colorForRender(color, illum, grayscale) {
     const c = grayscale ? grayscaleRgb(color) : color;
-    return modulateRgb(c ?? {r: 200, g: 194, b: 170}, illum);
+    return modulateRgb(c ?? {r: 238, g: 240, b: 232}, illum);
 }
 
 function organelleAlpha(realOpacity = 0.0, kind = "", diagnosticMode = false) {
@@ -1179,18 +1944,19 @@ function organelleAlpha(realOpacity = 0.0, kind = "", diagnosticMode = false) {
     if (diagnosticMode) return 1.0;
     if (kind === "chloroplast") return clamp01(Math.max(ORGANELLE_VISIBILITY.chloroplastMinAlpha, opacity * ORGANELLE_VISIBILITY.chloroplastBoost));
     if (kind === "lysosome") return clamp01(Math.max(ORGANELLE_VISIBILITY.lysosomeMinAlpha, opacity * ORGANELLE_VISIBILITY.lysosomeBoost));
+    if (kind === "flagellum") return clamp01(Math.max(0.34, opacity * 1.48));
     if (kind === "nucleoid") return clamp01(Math.max(ORGANELLE_VISIBILITY.nucleoidMinAlpha, opacity * ORGANELLE_VISIBILITY.nucleoidBoost));
     return opacity;
 }
 
-function renderAlpha(realOpacity = 0.1, minAlpha = MIN_CELL_RENDER_ALPHA, maxAlpha = MAX_CELL_RENDER_ALPHA) {
-    const opacity = Math.max(0.0, Number(realOpacity ?? 0.1));
-    if (opacity <= 0.0) return 0.0;
-    return clamp(opacity * REAL_CELL_OPACITY_TO_RENDER_ALPHA, minAlpha, maxAlpha);
+function layerAlpha(realOpacity = 0.1) {
+    const opacity = Number(realOpacity ?? 0.1);
+    if (!Number.isFinite(opacity) || opacity <= 0.0) return 0.0;
+    return clamp01(opacity);
 }
 
 function normalizedGfp(cell) {
-    return clamp01((cell?.genome?.gfp ?? 0) / 100.0);
+    return cell?.genome?.gfpEnabled ? clamp01((cell?.genome?.gfp ?? 0) / 100.0) : 0.0;
 }
 
 function seedFor(cell, visual, preview = false, fallback = 1) {
@@ -1211,6 +1977,7 @@ function normalizeOrganelleId(value) {
 
 function defaultLabelFor(id) {
     if (id === "nucleus" || id === "nucleoid") return "Nucleus";
+    if (id === "flagellum") return "Flagellum";
     return String(id ?? "").charAt(0).toUpperCase() + String(id ?? "").slice(1);
 }
 
@@ -1290,5 +2057,7 @@ function clamp(value, min, max) {
     if (!Number.isFinite(Number(value))) return min;
     return Math.max(min, Math.min(max, Number(value)));
 }
+
+
 
 

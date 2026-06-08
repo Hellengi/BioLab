@@ -8,3 +8,5 @@ public record LightProbeDto(
         double time
 ) {
 }
+
+

@@ -2,6 +2,7 @@ package com.hellengi.biolab.domain.model;
 
 import com.hellengi.biolab.config.YamlConfig;
 import com.hellengi.biolab.domain.model.organelle.ChloroplastsOrganelle;
+import com.hellengi.biolab.domain.model.organelle.FlagellaOrganelle;
 import com.hellengi.biolab.domain.model.organelle.CytosolOrganelle;
 import com.hellengi.biolab.domain.model.organelle.LysosomeOrganelle;
 import com.hellengi.biolab.domain.model.organelle.MembraneOrganelle;
@@ -13,10 +14,16 @@ import lombok.Setter;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.DoubleConsumer;
+import java.util.function.DoubleSupplier;
+import java.util.function.IntFunction;
+import java.util.function.ToDoubleFunction;
+import java.util.function.ToIntFunction;
 
 import static com.hellengi.biolab.util.Utils.EPSILON;
 import static com.hellengi.biolab.util.Utils.clamp01;
 import static com.hellengi.biolab.util.Utils.avoidZero;
+import static com.hellengi.biolab.util.Utils.wrapDegrees;
 
 @Setter
 @Getter
@@ -36,30 +43,47 @@ public class Cell {
     private double y = 0;
     private double vx = 0;
     private double vy = 0;
+    private double angularVelocity = 0.0;
     private double directionAngle = 0.0;
     private double energy = 0;
     private Genome genome;
     private final List<Event> events = new ArrayList<>();
     private final List<LysosomeSlot> lysosomeSlots = new ArrayList<>();
+    private final List<FlagellumSlot> flagellumSlots = new ArrayList<>();
     private boolean markedForRemoval = false;
     private boolean alive = true;
     private double lifetimeTicks = 0.0;
     private double mass = EPSILON;
 
+    private double nucleusDamage = 0.0;
+    /** Cytosol damage. Kept as cellDamage in DTOs for minimal API churn. */
     private double cellDamage = 0.0;
     private double cpDamage = 0.0;
+    private double membraneDamage = 0.0;
     private double lastEnergyProduction = 0.0;
     private double lastEnergyConsumption = 0.0;
     private double lastCpPhotoDamageRate = 0.0;
+    private double lastNucleusDamageRate = 0.0;
     private double lastCellDamageRate = 0.0;
+    private double lastNucleusRepairRate = 0.0;
+    private double lastNucleusRepairEnergyCostRate = 0.0;
+    private double lastEnergyAvailability = 1.0;
+    private double lastEnergyDemand = 0.0;
     private double lastCpRepairRate = 0.0;
     private double lastCellRepairRate = 0.0;
+    private double lastMembraneDamageRate = 0.0;
+    private double lastMembraneRepairRate = 0.0;
+    private double lastMembraneRepairEnergyCostRate = 0.0;
     private double lastRepairEnergyCostRate = 0.0;
     private double lastDigestionEnergyProduction = 0.0;
     private double lastDigestionEnergyCostRate = 0.0;
     private double lastLysosomeDamageRate = 0.0;
     private double lastLysosomeRepairRate = 0.0;
     private double lastLysosomeRepairEnergyCostRate = 0.0;
+    private double lastFlagellumDamageRate = 0.0;
+    private double lastFlagellumRepairRate = 0.0;
+    private double lastFlagellumRepairEnergyCostRate = 0.0;
+    private double lastFlagellumEnergyCostRate = 0.0;
     private double nucleusLayoutX = 0.0;
     private double nucleusLayoutY = 0.0;
     private double nucleusLayoutTargetX = 0.0;
@@ -80,6 +104,7 @@ public class Cell {
     public void move(double tickScale) {
         this.x += this.vx * tickScale;
         this.y += this.vy * tickScale;
+        this.directionAngle = wrapDegrees(this.directionAngle + Math.toDegrees(this.angularVelocity * tickScale));
     }
 
     public void addLifetimeTicks(double ticks) {
@@ -107,6 +132,7 @@ public class Cell {
     public void setGenome(Genome genome) {
         this.genome = genome;
         syncLysosomeSlotsToGenome();
+        syncFlagellumSlotsToGenome();
     }
 
     public void setLysosomeSlots(List<LysosomeSlot> slots) {
@@ -127,6 +153,30 @@ public class Cell {
         }
         syncLysosomeSlotsToGenome();
     }
+    public void setFlagellumSlots(List<FlagellumSlot> slots) {
+        flagellumSlots.clear();
+        int capacity = getFlagellumCapacity();
+        if (slots != null) {
+            for (FlagellumSlot slot : slots) {
+                if (flagellumSlots.size() >= capacity) break;
+                FlagellumSlot copy = new FlagellumSlot(flagellumSlots.size(), slot.getDamage());
+                copy.rememberPhysics(
+                        slot.getLastForce(),
+                        slot.getLastTorque(),
+                        slot.getLastBaseX(),
+                        slot.getLastBaseY(),
+                        slot.getLastDirectionX(),
+                        slot.getLastDirectionY(),
+                        slot.getLastEnergyCostRate()
+                );
+                copy.rememberDamageRate(slot.getLastDamageRate());
+                copy.rememberRepairRates(slot.getLastRepairRate(), slot.getLastRepairEnergyCostRate());
+                flagellumSlots.add(copy);
+            }
+        }
+        syncFlagellumSlotsToGenome();
+    }
+
 
     public void resetLysosomeSlotRates() {
         for (LysosomeSlot slot : lysosomeSlots) {
@@ -134,25 +184,100 @@ public class Cell {
         }
     }
 
+    public void resetFlagellumSlotRates() {
+        lastFlagellumEnergyCostRate = 0.0;
+        for (FlagellumSlot slot : flagellumSlots) {
+            slot.clearRates();
+        }
+    }
+
+
+    public void setAllLysosomeDamage(double damage) {
+        double value = clamp01(damage);
+        for (LysosomeSlot slot : lysosomeSlots) {
+            slot.setDamage(value);
+        }
+    }
+
+    public void setAllFlagellumDamage(double damage) {
+        double value = clamp01(damage);
+        for (FlagellumSlot slot : flagellumSlots) {
+            slot.setDamage(value);
+        }
+    }
+
     public List<Organelle> getOrganelles() {
         return genome != null ? genome.organelles() : List.of();
     }
 
+    public List<ScalarDamageChannel> scalarDamageChannels() {
+        return List.of(
+                new ScalarDamageChannel("nucleus", this::getNucleusDamage, this::setNucleusDamage),
+                new ScalarDamageChannel("cytosol", this::getCellDamage, this::setCellDamage),
+                new ScalarDamageChannel("chloroplast", this::getCpDamage, this::setCpDamage),
+                new ScalarDamageChannel("membrane", this::getMembraneDamage, this::setMembraneDamage)
+        );
+    }
+
+    public List<SlotDamageChannel<?>> slotDamageChannels() {
+        List<SlotDamageChannel<?>> channels = new ArrayList<>();
+        if (hasLysosomes()) {
+            channels.add(new SlotDamageChannel<>(
+                    "lysosome",
+                    lysosomeSlots,
+                    this::getLysosomeSlot,
+                    this::getAverageLysosomeDamage,
+                    LysosomeSlot::getIndex,
+                    LysosomeSlot::getDamage,
+                    LysosomeSlot::setDamage
+            ));
+        }
+        if (hasFlagella()) {
+            channels.add(new SlotDamageChannel<>(
+                    "flagellum",
+                    flagellumSlots,
+                    this::getFlagellumSlot,
+                    this::getAverageFlagellumDamage,
+                    FlagellumSlot::getIndex,
+                    FlagellumSlot::getDamage,
+                    FlagellumSlot::setDamage
+            ));
+        }
+        return channels;
+    }
+
+
     public void rememberMetabolism(
             double energyProduction,
             double energyConsumption,
+            double energyAvailability,
+            double energyDemand,
             double cpPhotoDamageRate,
+            double nucleusDamageRate,
             double cellDamageRate,
+            double nucleusRepairRate,
+            double nucleusRepairEnergyCostRate,
             double cpRepairRate,
             double cellRepairRate,
+            double membraneDamageRate,
+            double membraneRepairRate,
+            double membraneRepairEnergyCostRate,
             double repairEnergyCostRate
     ) {
         this.lastEnergyProduction = energyProduction;
         this.lastEnergyConsumption = energyConsumption;
+        this.lastEnergyAvailability = clamp01(energyAvailability);
+        this.lastEnergyDemand = Math.max(0.0, energyDemand);
         this.lastCpPhotoDamageRate = cpPhotoDamageRate;
+        this.lastNucleusDamageRate = nucleusDamageRate;
         this.lastCellDamageRate = cellDamageRate;
+        this.lastNucleusRepairRate = nucleusRepairRate;
+        this.lastNucleusRepairEnergyCostRate = nucleusRepairEnergyCostRate;
         this.lastCpRepairRate = cpRepairRate;
         this.lastCellRepairRate = cellRepairRate;
+        this.lastMembraneDamageRate = membraneDamageRate;
+        this.lastMembraneRepairRate = membraneRepairRate;
+        this.lastMembraneRepairEnergyCostRate = membraneRepairEnergyCostRate;
         this.lastRepairEnergyCostRate = repairEnergyCostRate;
     }
 
@@ -171,6 +296,16 @@ public class Cell {
         this.lastLysosomeRepairEnergyCostRate = repairEnergyCostRate;
     }
 
+    public void rememberFlagellumRepair(double damageRate, double repairRate, double repairEnergyCostRate) {
+        this.lastFlagellumDamageRate = damageRate;
+        this.lastFlagellumRepairRate = repairRate;
+        this.lastFlagellumRepairEnergyCostRate = repairEnergyCostRate;
+    }
+
+    public void addFlagellumEnergyCostRate(double energyCostRate) {
+        this.lastFlagellumEnergyCostRate += Math.max(0.0, energyCostRate);
+    }
+
     public double calculateEnergyProduction(double irradiance) {
         if (!hasChloroplasts()) {
             return 0.0;
@@ -187,6 +322,7 @@ public class Cell {
                 + membrane().energyConsumption(c, getMembraneLength())
                 + chloroplasts().energyConsumption(c)
                 + lysosomes().energyConsumption(c)
+                + lastFlagellumEnergyCostRate
                 + c.getEnergyDecayPerTick();
     }
 
@@ -200,19 +336,15 @@ public class Cell {
                 * c.getCellPhotoDamageFactor()
                 * (1.0 - getMelaninProtection());
 
-        double cpLeak = Math.max(0.0, cpDamage - c.getCpDamageLeakThreshold());
-        double cpLeakDamage = c.getCpDamageLeakFactor() * cpLeak * (1.0 + cpLeak);
+        double cpLeakDamage = DamageModel.leakDamageRate(
+                cpDamage,
+                c.getCpDamageLeakThreshold(),
+                c.getCpDamageLeakFactor()
+        );
 
         double lysosomeLeakDamage = calculateLysosomeLeakDamageRate();
 
-        double lowEnergyDamage = 0.0;
-        if (energy < c.getLowEnergyDamageStart()) {
-            lowEnergyDamage = c.getLowEnergyDamageFactor()
-                    * (c.getLowEnergyDamageStart() - energy)
-                    / Math.max(c.getLowEnergyDamageStart(), EPSILON);
-        }
-
-        return directPhotoDamage + cpLeakDamage + lysosomeLeakDamage + lowEnergyDamage;
+        return directPhotoDamage + cpLeakDamage + lysosomeLeakDamage;
     }
 
     public double calculateLysosomeLeakDamageRate() {
@@ -221,11 +353,12 @@ public class Cell {
         double enzyme = lysosomes().enzymeActivity01();
         double total = 0.0;
         for (LysosomeSlot slot : lysosomeSlots) {
-            double leak = Math.max(0.0, slot.getDamage() - c.getLysosomeLeakThreshold());
-            if (leak <= 0.0) continue;
-            total += c.getLysosomeLeakDamageFactor()
-                    * leak * leak
-                    * (0.35 + 0.65 * enzyme);
+            total += DamageModel.leakDamageRate(
+                    slot.getDamage(),
+                    c.getLysosomeLeakThreshold(),
+                    c.getLysosomeLeakDamageFactor(),
+                    0.35 + 0.65 * enzyme
+            );
         }
         return total;
     }
@@ -233,7 +366,7 @@ public class Cell {
     public boolean canDivide() {
         return alive
                 && energy >= getDivisionEnergyThreshold()
-                && cellDamage < config.getCell().getCellDivDamageMax();
+                && nucleusDamage < config.getCell().getCellDivDamageMax();
     }
 
     public double getDivisionEnergyThreshold() {
@@ -247,7 +380,8 @@ public class Cell {
         double membraneCost = getMembraneLength() * c.getMembraneDivEnergyCostFactor();
         double cpCost = chloroplasts().divisionEnergyCost(c);
         double lysosomeCost = lysosomes().divisionEnergyCost(c);
-        return impulseCost + c.getNucleoidDivEnergyCost() + cytosolCost + membraneCost + cpCost + lysosomeCost;
+        double flagellumCost = flagella().divisionEnergyCost(c);
+        return impulseCost + c.getNucleoidDivEnergyCost() + cytosolCost + membraneCost + cpCost + lysosomeCost + flagellumCost;
     }
 
     public boolean isLethallyDamaged() {
@@ -285,6 +419,10 @@ public class Cell {
                 + cytosol().area(this, config.getCell())
                 + chloroplasts().area(this, config.getCell())
                 + getLysosomeTotalArea();
+    }
+
+    public double getMaxEnergy() {
+        return genome != null ? genome.getMaxEnergy() : config.getCell().getStartEnergy();
     }
 
     public double getNucleoidMass() {
@@ -368,7 +506,7 @@ public class Cell {
         if (!hasLysosomes()) return -1;
         if (getAverageLysosomeDamage() > config.getCell().getLysosomeCaptureDamageThreshold()) return -1;
         for (LysosomeSlot slot : lysosomeSlots) {
-            if (!slot.isOccupied() && slot.getDamage() < config.getCell().getLysosomeRuptureThreshold()) {
+            if (!slot.isOccupied() && slot.getDamage() < 1.0) {
                 return slot.getIndex();
             }
         }
@@ -399,12 +537,94 @@ public class Cell {
 
     public double getLysosomeTargetX(int index) {
         LysosomeSlot slot = getLysosomeSlot(index);
-        return x + (slot != null ? slot.getLayoutX() : 0.0);
+        if (slot == null) return x;
+        return x + rotatedInternalOffsetX(slot.getLayoutX(), slot.getLayoutY());
     }
 
     public double getLysosomeTargetY(int index) {
         LysosomeSlot slot = getLysosomeSlot(index);
-        return y + (slot != null ? slot.getLayoutY() : 0.0);
+        if (slot == null) return y;
+        return y + rotatedInternalOffsetY(slot.getLayoutX(), slot.getLayoutY());
+    }
+
+    private double rotatedInternalOffsetX(double localX, double localY) {
+        double angle = Math.toRadians(directionAngle);
+        return localX * Math.cos(angle) - localY * Math.sin(angle);
+    }
+
+    private double rotatedInternalOffsetY(double localX, double localY) {
+        double angle = Math.toRadians(directionAngle);
+        return localX * Math.sin(angle) + localY * Math.cos(angle);
+    }
+
+    public int getFlagellumCapacity() {
+        return genome != null ? flagella().activeAmount() : 0;
+    }
+
+    public boolean hasFlagella() {
+        return genome != null && flagella().present() && !flagellumSlots.isEmpty();
+    }
+
+    public int getFlagellumAmount() {
+        return getFlagellumCapacity();
+    }
+
+    public FlagellumSlot getFlagellumSlot(int index) {
+        if (index < 0 || index >= flagellumSlots.size()) return null;
+        return flagellumSlots.get(index);
+    }
+
+    public double getAverageFlagellumDamage() {
+        if (flagellumSlots.isEmpty()) return 0.0;
+        return flagellumSlots.stream().mapToDouble(FlagellumSlot::getDamage).average().orElse(0.0);
+    }
+
+    public double getFlagellumLength() {
+        return getFlagellumLength(0);
+    }
+
+    public double getFlagellumLength(int index) {
+        return getRadius() * flagella().localLengthToRadiusFactor(index, config.getCell());
+    }
+
+    public double getFlagellumThickness() {
+        return getRadius() * flagella().thicknessToRadiusFactor(config.getCell());
+    }
+
+    public double getFlagellumBaseLocalX(int index) {
+        double angle = flagellumAttachmentAngle(index);
+        return Math.cos(angle) * getRadius();
+    }
+
+    public double getFlagellumBaseLocalY(int index) {
+        double angle = flagellumAttachmentAngle(index);
+        return Math.sin(angle) * getRadius();
+    }
+
+    public double getFlagellumDirectionX(int index) {
+        double angle = flagellumThrustAngle(index);
+        return Math.cos(angle);
+    }
+
+    public double getFlagellumDirectionY(int index) {
+        double angle = flagellumThrustAngle(index);
+        return Math.sin(angle);
+    }
+
+    public double flagellumAttachmentAngle(int index) {
+        return Math.toRadians(directionAngle - 90.0) + flagella().attachmentOffsetRadians(index, config.getCell());
+    }
+
+    public double flagellumThrustAngle(int index) {
+        return Math.toRadians(directionAngle - 90.0) + flagella().orientationOffsetRadians(index);
+    }
+
+    public double flagellumMotorPower01(int index) {
+        return genome != null ? flagella().localActivity01(index) : 0.0;
+    }
+
+    public double flagellumMotorPower(int index) {
+        return flagellumMotorPower01(index) * 100.0;
     }
 
     public double getNucleusRadius() {
@@ -496,7 +716,7 @@ public class Cell {
         return config.getCell().getRepairCapacityFactor()
                 * getCytosolMass()
                 / Math.max(getMass(), EPSILON)
-                * Math.exp(-cellDamage);
+                * DamageModel.performance(cellDamage);
     }
 
     public boolean hasChloroplasts() {
@@ -541,6 +761,10 @@ public class Cell {
 
     public LysosomeOrganelle lysosomes() {
         return genome.getLysosomes();
+    }
+
+    public FlagellaOrganelle flagella() {
+        return genome.getFlagella();
     }
 
     public void addEvent(Event event) {
@@ -696,6 +920,19 @@ public class Cell {
             nucleusLayoutTargetX = 0.0;
             nucleusLayoutTargetY = 0.0;
             internalLayoutSignature = "";
+        }
+    }
+
+    private void syncFlagellumSlotsToGenome() {
+        int capacity = getFlagellumCapacity();
+        while (flagellumSlots.size() > capacity) {
+            flagellumSlots.removeLast();
+        }
+        while (flagellumSlots.size() < capacity) {
+            flagellumSlots.add(new FlagellumSlot(flagellumSlots.size()));
+        }
+        for (int i = 0; i < flagellumSlots.size(); i++) {
+            flagellumSlots.get(i).setIndex(i);
         }
     }
 
@@ -887,9 +1124,32 @@ public class Cell {
     private record LayoutCircle(double x, double y, double r, double rotation) {
     }
 
+
+
+    public record ScalarDamageChannel(String id, DoubleSupplier getter, DoubleConsumer setter) {
+    }
+
+    public record SlotDamageChannel<T>(
+            String id,
+            List<T> slots,
+            IntFunction<T> slotByIndex,
+            DoubleSupplier averageDamage,
+            ToIntFunction<T> indexGetter,
+            ToDoubleFunction<T> damageGetter,
+            ObjDoubleConsumer<T> damageSetter
+    ) {
+    }
+
+    @FunctionalInterface
+    public interface ObjDoubleConsumer<T> {
+        void accept(T target, double value);
+    }
+
+
     private record InternalLayout(double nucleusX, double nucleusY, LayoutCircle[] lysosomes, double score) {
     }
 }
+
 
 
 

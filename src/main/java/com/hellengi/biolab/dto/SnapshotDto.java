@@ -10,3 +10,5 @@ public record SnapshotDto(
         SimulationSettingsDto settings
 ) {
 }
+
+

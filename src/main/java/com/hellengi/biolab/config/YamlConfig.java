@@ -85,6 +85,7 @@ public class YamlConfig {
         private double energyToRadiusFactor;
         private double energyToDivisionImpulseFactor;
         private double energyDecayPerTick;
+        private double lowEnergyThreshold = 10.0;
         private long deadLifetimeTicks;
         private Control start = new Control();
         private double offsetRange;
@@ -131,19 +132,26 @@ public class YamlConfig {
         private double lysosomeBaseDigestYield = 1.0;
         private double lysosomeDigestCostFactor = 0.085;
         private double lysosomeTransportSpeedFactor = 0.78;
-        private double lysosomeDamageFactor = 0.0012;
         private double lysosomeLeakThreshold = 0.55;
         private double lysosomeLeakDamageFactor = 0.006;
-        private double lysosomeRuptureThreshold = 0.90;
         private double lysosomeCaptureDamageThreshold = 0.65;
         private double lysosomeRepairShare = 0.20;
         private double lysosomeRepairEnergyCost = 1.2;
 
+        private double flagellumMassFactor = 2.2;
+        private double flagellumAreaFactor = 0.75;
+        private double flagellumDivEnergyCostFactor = 0.05;
+        private double flagellumBaseThrustFactor = 0.045;
+        private double flagellumEnergyCostFactor = 0.018;
+        private double flagellumLengthToRadiusFactor = 2.35;
+        private double flagellumRepairShare = 0.10;
+        private double flagellumRepairEnergyCost = 1.35;
+        private double membraneRepairShare = 0.16;
+        private double membraneRepairEnergyCost = 1.8;
+
         private double baseCellOpacity = 0.12;
         private double pigmentCellOpacityFactor = 0.22;
         private double cellPhotoDamageFactor = 0.0007;
-        private double lowEnergyDamageStart = 4.0;
-        private double lowEnergyDamageFactor = 0.012;
         private double cellDeathDamageThreshold = 1.0;
         private double cellDivDamageMax = 0.35;
         private double repairCapacityFactor = 0.004;
@@ -190,10 +198,16 @@ public class YamlConfig {
         private Control divisionThreshold = new Control();
         private Control divisionImpulse = new Control();
         private Control divisionAngle = new Control();
-        private Control startCellDamage = new Control();
-        private Control maxEnergy = new Control();
-        private Control dryMass = new Control();
+        private Control startNucleusDamage = new Control();
+        private Control startCytosolDamage = new Control();
+        private Control startCpDamage = new Control();
+        private Control startMembraneDamage = new Control();
+        private Control startLysosomeDamage = new Control();
+        private Control startFlagellumDamage = new Control();
+        private Control cytosolArea = new Control();
+        private Control cytosolDensity = new Control();
         private Control elasticity = new Control();
+        private boolean gfpEnabledInitial = false;
         private Control gfp = new Control();
         private boolean melaninEnabledInitial = false;
         private Control melaninPercent = new Control();
@@ -201,10 +215,15 @@ public class YamlConfig {
         private Control chloroplastAmount = new Control();
         private Control chlorophyll = new Control();
         private Control carotenoids = new Control();
-        private Control startCpDamage = new Control();
         private boolean lysosomeEnabledInitial = true;
         private Control lysosomeAmount = new Control();
         private Control lysosomeEnzymeActivity = new Control();
+        private boolean flagellumEnabledInitial = false;
+        private Control flagellumCount = new Control();
+        private Control flagellumLength = new Control();
+        private Control flagellumMotorPower = new Control();
+        private Control flagellumPairSpreadAngle = new Control();
+        private Control flagellumSteeringAsymmetry = new Control();
         private MutationDeltas mutation = new MutationDeltas();
 
         @Getter @Setter
@@ -212,8 +231,8 @@ public class YamlConfig {
             private double divisionThreshold;
             private double divisionImpulse;
             private double divisionAngle;
-            private double maxEnergy;
-            private double dryMass;
+            private double cytosolArea;
+            private double cytosolDensity;
             private double elasticity;
             private double gfp;
             private double melaninPercent;
@@ -222,6 +241,10 @@ public class YamlConfig {
             private double carotenoids;
             private double lysosomeAmount;
             private double lysosomeEnzymeActivity;
+            private double flagellumLength;
+            private double flagellumMotorPower;
+            private double flagellumPairSpreadAngle;
+            private double flagellumSteeringAsymmetry;
         }
     }
 
@@ -237,8 +260,22 @@ public class YamlConfig {
         private double min;
         private double max;
         private double step = 1.0;
+        /**
+         * UI/probability mapping for this numeric value. Supported values:
+         * linear, logarithmic. Linear remains the default for ordinary controls.
+         */
+        private String scale = "linear";
     }
 }
+
+
+
+
+
+
+
+
+
 
 
 

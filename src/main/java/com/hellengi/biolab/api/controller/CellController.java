@@ -45,3 +45,5 @@ public class CellController {
         return ResponseEntity.ok(Map.of("status", "spawned"));
     }
 }
+
+

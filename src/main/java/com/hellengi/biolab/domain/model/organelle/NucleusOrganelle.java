@@ -1,3 +1,4 @@
+
 package com.hellengi.biolab.domain.model.organelle;
 
 import com.hellengi.biolab.config.YamlConfig;
@@ -6,6 +7,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import static com.hellengi.biolab.util.Utils.EPSILON;
+import static com.hellengi.biolab.util.Utils.clamp01;
 
 @Getter
 @Setter
@@ -29,7 +31,8 @@ public class NucleusOrganelle implements Organelle {
     }
 
     public double divisionEnergyThreshold(Cell cell) {
-        return Math.max(0.0, Double.isFinite(divisionThreshold) ? divisionThreshold : 0.0);
+        double percent = Double.isFinite(divisionThreshold) ? divisionThreshold : 100.0;
+        return Math.max(0.0, cell.getMaxEnergy()) * clamp01(percent / 100.0);
     }
 
     @Override
@@ -57,5 +60,8 @@ public class NucleusOrganelle implements Organelle {
         return config.getNucleoidAreaFactor();
     }
 }
+
+
+
 
 

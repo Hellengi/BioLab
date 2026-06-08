@@ -15,3 +15,5 @@ public record LightingDto(
         List<QuadtreeNodeDto> quadtreeNodes
 ) {
 }
+
+

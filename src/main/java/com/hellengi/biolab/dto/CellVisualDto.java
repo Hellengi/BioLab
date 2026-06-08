@@ -1,3 +1,4 @@
+
 package com.hellengi.biolab.dto;
 
 public record CellVisualDto(
@@ -11,6 +12,8 @@ public record CellVisualDto(
         int lysosomeAmount,
         RgbColorDto lysosomeGlowColor,
         double lysosomeGlowStrength,
+        RgbColorDto flagellumColor,
+        int flagellumCount,
         RgbColorDto gfpColor,
         double gfpExpression,
         Double lightDirectionAngle,
@@ -20,3 +23,6 @@ public record CellVisualDto(
         Double highlightClarity
 ) {
 }
+
+
+

@@ -1,3 +1,4 @@
+
 package com.hellengi.biolab.dto.domain_mapper;
 
 import com.hellengi.biolab.config.YamlConfig;
@@ -19,10 +20,11 @@ public class GenomeMapper {
                 genome.getDivisionThreshold(),
                 genome.getDivisionImpulse(),
                 genome.getDivisionAngle(),
-                genome.getMaxEnergy(),
-                genome.getDryMass(),
-                genome.getElasticity(),
+                genome.getCytosolArea(),
+                genome.getCytosolDensity(),
+                genome.isGfpEnabled(),
                 genome.getGfp(),
+                genome.getElasticity(),
                 genome.isMelaninEnabled(),
                 genome.getMelaninPercent(),
                 genome.isChloroplastEnabled(),
@@ -32,6 +34,12 @@ public class GenomeMapper {
                 genome.isLysosomeEnabled(),
                 genome.getLysosomeAmount(),
                 genome.getLysosomeEnzymeActivity(),
+                genome.isFlagellumEnabled(),
+                genome.getFlagellumCount(),
+                genome.getFlagellumLength(),
+                genome.getFlagellumMotorPower(),
+                genome.getFlagellumPairSpreadAngle(),
+                genome.getFlagellumSteeringAsymmetry(),
                 genome.getCode()
         );
     }
@@ -44,10 +52,11 @@ public class GenomeMapper {
                 dto.divisionThreshold(),
                 dto.divisionImpulse(),
                 dto.divisionAngle(),
-                dto.maxEnergy(),
-                defaults.dryMass(dto.dryMass()),
-                defaults.elasticity(dto.elasticity()),
+                defaults.cytosolArea(dto.cytosolArea()),
+                defaults.cytosolDensity(dto.cytosolDensity()),
+                dto.gfpEnabled(),
                 defaults.gfp(dto.gfp()),
+                defaults.elasticity(dto.elasticity()),
                 dto.melaninEnabled(),
                 defaults.melaninPercent(dto.melaninPercent()),
                 dto.chloroplastEnabled(),
@@ -56,7 +65,13 @@ public class GenomeMapper {
                 defaults.carotenoids(dto.carotenoids()),
                 dto.lysosomeEnabled(),
                 defaults.lysosomeAmount(dto.lysosomeAmount()),
-                defaults.lysosomeEnzymeActivity(dto.lysosomeEnzymeActivity())
+                defaults.lysosomeEnzymeActivity(dto.lysosomeEnzymeActivity()),
+                dto.flagellumEnabled(),
+                defaults.flagellumCount(dto.flagellumCount()),
+                defaults.flagellumLength(dto.flagellumLength()),
+                defaults.flagellumMotorPower(dto.flagellumMotorPower()),
+                defaults.flagellumPairSpreadAngle(dto.flagellumPairSpreadAngle()),
+                defaults.flagellumSteeringAsymmetry(dto.flagellumSteeringAsymmetry())
         );
     }
 
@@ -65,29 +80,40 @@ public class GenomeMapper {
                 control(genome.getDivisionThreshold()),
                 control(genome.getDivisionImpulse()),
                 control(genome.getDivisionAngle()),
-                control(genome.getStartCellDamage()),
-                control(genome.getMaxEnergy()),
-                control(genome.getDryMass()),
-                control(genome.getElasticity()),
+                control(genome.getStartNucleusDamage()),
+                control(genome.getStartCytosolDamage()),
+                control(genome.getStartCpDamage()),
+                control(genome.getStartMembraneDamage()),
+                control(genome.getStartLysosomeDamage()),
+                control(genome.getStartFlagellumDamage()),
+                control(genome.getCytosolArea()),
+                control(genome.getCytosolDensity()),
+                genome.isGfpEnabledInitial(),
                 control(genome.getGfp()),
+                control(genome.getElasticity()),
                 genome.isMelaninEnabledInitial(),
                 control(genome.getMelaninPercent()),
                 genome.isChloroplastEnabledInitial(),
                 control(genome.getChloroplastAmount()),
                 control(genome.getChlorophyll()),
                 control(genome.getCarotenoids()),
-                control(genome.getStartCpDamage()),
                 genome.isLysosomeEnabledInitial(),
                 control(genome.getLysosomeAmount()),
                 control(genome.getLysosomeEnzymeActivity()),
+                genome.isFlagellumEnabledInitial(),
+                control(genome.getFlagellumCount()),
+                control(genome.getFlagellumLength()),
+                control(genome.getFlagellumMotorPower()),
+                control(genome.getFlagellumPairSpreadAngle()),
+                control(genome.getFlagellumSteeringAsymmetry()),
                 null
         );
     }
 
     private RangedValueDto control(YamlConfig.Control control) {
         return new RangedValueDto(
-                control.getInitial(), control.getMin(), control.getMax(), control.getStep(), control.getInitial()
+                control.getInitial(), control.getMin(), control.getMax(), control.getStep(), control.getInitial(), control.getScale()
         );
     }
-
 }
+

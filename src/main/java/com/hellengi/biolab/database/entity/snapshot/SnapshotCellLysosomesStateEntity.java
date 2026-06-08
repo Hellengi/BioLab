@@ -32,3 +32,5 @@ public class SnapshotCellLysosomesStateEntity {
     })
     private DamageFlowEntity damageFlow = new DamageFlowEntity();
 }
+
+

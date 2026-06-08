@@ -1,3 +1,4 @@
+
 package com.hellengi.biolab.dto;
 
 public record RangedValueDto(
@@ -5,6 +6,7 @@ public record RangedValueDto(
         double min,
         double max,
         double step,
-        double initial
+        double initial,
+        String scale
 ) {
 }

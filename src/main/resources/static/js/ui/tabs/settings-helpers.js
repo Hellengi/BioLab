@@ -1,3 +1,4 @@
+
 /**
  * ui/tabs/_settings-helpers.js
  * Внутренние вспомогательные модули для settings.js.
@@ -14,6 +15,7 @@ import { updateConfig } from "../../transport/api/simulation.js";
 import { updateStats } from "../../store/actions.js";
 import { dom } from "../dom.js";
 import { bindInputs, applyInputBounds } from "../panels/_panels.js";
+import { sliderBoundsForControl, valueFromSlider, sliderFromValue, roundControlValue } from "../control-scale.js";
 
 // ═══════════════════════════════════════════════════════════════════
 // 1. CONFIG-SYNC — дросселированная запись конфига на сервер
@@ -120,6 +122,7 @@ export function getRange(key) {
         max:     Number(range.max),
         step:    Number(range.step),
         initial: Number(range.initial),
+        scale:   range.scale ?? "linear",
     };
 }
 
@@ -137,7 +140,7 @@ function applyControlRange(slider, input, key) {
     const range = getRange(key);
     if (!range) return null;
 
-    applyInputBounds(slider, range);
+    applyInputBounds(slider, sliderBoundsForControl(range));
     applyInputBounds(input,  range);
 
     return range;
@@ -210,6 +213,17 @@ export function setSliderAndInput(slider, input, value) {
     if (input) {
         if (input.tagName === "INPUT") input.value       = String(value);
         else                           input.textContent = String(value);
+    }
+}
+
+/** Sets a control pair while respecting the control scale/mapping. */
+export function setControlSliderAndInput(slider, input, key, value = controlValue(key)) {
+    const range = getRange(key);
+    const actual = roundControlValue(value, range);
+    if (slider) slider.value = String(sliderFromValue(actual, range));
+    if (input) {
+        if (input.tagName === "INPUT") input.value = String(actual);
+        else input.textContent = String(actual);
     }
 }
 
@@ -322,19 +336,26 @@ export function bindPercentControl(rangeInput, numberInput, key, rangeKey = key)
  * Привязывает пару range+input к параметру конфига с произвольной нормализацией.
  * @param {Function} [normalize] — (rawValue) => normalizedValue
  */
-export function bindLiveControl(rangeInput, numberInput, key, normalize = v => v) {
+export function bindLiveControl(rangeInput, numberInput, key, normalize = null) {
     const apply = immediate => {
         if (!state.config) return;
 
-        const raw   = numberInput?.tagName === "INPUT"
-            ? Number(numberInput.value)
-            : Number(rangeInput?.value);
-        const value = normalize(raw);
+        const range = getRange(key);
+        if (!range) return;
 
-        if (rangeInput) rangeInput.value = String(value);
+        const fromSlider = numberInput !== document.activeElement;
+        const raw = fromSlider
+            ? valueFromSlider(rangeInput?.value, range)
+            : Number(numberInput?.value);
+        const normalized = typeof normalize === "function"
+            ? normalize(raw)
+            : roundControlValue(raw, range);
+        const value = roundControlValue(normalized, range);
+
+        if (rangeInput) rangeInput.value = String(sliderFromValue(value, range));
         if (numberInput) {
-            if (numberInput.tagName === "INPUT") numberInput.value       = String(value);
-            else                                 numberInput.textContent = String(value);
+            if (numberInput.tagName === "INPUT") numberInput.value = String(value);
+            else numberInput.textContent = String(value);
         }
 
         scheduleConfigPatch(patchControl(key, value), immediate);
@@ -391,39 +412,12 @@ export function bindAngleControl(slider, key, rangeKey) {
  * Привязывает слайдер скорости орбиты (степенная кривая + знак).
  */
 export function bindOrbitSpeedControl() {
-    const slider = dom.lightSourceOrbitSpeedSlider;
-    const input  = dom.lightSourceOrbitSpeedValue;
-    if (!slider || !input) return;
-
-    slider.addEventListener("input", () => {
-        const curved = curveOrbitSpeed(slider.value);
-        input.value  = String(curved);
-        _sendOrbitSpeed(curved, false);
-    });
-
-    slider.addEventListener("change", () => {
-        const curved = curveOrbitSpeed(slider.value);
-        input.value  = String(curved);
-        _sendOrbitSpeed(curved, true);
-    });
-
-    slider.addEventListener("pointerup", () => {
-        const curved = curveOrbitSpeed(slider.value);
-        input.value  = String(curved);
-        _sendOrbitSpeed(curved, true);
-    });
-
-    input.addEventListener("change", () => {
-        const curved = Math.max(-100, Math.min(100, Math.round(Number(input.value) || 0)));
-        input.value  = String(curved);
-        slider.value = String(inverseCurveOrbitSpeed(curved));
-        _sendOrbitSpeed(curved, true);
-    });
-}
-
-function _sendOrbitSpeed(value, immediate) {
-    if (!state.config) return;
-    scheduleConfigPatch(patchControl("lightSourceOrbitSpeed", value), immediate);
+    bindLiveControl(
+        dom.lightSourceOrbitSpeedSlider,
+        dom.lightSourceOrbitSpeedValue,
+        "lightSourceOrbitSpeed",
+        value => roundControlValue(value, getRange("lightSourceOrbitSpeed"))
+    );
 }
 
 /**
@@ -497,7 +491,7 @@ export function applyAllControlRanges() {
     applyControlRange(dom.radiationSlider,        dom.radiationValue,        "radiationSlider");
     applyControlRange(dom.globalLightSlider,      dom.globalLightValue,      "globalLightPercent");
     applyControlRange(dom.globalLightCycleMinSlider, dom.globalLightCycleMinValue, "globalLightCycleMinPercent");
-    applyLeftDenseRange(dom.globalLightCyclePeriodSlider, dom.globalLightCyclePeriodValue, "globalLightCyclePeriodSeconds");
+    applyControlRange(dom.globalLightCyclePeriodSlider, dom.globalLightCyclePeriodValue, "globalLightCyclePeriodSeconds");
     applyControlRange(dom.lightSourceCountSlider,       null,                     "lightSourceCount");
     applyControlRange(dom.lightSourceStartAngleSlider,  null,                     "lightSourceStartAngle");
     applyControlRange(dom.lightSourceBrightnessSlider,  dom.lightSourceBrightnessValue,  "lightSourceBrightness");
@@ -507,3 +501,7 @@ export function applyAllControlRanges() {
     renderDiscreteTicks(dom.lightSourceCountTicks,     getRange("lightSourceCount"));
     renderAngleTicks   (dom.lightSourceStartAngleTicks, getRange("lightSourceStartAngle"));
 }
+
+
+
+

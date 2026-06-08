@@ -1,3 +1,4 @@
+
 package com.hellengi.biolab.domain.lifecycle;
 
 import com.hellengi.biolab.config.YamlConfig;
@@ -11,6 +12,8 @@ import java.util.Random;
 import java.util.function.BooleanSupplier;
 import java.util.function.DoubleConsumer;
 import java.util.function.DoubleSupplier;
+
+import com.hellengi.biolab.util.ControlScale;
 
 @Service
 @RequiredArgsConstructor
@@ -28,64 +31,62 @@ public class Mutator {
         double rareChance = config.getEnvironment().getRareMutationChance() * (1.0 + mutationChance);
 
         List.of(
-                gaussian(genome::getDivisionThreshold, genome::setDivisionThreshold, m.getDivisionThreshold(), g.getDivisionThreshold()),
-                logNormal(genome::getDivisionImpulse, genome::setDivisionImpulse, m.getDivisionImpulse(), g.getDivisionImpulse()),
+                scaled(genome::getDivisionThreshold, genome::setDivisionThreshold, m.getDivisionThreshold(), g.getDivisionThreshold()),
+                scaled(genome::getDivisionImpulse, genome::setDivisionImpulse, m.getDivisionImpulse(), g.getDivisionImpulse()),
                 wrapped(genome::getDivisionAngle, genome::setDivisionAngle, m.getDivisionAngle(), g.getDivisionAngle()),
-                logNormal(genome::getMaxEnergy, genome::setMaxEnergy, m.getMaxEnergy(), g.getMaxEnergy()),
-                logNormal(genome::getDryMass, genome::setDryMass, m.getDryMass(), g.getDryMass()),
-                gaussian(genome::getElasticity, genome::setElasticity, m.getElasticity(), g.getElasticity()),
-                gaussian(genome::getGfp, genome::setGfp, m.getGfp(), g.getGfp()),
-                gaussian(genome::getMelaninPercent, genome::setMelaninPercent, m.getMelaninPercent(), g.getMelaninPercent(), genome::isMelaninEnabled),
-                roundedLogNormal(genome::getChloroplastAmount, genome::setChloroplastAmount, m.getChloroplastAmount(), g.getChloroplastAmount(), genome::isChloroplastEnabled),
-                gaussian(genome::getChlorophyll, genome::setChlorophyll, m.getChlorophyll(), g.getChlorophyll(), genome::isChloroplastEnabled),
-                gaussian(genome::getCarotenoids, genome::setCarotenoids, m.getCarotenoids(), g.getCarotenoids(), genome::isChloroplastEnabled),
-                roundedLogNormal(genome::getLysosomeAmount, genome::setLysosomeAmount, m.getLysosomeAmount(), g.getLysosomeAmount(), genome::isLysosomeEnabled),
-                gaussian(genome::getLysosomeEnzymeActivity, genome::setLysosomeEnzymeActivity, m.getLysosomeEnzymeActivity(), g.getLysosomeEnzymeActivity(), genome::isLysosomeEnabled)
+                scaled(genome::getCytosolArea, genome::setCytosolArea, m.getCytosolArea(), g.getCytosolArea()),
+                scaled(genome::getCytosolDensity, genome::setCytosolDensity, m.getCytosolDensity(), g.getCytosolDensity()),
+                scaled(genome::getElasticity, genome::setElasticity, m.getElasticity(), g.getElasticity()),
+                scaled(genome::getGfp, genome::setGfp, m.getGfp(), g.getGfp(), genome::isGfpEnabled),
+                scaled(genome::getMelaninPercent, genome::setMelaninPercent, m.getMelaninPercent(), g.getMelaninPercent(), genome::isMelaninEnabled),
+                roundedScaled(genome::getChloroplastAmount, genome::setChloroplastAmount, m.getChloroplastAmount(), g.getChloroplastAmount(), genome::isChloroplastEnabled),
+                scaled(genome::getChlorophyll, genome::setChlorophyll, m.getChlorophyll(), g.getChlorophyll(), genome::isChloroplastEnabled),
+                scaled(genome::getCarotenoids, genome::setCarotenoids, m.getCarotenoids(), g.getCarotenoids(), genome::isChloroplastEnabled),
+                roundedScaled(genome::getLysosomeAmount, genome::setLysosomeAmount, m.getLysosomeAmount(), g.getLysosomeAmount(), genome::isLysosomeEnabled),
+                scaled(genome::getLysosomeEnzymeActivity, genome::setLysosomeEnzymeActivity, m.getLysosomeEnzymeActivity(), g.getLysosomeEnzymeActivity(), genome::isLysosomeEnabled),
+                scaled(genome::getFlagellumLength, genome::setFlagellumLength, m.getFlagellumLength(), g.getFlagellumLength(), genome::isFlagellumEnabled),
+                scaled(genome::getFlagellumMotorPower, genome::setFlagellumMotorPower, m.getFlagellumMotorPower(), g.getFlagellumMotorPower(), genome::isFlagellumEnabled),
+                scaled(genome::getFlagellumPairSpreadAngle, genome::setFlagellumPairSpreadAngle, m.getFlagellumPairSpreadAngle(), g.getFlagellumPairSpreadAngle(), genome::isFlagellumEnabled),
+                scaled(genome::getFlagellumSteeringAsymmetry, genome::setFlagellumSteeringAsymmetry, m.getFlagellumSteeringAsymmetry(), g.getFlagellumSteeringAsymmetry(), genome::isFlagellumEnabled)
         ).forEach(spec -> spec.apply(mutationChance));
 
+        toggle(rareChance, genome::isGfpEnabled, genome::setGfpEnabled);
         toggle(rareChance, genome::isMelaninEnabled, genome::setMelaninEnabled);
+
         toggleOptionalOrganelle(rareChance, genome::isChloroplastEnabled, genome::setChloroplastEnabled, genome::getChloroplastAmount, genome::setChloroplastAmount);
         toggleOptionalOrganelle(rareChance, genome::isLysosomeEnabled, genome::setLysosomeEnabled, genome::getLysosomeAmount, genome::setLysosomeAmount);
+        mutateFlagellumMode(rareChance, genome);
 
         return genome;
     }
 
-    private MutationSpec gaussian(
+    private MutationSpec scaled(
             DoubleSupplier getter,
             DoubleConsumer setter,
             double sigma,
             YamlConfig.Control bounds
     ) {
-        return gaussian(getter, setter, sigma, bounds, () -> true);
+        return scaled(getter, setter, sigma, bounds, () -> true);
     }
 
-    private MutationSpec gaussian(
+    private MutationSpec scaled(
             DoubleSupplier getter,
             DoubleConsumer setter,
             double sigma,
             YamlConfig.Control bounds,
             BooleanSupplier enabled
     ) {
-        return new MutationSpec(enabled, () -> setter.accept(mutateGaussian(getter.getAsDouble(), sigma, bounds.getMin(), bounds.getMax())));
+        return new MutationSpec(enabled, () -> setter.accept(ControlScale.mutateValue(getter.getAsDouble(), sigma, bounds, random)));
     }
 
-    private MutationSpec logNormal(
-            DoubleSupplier getter,
-            DoubleConsumer setter,
-            double sigma,
-            YamlConfig.Control bounds
-    ) {
-        return new MutationSpec(() -> true, () -> setter.accept(mutateLogNormal(getter.getAsDouble(), sigma, bounds.getMin(), bounds.getMax())));
-    }
-
-    private MutationSpec roundedLogNormal(
+    private MutationSpec roundedScaled(
             DoubleSupplier getter,
             DoubleConsumer setter,
             double sigma,
             YamlConfig.Control bounds,
             BooleanSupplier enabled
     ) {
-        return new MutationSpec(enabled, () -> setter.accept(Math.round(mutateLogNormal(getter.getAsDouble(), sigma, bounds.getMin(), bounds.getMax()))));
+        return new MutationSpec(enabled, () -> setter.accept(Math.round(ControlScale.mutateValue(getter.getAsDouble(), sigma, bounds, random))));
     }
 
     private MutationSpec wrapped(
@@ -94,7 +95,17 @@ public class Mutator {
             double sigma,
             YamlConfig.Control bounds
     ) {
-        return new MutationSpec(() -> true, () -> setter.accept(mutateWrappedGaussian(getter.getAsDouble(), sigma, bounds.getMin(), bounds.getMax())));
+        return wrapped(getter, setter, sigma, bounds, () -> true);
+    }
+
+    private MutationSpec wrapped(
+            DoubleSupplier getter,
+            DoubleConsumer setter,
+            double sigma,
+            YamlConfig.Control bounds,
+            BooleanSupplier enabled
+    ) {
+        return new MutationSpec(enabled, () -> setter.accept(mutateWrappedGaussian(getter.getAsDouble(), sigma, bounds.getMin(), bounds.getMax())));
     }
 
     private void toggle(double chance, BooleanSupplier getter, java.util.function.Consumer<Boolean> setter) {
@@ -120,17 +131,23 @@ public class Mutator {
         }
     }
 
+    private void mutateFlagellumMode(double chance, Genome genome) {
+        if (!shouldMutate(chance)) {
+            return;
+        }
+        int current = genome.isFlagellumEnabled() ? Math.max(1, Math.min(2, (int) Math.round(genome.getFlagellumCount()))) : 0;
+        int next = current;
+        while (next == current) {
+            next = random.nextInt(3); // 0 = absent, 1 = single flagellum, 2 = paired flagella.
+        }
+        genome.setFlagellumEnabled(next > 0);
+        if (next > 0) {
+            genome.setFlagellumCount(next);
+        }
+    }
+
     private boolean shouldMutate(double chance) {
         return random.nextDouble() < chance;
-    }
-
-    private double mutateGaussian(double value, double sigma, double minValue, double maxValue) {
-        return clamp(value + random.nextGaussian() * sigma, minValue, maxValue);
-    }
-
-    private double mutateLogNormal(double value, double sigma, double minValue, double maxValue) {
-        double normalizedSigma = Math.max(0.0, sigma) / Math.max(Math.abs(value), 1.0);
-        return clamp(value * Math.exp(random.nextGaussian() * normalizedSigma), minValue, maxValue);
     }
 
     private double mutateWrappedGaussian(double value, double sigma, double minValue, double maxValue) {
@@ -141,9 +158,6 @@ public class Mutator {
         return mutatedValue;
     }
 
-    private double clamp(double value, double minValue, double maxValue) {
-        return Math.max(minValue, Math.min(maxValue, value));
-    }
 
     private final class MutationSpec {
         private final BooleanSupplier enabled;
@@ -161,4 +175,9 @@ public class Mutator {
         }
     }
 }
+
+
+
+
+
 

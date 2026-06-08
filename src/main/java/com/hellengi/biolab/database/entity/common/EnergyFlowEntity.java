@@ -17,3 +17,5 @@ public class EnergyFlowEntity {
     @Column(nullable = false) private double repairCostRate;
     @Column(nullable = false) private double divisionCost;
 }
+
+

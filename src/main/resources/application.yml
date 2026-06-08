@@ -50,6 +50,7 @@ simulation:
     energy-to-radius-factor: 4.0
     energy-to-division-impulse-factor: 4.0
     energy-decay-per-tick: 0.05
+    low-energy-threshold: 10.0
     dead-lifetime-ticks: 80
     start:
       initial: 20
@@ -95,18 +96,24 @@ simulation:
     lysosome-base-digest-yield: 1.0
     lysosome-digest-cost-factor: 0.085
     lysosome-transport-speed-factor: 0.78
-    lysosome-damage-factor: 0.0012
     lysosome-leak-threshold: 0.55
     lysosome-leak-damage-factor: 0.006
-    lysosome-rupture-threshold: 0.90
     lysosome-capture-damage-threshold: 0.65
     lysosome-repair-share: 0.12
     lysosome-repair-energy-cost: 1.2
+    flagellum-mass-factor: 2.2
+    flagellum-area-factor: 0.75
+    flagellum-div-energy-cost-factor: 0.05
+    flagellum-base-thrust-factor: 0.045
+    flagellum-energy-cost-factor: 0.018
+    flagellum-length-to-radius-factor: 4.0
+    flagellum-repair-share: 0.10
+    flagellum-repair-energy-cost: 1.35
+    membrane-repair-share: 0.16
+    membrane-repair-energy-cost: 1.8
     base-cell-opacity: 0.12
     pigment-cell-opacity-factor: 0.22
     cell-photo-damage-factor: 0.00035
-    low-energy-damage-start: 4.0
-    low-energy-damage-factor: 0.012
     cell-death-damage-threshold: 1.0
     cell-div-damage-max: 0.35
     repair-capacity-factor: 0.004
@@ -171,6 +178,7 @@ simulation:
       min: 1
       max: 300
       step: 1
+      scale: logarithmic
     light-source-count:
       initial: 1
       min: 1
@@ -196,13 +204,14 @@ simulation:
       min: -100
       max: 100
       step: 1
+      scale: logarithmic
 
   genome:
     division-threshold:
       initial: 50.0
-      min: 20.0
+      min: 30.0
       max: 100.0
-      step: 0.1
+      step: 1.0
     division-impulse:
       initial: 2.0
       min: 0.5
@@ -213,26 +222,32 @@ simulation:
       min: 0.0
       max: 179.0
       step: 1.0
-    start-cell-damage:
+    start-nucleus-damage:
       initial: 0.0
       min: 0.0
       max: 1.0
       step: 0.01
-    max-energy:
+    start-cytosol-damage:
+      initial: 0.0
+      min: 0.0
+      max: 1.0
+      step: 0.01
+    cytosol-area:
       initial: 60.0
       min: 20.0
       max: 200.0
       step: 0.1
-    dry-mass:
-      initial: 300.0
-      min: 50.0
-      max: 800.0
-      step: 1.0
+    cytosol-density:
+      initial: 1.2
+      min: 0.35
+      max: 3.5
+      step: 0.01
     elasticity:
       initial: 0.25
       min: 0.05
       max: 1.0
       step: 0.01
+    gfp-enabled-initial: false
     gfp:
       initial: 0.0
       min: 0.0
@@ -265,6 +280,21 @@ simulation:
       min: 0.0
       max: 1.0
       step: 0.01
+    start-membrane-damage:
+      initial: 0.0
+      min: 0.0
+      max: 1.0
+      step: 0.01
+    start-lysosome-damage:
+      initial: 0.0
+      min: 0.0
+      max: 1.0
+      step: 0.01
+    start-flagellum-damage:
+      initial: 0.0
+      min: 0.0
+      max: 1.0
+      step: 0.01
     lysosome-enabled-initial: true
     lysosome-amount:
       initial: 3.0
@@ -276,12 +306,39 @@ simulation:
       min: 15.0
       max: 100.0
       step: 1.0
+    flagellum-enabled-initial: false
+    flagellum-count:
+      initial: 1.0
+      min: 1.0
+      max: 2.0
+      step: 1.0
+    flagellum-length:
+      initial: 1.8
+      min: 1.0
+      max: 4.0
+      step: 0.01
+    flagellum-motor-power:
+      initial: 30.0
+      min: 15.0
+      max: 100.0
+      step: 1.0
+    flagellum-pair-spread-angle:
+      initial: 36.0
+      min: 0.0
+      max: 180.0
+      step: 1.0
+    flagellum-steering-asymmetry:
+      initial: 0.0
+      min: -100.0
+      max: 100.0
+      step: 1.0
+      scale: logarithmic
     mutation:
       division-threshold: 2.0
       division-impulse: 0.25
       division-angle: 6.0
-      max-energy: 4.0
-      dry-mass: 20.0
+      cytosol-area: 4.0
+      cytosol-density: 0.08
       elasticity: 0.04
       gfp: 8.0
       melanin-percent: 8.0
@@ -290,6 +347,10 @@ simulation:
       carotenoids: 8.0
       lysosome-amount: 0.12
       lysosome-enzyme-activity: 8.0
+      flagellum-length: 0.12
+      flagellum-motor-power: 8.0
+      flagellum-pair-spread-angle: 4.0
+      flagellum-steering-asymmetry: 8.0
 
   motion:
     cell-speed:
@@ -302,7 +363,5 @@ simulation:
       min: 0.0
       max: 359.0
       step: 1.0
-
-
 
 

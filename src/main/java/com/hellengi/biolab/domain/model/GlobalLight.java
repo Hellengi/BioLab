@@ -59,3 +59,5 @@ public class GlobalLight {
         cyclePeriodSeconds = 0.0;
     }
 }
+
+

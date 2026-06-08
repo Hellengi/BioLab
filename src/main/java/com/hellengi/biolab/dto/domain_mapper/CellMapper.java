@@ -8,6 +8,7 @@ import com.hellengi.biolab.dto.CellVisualDto;
 import com.hellengi.biolab.dto.DisplayLayersDto;
 import com.hellengi.biolab.dto.RgbColorDto;
 import com.hellengi.biolab.dto.LysosomeSlotDto;
+import com.hellengi.biolab.dto.FlagellumSlotDto;
 
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -29,8 +30,8 @@ public class CellMapper {
     private static final double HIGHLIGHT_CLARITY_POWER = 0.85;
 
     private static final RgbColorDto NUCLEOID_COLOR = new RgbColorDto(104, 92, 138, 0.84);
-    private static final RgbColorDto CYTOSOL_COLOR = new RgbColorDto(200, 194, 170, 0.36);
-    private static final RgbColorDto MEMBRANE_BASE_COLOR = new RgbColorDto(218, 203, 174, 0.095);
+    private static final RgbColorDto CYTOSOL_COLOR = new RgbColorDto(238, 240, 232, 0.36);
+    private static final RgbColorDto MEMBRANE_BASE_COLOR = new RgbColorDto(238, 240, 232, 0.095);
     private static final RgbColorDto MELANIN_COLOR = new RgbColorDto(65, 43, 30, 1.0);
     private static final RgbColorDto CHLOROPHYLL_LOW_COLOR = new RgbColorDto(154, 210, 82, 0.74);
     private static final RgbColorDto CHLOROPHYLL_HIGH_COLOR = new RgbColorDto(28, 96, 40, 0.74);
@@ -38,6 +39,7 @@ public class CellMapper {
     private static final RgbColorDto CHLOROPLAST_BLEACHED_COLOR = new RgbColorDto(238, 240, 232, 0.74);
     private static final RgbColorDto LYSOSOME_COLOR = new RgbColorDto(104, 31, 47, 0.72);
     private static final RgbColorDto LYSOSOME_GLOW_COLOR = new RgbColorDto(218, 224, 74, 0.0);
+    private static final RgbColorDto FLAGELLUM_COLOR = new RgbColorDto(230, 170, 80, 0.86);
     private static final RgbColorDto GFP_COLOR = new RgbColorDto(83, 255, 139, 1.0);
     private static final RgbColorDto DAMAGE_COLOR = new RgbColorDto(96, 88, 76, 1.0);
 
@@ -107,6 +109,7 @@ public class CellMapper {
                 cell.getY(),
                 cell.getVx(),
                 cell.getVy(),
+                cell.getAngularVelocity(),
                 cell.getEnergy(),
                 cell.getRadius(),
                 cell.getNucleusLayoutX(),
@@ -121,26 +124,42 @@ public class CellMapper {
                 cell.getMass(),
                 cell.getDensity(),
                 cell.getOpacity(),
+                cell.getNucleusDamage(),
                 cell.getCellDamage(),
                 cell.getCpDamage(),
+                cell.getMembraneDamage(),
                 cell.getLysosomeDamage(),
+                cell.getAverageFlagellumDamage(),
                 cell.getLastEnergyProduction(),
                 cell.getLastDigestionEnergyProduction(),
                 cell.getLastEnergyConsumption() + cell.getLastDigestionEnergyCostRate(),
+                cell.getLastEnergyAvailability(),
+                cell.getLastEnergyDemand(),
                 cell.getLastDigestionEnergyCostRate(),
                 cell.getLastCpPhotoDamageRate(),
+                cell.getLastNucleusDamageRate(),
                 cell.getLastCellDamageRate(),
+                cell.getLastMembraneDamageRate(),
                 cell.getLastLysosomeDamageRate(),
+                cell.getLastFlagellumDamageRate(),
                 cell.getLastCpRepairRate(),
+                cell.getLastNucleusRepairRate(),
+                cell.getLastNucleusRepairEnergyCostRate(),
                 cell.getLastCellRepairRate(),
+                cell.getLastMembraneRepairRate(),
+                cell.getLastMembraneRepairEnergyCostRate(),
                 cell.getLastLysosomeRepairRate(),
+                cell.getLastFlagellumRepairRate(),
                 cell.getLastRepairEnergyCostRate(),
                 cell.getLastLysosomeRepairEnergyCostRate(),
+                cell.getLastFlagellumRepairEnergyCostRate(),
                 cell.getCarotProtection(),
                 cell.getMembraneLightTransmittance(),
                 cell.getLysosomeCapacity(),
                 cell.getOccupiedLysosomeSlots(),
                 lysosomeSlotsToDto(cell),
+                cell.getFlagellumCapacity(),
+                flagellumSlotsToDto(cell),
                 includeForces ? cellEventMapper.toDtoList(cell.getEvents()) : null,
                 includeForces ? cellMotionMapper.toDto(cell) : null,
                 visual,
@@ -152,6 +171,7 @@ public class CellMapper {
         Cell cell = new Cell(dto.id(), config);
         cell.setPosition(dto.x(), dto.y());
         cell.setVelocity(dto.vx(), dto.vy());
+        cell.setAngularVelocity(dto.angularVelocity());
         cell.setEnergy(dto.energy());
         cell.setGenome(genomeMapper.toDomain(dto.genome()));
         cell.setNucleusLayoutX(dto.nucleusOffsetX());
@@ -162,21 +182,35 @@ public class CellMapper {
         cell.setDirectionAngle(dto.directionAngle());
         cell.setLifetimeTicks(dto.lifetimeTicks());
         cell.setMass(dto.mass());
+        cell.setNucleusDamage(dto.nucleusDamage());
         cell.setCellDamage(dto.cellDamage());
         cell.setCpDamage(dto.cpDamage());
+        cell.setMembraneDamage(dto.membraneDamage());
         cell.setLastEnergyProduction(dto.energyProduction());
         cell.setLastDigestionEnergyProduction(dto.digestionEnergyProduction());
         cell.setLastEnergyConsumption(dto.energyConsumption() - dto.digestionEnergyCostRate());
+        cell.setLastEnergyAvailability(dto.energyAvailability());
+        cell.setLastEnergyDemand(dto.energyDemand());
         cell.setLastDigestionEnergyCostRate(dto.digestionEnergyCostRate());
         cell.setLastCpPhotoDamageRate(dto.cpPhotoDamageRate());
+        cell.setLastNucleusDamageRate(dto.nucleusDamageRate());
         cell.setLastCellDamageRate(dto.cellDamageRate());
+        cell.setLastMembraneDamageRate(dto.membraneDamageRate());
         cell.setLastLysosomeDamageRate(dto.lysosomeDamageRate());
+        cell.setLastFlagellumDamageRate(dto.flagellumDamageRate());
         cell.setLastCpRepairRate(dto.cpRepairRate());
+        cell.setLastNucleusRepairRate(dto.nucleusRepairRate());
+        cell.setLastNucleusRepairEnergyCostRate(dto.nucleusRepairEnergyCostRate());
         cell.setLastCellRepairRate(dto.cellRepairRate());
+        cell.setLastMembraneRepairRate(dto.membraneRepairRate());
+        cell.setLastMembraneRepairEnergyCostRate(dto.membraneRepairEnergyCostRate());
         cell.setLastLysosomeRepairRate(dto.lysosomeRepairRate());
+        cell.setLastFlagellumRepairRate(dto.flagellumRepairRate());
         cell.setLastRepairEnergyCostRate(dto.repairEnergyCostRate());
         cell.setLastLysosomeRepairEnergyCostRate(dto.lysosomeRepairEnergyCostRate());
+        cell.setLastFlagellumRepairEnergyCostRate(dto.flagellumRepairEnergyCostRate());
         cell.setLysosomeSlots(lysosomeSlotsToDomain(dto.lysosomeSlots()));
+        cell.setFlagellumSlots(flagellumSlotsToDomain(dto.flagellumSlots()));
         cell.setEvents(cellEventMapper.toDomainList(dto.events()));
         cell.ensureInternalLayoutInitialized();
         return cell;
@@ -232,29 +266,57 @@ public class CellMapper {
                 .toList();
     }
 
+    private List<com.hellengi.biolab.domain.model.FlagellumSlot> flagellumSlotsToDomain(List<FlagellumSlotDto> slots) {
+        if (slots == null) return List.of();
+        return slots.stream()
+                .map(slot -> {
+                    com.hellengi.biolab.domain.model.FlagellumSlot domainSlot = new com.hellengi.biolab.domain.model.FlagellumSlot(slot.index(), slot.damage());
+                    domainSlot.rememberPhysics(slot.force(), slot.torque(), slot.baseX(), slot.baseY(), slot.directionX(), slot.directionY(), slot.energyCostRate());
+                    domainSlot.rememberDamageRate(slot.damageRate());
+                    domainSlot.rememberRepairRates(slot.repairRate(), slot.repairEnergyCostRate());
+                    return domainSlot;
+                })
+                .toList();
+    }
+
+    private List<FlagellumSlotDto> flagellumSlotsToDto(Cell cell) {
+        return cell.getFlagellumSlots().stream()
+                .map(slot -> new FlagellumSlotDto(
+                        slot.getIndex(),
+                        cell.flagellumMotorPower(slot.getIndex()),
+                        slot.getDamage(),
+                        flagellumFunctionalPerformance(cell, slot),
+                        cell.getFlagellumBaseLocalX(slot.getIndex()),
+                        cell.getFlagellumBaseLocalY(slot.getIndex()),
+                        cell.getFlagellumDirectionX(slot.getIndex()),
+                        cell.getFlagellumDirectionY(slot.getIndex()),
+                        cell.getFlagellumLength(slot.getIndex()),
+                        cell.getFlagellumThickness(),
+                        slot.getLastForce(),
+                        slot.getLastTorque(),
+                        slot.getLastEnergyCostRate(),
+                        slot.getLastDamageRate(),
+                        slot.getLastRepairRate(),
+                        slot.getLastRepairEnergyCostRate()
+                ))
+                .toList();
+    }
+
+    private double flagellumFunctionalPerformance(Cell cell, com.hellengi.biolab.domain.model.FlagellumSlot slot) {
+        return clamp01(cell.flagellumMotorPower01(slot.getIndex()) * slot.performance() * cell.getLastEnergyAvailability());
+    }
+
     private CellVisualDto calculateVisual(Cell cell) {
-        double cellDiameter = Math.max(cell.getRadius() * 2.0, 1.0e-9);
-        double cytosolColorNormalizer = cellDiameter;
-        double cpAreaShare = cell.hasChloroplasts()
-                ? clamp01(cell.getCpTotalArea() / cytosolColorNormalizer)
-                : 0.0;
+        double cellArea = Math.max(cell.getCellArea(), 1.0e-9);
         double lysosomeEnzyme = cell.getLysosomeEnzymeActivity01();
-        double lysosomeAreaShare = cell.hasLysosomes()
-                ? clamp01(cell.getLysosomeTotalArea() / cytosolColorNormalizer)
-                : 0.0;
 
         double chlorophyll = cell.hasChloroplasts() ? cell.getChlorophyll01() : 0.0;
         double chlorophyllRange = clamp01((chlorophyll - 0.15) / 0.85);
         double carotenoids = cell.hasChloroplasts() ? cell.getCarotenoids01() : 0.0;
         double pigmentPresence = clamp01(Math.max(chlorophyll, carotenoids));
-        double cpColorInfluence = cpAreaShare * (0.80 + 0.70 * pigmentPresence);
 
-        double cpDamageWeight = clamp01(cell.getCpDamage() * 0.5);
-        double lysosomeDamageWeight = clamp01(cell.getLysosomeDamage());
+        double cpDamageWeight = clamp01(cell.getCpDamage()) * 0.5;
         double cellDamageWeight = clamp01(cell.getCellDamage());
-        double cytosolDamageWeight = cell.isAlive()
-                ? Math.pow(cellDamageWeight, 0.62) * 3.25 + lysosomeDamageWeight * 0.18
-                : Math.max(7.5, Math.pow(cellDamageWeight, 0.62) * 3.25) + lysosomeDamageWeight * 0.18;
 
         RgbColorDto chlorophyllColor = mix(CHLOROPHYLL_LOW_COLOR, CHLOROPHYLL_HIGH_COLOR, chlorophyllRange);
         RgbColorDto chloroplastPigmentColor = mixWeighted(
@@ -265,33 +327,36 @@ public class CellMapper {
         RgbColorDto chloroplastColor = mix(chloroplastPigmentColor, CHLOROPLAST_BLEACHED_COLOR, cpDamageWeight);
 
         RgbColorDto activeLysosomeColor = lysosomeAcidColor(lysosomeEnzyme);
-        double lysosomeColorInfluence = lysosomeAreaShare * (0.35 + 0.65 * lysosomeEnzyme);
         RgbColorDto lysosomeColor = withOpacity(
-                mix(activeLysosomeColor, DAMAGE_COLOR, lysosomeDamageWeight * 0.72),
-                cell.hasLysosomes() ? LYSOSOME_COLOR.opacity() * (1.0 - lysosomeDamageWeight * 0.42) : 0.0
+                activeLysosomeColor,
+                cell.hasLysosomes() ? LYSOSOME_COLOR.opacity() : 0.0
         );
 
-        // CellColor is now the cytosol color itself. Organelles still contribute by
-        // their own area, but the cell-side normalizer is the physical cell diameter,
-        // not the full cell area. The membrane only has its own membrane layer and no
-        // longer contributes to the displayed Cell/Cytosol color.
-        RgbColorDto cytosolColor = mixWeighted(
-                CYTOSOL_COLOR, config.getCell().getCytosolColorWeight(),
-                chloroplastColor, cpColorInfluence,
-                lysosomeColor, lysosomeColorInfluence,
-                DAMAGE_COLOR, cytosolDamageWeight
+        double melaninVisibility = cell.getGenome() != null && cell.getGenome().isMelaninEnabled() ? cell.getMelanin01() : 0.0;
+        double membraneChloroplastWeight = cell.hasChloroplasts()
+                ? Math.sqrt(Math.max(0.0, cell.getCpTotalArea()) / cellArea)
+                : 0.0;
+        double membraneLysosomeWeight = cell.hasLysosomes()
+                ? Math.sqrt(Math.max(0.0, cell.getLysosomeTotalArea()) / cellArea)
+                : 0.0;
+        double membraneMelaninWeight = Math.sqrt(clamp01(melaninVisibility));
+        RgbColorDto membraneColor = mixWeighted(
+                MEMBRANE_BASE_COLOR, 1.0,
+                chloroplastColor, membraneChloroplastWeight,
+                activeLysosomeColor, membraneLysosomeWeight,
+                MELANIN_COLOR, membraneMelaninWeight
+        );
+        RgbColorDto flagellumColor = withOpacity(
+                membraneColor,
+                cell.hasFlagella() ? 1.0 : 0.0
         );
 
+        RgbColorDto cytosolColor = mix(CYTOSOL_COLOR, DAMAGE_COLOR, cellDamageWeight);
         RgbColorDto cellColor = withOpacity(cytosolColor, cell.getCytosolOpacity());
 
         double lysosomeGlowStrength = 0.0;
 
-        double melaninVisibility = cell.getGenome() != null && cell.getGenome().isMelaninEnabled() ? cell.getMelanin01() : 0.0;
-        RgbColorDto membraneColor = mix(MEMBRANE_BASE_COLOR, MELANIN_COLOR, melaninVisibility);
-        RgbColorDto nucleoidColor = withOpacity(
-                mix(NUCLEOID_COLOR, DAMAGE_COLOR, cellDamageWeight * 0.42),
-                NUCLEOID_COLOR.opacity() * (1.0 - cellDamageWeight * 0.28)
-        );
+        RgbColorDto nucleoidColor = withOpacity(NUCLEOID_COLOR, NUCLEOID_COLOR.opacity());
 
         DisplayValues display = calculateDisplay(cell, samplePreparedLight(cell.getX(), cell.getY()));
         return new CellVisualDto(
@@ -305,6 +370,8 @@ public class CellMapper {
                 cell.getLysosomeAmount(),
                 LYSOSOME_GLOW_COLOR,
                 lysosomeGlowStrength,
+                flagellumColor,
+                cell.getFlagellumCapacity(),
                 GFP_COLOR,
                 cell.getGfp01(),
                 display.lightDirectionAngle(),
@@ -539,5 +606,14 @@ public class CellMapper {
         return lighting.sampleLightAt(x, y);
     }
 }
+
+
+
+
+
+
+
+
+
 
 

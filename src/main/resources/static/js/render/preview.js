@@ -9,13 +9,31 @@ import {setCreateInfoScope, setSelectedInfoScope, state} from "../store/state.js
 
 const PREVIEW_RADIUS = 42;
 const PREVIEW_RADIUS_EXPANDED = 58;
+
+const CREATE_PREVIEW_ZOOM_TIME_CONSTANT_MS = 78;
+const CREATE_PREVIEW_ZOOM_STOP_EPS = 0.002;
+const CREATE_PREVIEW_WHEEL_SPEED = 0.00135;
+const CREATE_PREVIEW_PADDING = 12;
+const CREATE_PREVIEW_FLAGELLUM_MAX_LENGTH_FACTOR = 4.0;
+
+const _createPreviewZoom = {
+    level: 1.0,
+    target: 1.0,
+    animationId: 0,
+    initialized: false,
+    lockedToFit: false,
+};
+const _selectedPreviewZoom = {
+    level: 1.0,
+    target: 1.0,
+    animationId: 0,
+    initialized: false,
+    lockedToFit: false,
+};
 const PREVIEW_MIN_LIGHT = 0.38;
 const PREVIEW_LAYER_MIN = 1;
 const PREVIEW_LAYER_MAX = 3;
 const PREVIEW_LAYER_DEFAULT = 3;
-const REAL_OPACITY_TO_PREVIEW_ALPHA = 9.6;
-const MIN_ALPHA = 0.18;
-const MAX_ALPHA = 0.82;
 const DEFAULT_MEMBRANE_OPACITY = 0.095;
 const MAX_FORCE_ARROW = 58;
 const FORCE_ARROW_HIT_RADIUS = 10;
@@ -41,16 +59,21 @@ const PREVIEW_CYTOSOL_TEXTURE = Object.freeze({
     granules: 14,
     alpha: 0.060,
 });
-const PREVIEW_BASE_CYTOSOL_COLOR = Object.freeze({r: 200, g: 194, b: 170, opacity: 0.36});
+const PREVIEW_BASE_CYTOSOL_COLOR = Object.freeze({r: 238, g: 240, b: 232, opacity: 0.36});
 const PREVIEW_ORGANIC_BROWN_COLOR = Object.freeze({h: 22, s: 43, l: 33});
 
 const DEFAULT_ARROW_COLORS = Object.freeze({
     gravity: "#f87171",
     buoyancy: "#4ade80",
     drag: "#fbbf24",
+    rotationalDrag: "#fbbf24",
     impulse: "#2563eb",
     speed: "#e2e8f0",
+    angularVelocity: "#e2e8f0",
     light: "#67e8f9",
+    flagellumTorque: "#f97316",
+    totalForce: "#f8fafc",
+    totalRotationalTorque: "#fb7185",
 });
 
 let _forceViewEnabled = false;
@@ -68,6 +91,10 @@ let _selectedScopeHighlight = null;
 let _createScopeHighlight = null;
 let _lastSelectedScopeForHighlight = "general";
 let _lastCreateScopeForHighlight = "general";
+let _previewAnimationLoopId = 0;
+let _previewAnimationLoopActive = false;
+let _previewAnimationClockStartMs = 0;
+let _previewAnimationFrameSeconds = 0;
 
 
 export function setPreviewLayerCount(count) {
@@ -142,6 +169,29 @@ export function handleSelectedPreviewClick(event) {
     }
 }
 
+export function handleCreatePreviewWheel(event) {
+    _handlePreviewWheel("create", event);
+}
+
+export function handleSelectedPreviewWheel(event) {
+    _handlePreviewWheel("selected", event);
+}
+
+function _handlePreviewWheel(kind, event) {
+    const zoom = kind === "selected" ? _selectedPreviewZoom : _createPreviewZoom;
+    const hasContent = kind === "selected" ? Boolean(state.selectedCellId != null) : Boolean(state.cellDraft);
+    if (!hasContent) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const delta = _normalizedWheelDelta(event);
+    const base = zoom.animationId ? zoom.target : zoom.level;
+    const next = _clamp01(base - delta * CREATE_PREVIEW_WHEEL_SPEED);
+    zoom.target = next;
+    zoom.lockedToFit = next <= CREATE_PREVIEW_ZOOM_STOP_EPS;
+    zoom.initialized = true;
+    _animatePreviewZoom(kind);
+}
+
 export function handleCreatePreviewClick(event) {
     const hit = _hitAt("create", event);
     if (hit?.kind === "organelle") {
@@ -170,7 +220,7 @@ function _handlePreviewPointer(kind, event) {
     // Cursor-light exists only in Cell Creation. It freezes when the cursor
     // leaves preview or enters the cell, because neither handler overwrites
     // the last valid point in those states.
-    if (kind === "create" && dist > PREVIEW_RADIUS_EXPANDED) {
+    if (kind === "create" && dist > _currentCreatePreviewBodyRadius(canvas)) {
         cursorChanged = !_createPreviewCursor
             || Math.hypot(point.x - _createPreviewCursor.x, point.y - _createPreviewCursor.y) > 0.5;
         _createPreviewCursor = point;
@@ -396,17 +446,18 @@ export function drawSelectedCellPreview(worldCell, strain) {
     }
 
     const mode = state.selectedPreviewMode ?? "general";
-    const previewRadius = _selectedPreviewRadius();
     const visual = worldCell?.visual ?? _previewVisualFromGenome(strain?.genome ?? {});
+    _syncSelectedPreviewZoomAuto(width, height, worldCell);
+    const previewRadius = _currentSelectedPreviewRadius(width, height, worldCell);
 
     if (mode === "forces") {
         _drawForcesMode(dom.selectedCellPreviewCtx, worldCell, visual, cx, cy);
     } else if (mode === "health") {
-        _drawHealthMode(dom.selectedCellPreviewCtx, worldCell, visual, cx, cy, _selectedHitTargets, _selectedHover);
+        _drawHealthMode(dom.selectedCellPreviewCtx, worldCell, visual, cx, cy, previewRadius, _selectedHitTargets, _selectedHover);
     } else if (mode === "energy") {
-        _drawEnergyMode(dom.selectedCellPreviewCtx, worldCell, visual, cx, cy, _selectedHitTargets, _selectedHover);
+        _drawEnergyMode(dom.selectedCellPreviewCtx, worldCell, visual, cx, cy, previewRadius, _selectedHitTargets, _selectedHover);
     } else {
-        _drawGeneralMode(dom.selectedCellPreviewCtx, worldCell, visual, cx, cy, selectedPreviewLayerCount(), null, _selectedHitTargets, _selectedHover);
+        _drawGeneralMode(dom.selectedCellPreviewCtx, worldCell, visual, cx, cy, previewRadius, selectedPreviewLayerCount(), null, _selectedHitTargets, _selectedHover);
     }
 
     if (worldCell?.dead) {
@@ -414,28 +465,29 @@ export function drawSelectedCellPreview(worldCell, strain) {
     }
 
     _syncSelectedPreviewNoticeIndicator(worldCell);
+    _ensurePreviewAnimationLoop();
 }
 
-function _drawGeneralMode(ctx, worldCell, visual, cx, cy, layers, cursorLight, hitTargets, hover) {
-    _drawPreviewBiologyCell(ctx, cx, cy, _selectedPreviewRadius(), visual, worldCell, layers, cursorLight, hitTargets, hover, "general");
+function _drawGeneralMode(ctx, worldCell, visual, cx, cy, radius, layers, cursorLight, hitTargets, hover) {
+    _drawPreviewBiologyCell(ctx, cx, cy, radius, visual, worldCell, layers, cursorLight, hitTargets, hover, "general");
 }
 
-function _drawHealthMode(ctx, cell, visual, cx, cy, hitTargets, hover) {
-    const cellPerf = _damagePerformance(cell.cellDamage ?? 0);
-    const cpPerf = _damagePerformance(cell.cpDamage ?? 0);
+function _drawHealthMode(ctx, cell, visual, cx, cy, radius, hitTargets, hover) {
+    const cellDamage = _clamp01(cell.cellDamage ?? 0);
     const healthVisual = {
         ...visual,
-        cellColor: _healthColor(visual.cellColor, cellPerf),
-        cytosolColor: _healthColor(visual.cytosolColor ?? visual.cellColor, cellPerf),
-        membraneColor: _healthColor(visual.membraneColor, cellPerf),
-        nucleoidColor: _healthColor(visual.nucleoidColor, cellPerf),
-        chloroplastColor: _healthColor(visual.chloroplastColor, cpPerf),
-        lysosomeColor: _healthColor(visual.lysosomeColor, _damagePerformance(cell.lysosomeDamage ?? 0)),
+        cellColor: _healthColor(visual.cellColor, cellDamage),
+        cytosolColor: _healthColor(visual.cytosolColor ?? visual.cellColor, cellDamage),
+        membraneColor: _healthColor(visual.membraneColor, _clamp01(cell.membraneDamage ?? cellDamage)),
+        nucleoidColor: _healthColor(visual.nucleoidColor, _clamp01(cell.nucleusDamage ?? cellDamage)),
+        chloroplastColor: _healthColor(visual.chloroplastColor, _clamp01(cell.cpDamage ?? 0)),
+        lysosomeColor: _healthColor(visual.lysosomeColor, _organelleHealthDamage(cell, "lysosome")),
+        flagellumColor: _healthColor(visual.flagellumColor, _organelleHealthDamage(cell, "flagellum")),
     };
-    _drawPreviewBiologyCell(ctx, cx, cy, _selectedPreviewRadius(), healthVisual, cell, 3, null, hitTargets, hover, "health");
+    _drawPreviewBiologyCell(ctx, cx, cy, radius, healthVisual, cell, 3, null, hitTargets, hover, "health");
 }
 
-function _drawEnergyMode(ctx, cell, visual, cx, cy, hitTargets, hover) {
+function _drawEnergyMode(ctx, cell, visual, cx, cy, radius, hitTargets, hover) {
     const energyVisual = {
         ...visual,
         cellColor: _energyColor(visual.cellColor, _energyBalanceFor(cell, "cytosol")),
@@ -444,8 +496,9 @@ function _drawEnergyMode(ctx, cell, visual, cx, cy, hitTargets, hover) {
         nucleoidColor: _energyColor(visual.nucleoidColor, _energyBalanceFor(cell, "nucleus")),
         chloroplastColor: _energyColor(visual.chloroplastColor, _energyBalanceFor(cell, "chloroplast")),
         lysosomeColor: _energyColor(visual.lysosomeColor, _energyBalanceFor(cell, "lysosome")),
+        flagellumColor: _energyColor(visual.flagellumColor, _energyBalanceFor(cell, "flagellum")),
     };
-    _drawPreviewBiologyCell(ctx, cx, cy, _selectedPreviewRadius(), energyVisual, cell, 3, null, hitTargets, hover, "energy");
+    _drawPreviewBiologyCell(ctx, cx, cy, radius, energyVisual, cell, 3, null, hitTargets, hover, "energy");
 }
 
 function _modeVisual(visual, map) {
@@ -457,6 +510,7 @@ function _modeVisual(visual, map) {
         nucleoidColor: map(visual.nucleoidColor),
         chloroplastColor: map(visual.chloroplastColor),
         lysosomeColor: map(visual.lysosomeColor),
+        flagellumColor: map(visual.flagellumColor),
     };
 }
 
@@ -468,10 +522,15 @@ function _brightGrayscaleColor(color) {
     return _gray(color);
 }
 
-function _healthColor(color, performance) {
+function _healthColor(color, damage) {
     const g = _gray(color);
-    const loss = 1 - _clamp01(performance);
-    return {r: g.r, g: Math.round(g.g * (1 - loss)), b: Math.round(g.b * (1 - loss)), opacity: color?.opacity ?? 1};
+    const loss = _clamp01(damage);
+    return {
+        r: Math.round(g.r + (235 - g.r) * loss),
+        g: Math.round(g.g * (1 - loss * 0.82)),
+        b: Math.round(g.b * (1 - loss * 0.88)),
+        opacity: color?.opacity ?? 1,
+    };
 }
 
 function _energyColor(color, net) {
@@ -488,6 +547,52 @@ function _gray(color) {
 
 function _damagePerformance(damage) {
     return _clamp01(Math.exp(-Math.max(0, Number(damage) || 0)));
+}
+
+function _organelleHealthPerformance(cell, scope) {
+    const damage = _organelleHealthDamage(cell, scope);
+    return _clamp01(1.0 - damage);
+}
+
+function _organelleHealthDamage(cell, scope) {
+    const slots = _multiOrganelleSlots(cell, scope);
+    if (slots.length > 0) {
+        const values = slots.map(slot => Number(slot.damage ?? 0)).filter(Number.isFinite);
+        if (values.length > 0) return _clamp01(values.reduce((sum, value) => sum + _clamp01(value), 0) / values.length);
+    }
+    if (scope === "flagellum") return _clamp01(Math.max(0, Number(cell?.flagellumDamage ?? 0) || 0));
+    if (scope === "lysosome") return _clamp01(Math.max(0, Number(cell?.lysosomeDamage ?? 0) || 0));
+    return _clamp01(Math.max(0, Number(cell?.cellDamage ?? 0) || 0));
+}
+
+function _multiOrganelleSlots(cell, scope) {
+    if (scope === "flagellum") return Array.isArray(cell?.flagellumSlots) ? cell.flagellumSlots : [];
+    if (scope === "lysosome") return _lysosomeSlots(cell);
+    return [];
+}
+
+function _singleOrganelleDamage(cell, id) {
+    if (id === "chloroplast") return cell?.cpDamage ?? 0;
+    if (id === "membrane") return cell?.membraneDamage ?? 0;
+    if (id === "flagellum") return cell?.flagellumDamage ?? 0;
+    if (id === "lysosome") return cell?.lysosomeDamage ?? 0;
+    return cell?.cellDamage ?? 0;
+}
+
+function _singleOrganelleDamageRate(cell, id) {
+    if (id === "chloroplast") return cell?.cpPhotoDamageRate ?? 0;
+    if (id === "membrane") return cell?.membraneDamageRate ?? 0;
+    if (id === "flagellum") return cell?.flagellumDamageRate ?? 0;
+    if (id === "lysosome") return cell?.lysosomeDamageRate ?? 0;
+    return cell?.cellDamageRate ?? 0;
+}
+
+function _singleOrganelleRepairRate(cell, id) {
+    if (id === "chloroplast") return cell?.cpRepairRate ?? 0;
+    if (id === "membrane") return cell?.membraneRepairRate ?? 0;
+    if (id === "flagellum") return cell?.flagellumRepairRate ?? 0;
+    if (id === "lysosome") return cell?.lysosomeRepairRate ?? 0;
+    return cell?.cellRepairRate ?? 0;
 }
 
 function _energyProductionFor(cell, scope) {
@@ -517,6 +622,13 @@ function _energyConsumptionFor(cell, scope) {
         }
         return Math.max(0, Number(cell.digestionEnergyCostRate) || 0)
             + Math.max(0, Number(cell.lysosomeRepairEnergyCostRate) || 0);
+    }
+    if (scope === "flagellum") {
+        const slots = Array.isArray(cell?.flagellumSlots) ? cell.flagellumSlots : [];
+        if (slots.length > 0) {
+            return _sum(slots.map(slot => Number(slot.energyCostRate ?? 0) + Number(slot.repairEnergyCostRate ?? 0)));
+        }
+        return Math.max(0, Number(cell?.flagellumEnergyCostRate ?? 0) || 0) + Math.max(0, Number(cell?.flagellumRepairEnergyCostRate ?? 0) || 0);
     }
     if (scope === "cytosol") return base * 0.43 + repair;
     return total;
@@ -569,6 +681,7 @@ function _drawPreviewBiologyCell(
         radius,
         visual,
         genome: state.cellDraft?.genome ?? {},
+        startFlagellumDamage: state.cellDraft?.startFlagellumDamage ?? 0,
         localLight: 1.0,
     };
 
@@ -589,6 +702,7 @@ function _drawPreviewBiologyCell(
         labelFor: id => id === "nucleus" || id === "nucleoid" ? t("Nucleus") : t(_cap(id)),
         tooltipFor: id => _organelleTooltip(id, worldCell),
         renderScale: _previewRenderScale(ctx),
+        animationTime: _previewAnimationSeconds(),
     });
 }
 function _drawOrganellesOnlyCellOutline(ctx, cx, cy, radius) {
@@ -683,11 +797,11 @@ function _range(values) {
 }
 
 function _rangeFmt(range) {
-    return `${_fmt(range.min)}–${_fmt(range.max)}`;
+    return `${_fmt(range.min)} ~ ${_fmt(range.max)}`;
 }
 
 function _rangePct(range) {
-    return `${_pct(range.min)}–${_pct(range.max)}`;
+    return `${_pct(range.min)} ~ ${_pct(range.max)}`;
 }
 function _organelleTooltip(id, cell) {
     const name = id === "nucleus" || id === "nucleoid" ? t("Nucleus") : t(_cap(id));
@@ -699,18 +813,17 @@ function _organelleTooltip(id, cell) {
     }
 
     if (state.selectedPreviewMode === "health") {
-        if (id === "lysosome") {
-            const slots = _lysosomeSlots(cell);
-            const perfRange = _range(slots.map(slot => Number(slot.performance ?? _damagePerformance(slot.damage ?? 0))));
+        const slots = _multiOrganelleSlots(cell, id);
+        if (slots.length > 0) {
+            const perfRange = _range(slots.map(slot => Number(slot.performance ?? _damagePerformance(slot.damage))));
             const damageRange = _range(slots.map(slot => Number(slot.damage ?? 0)));
             const damageRateRange = _range(slots.map(slot => Number(slot.damageRate ?? 0)));
             const repairRateRange = _range(slots.map(slot => Number(slot.repairRate ?? 0)));
             return `${title}<div>${t("Performance: {value}", { value: _rangePct(perfRange) })}</div><div>${t("Damage: {value}", { value: _rangeFmt(damageRange) })}</div><div>${t("Damage rate: {value}", { value: _rangeFmt(damageRateRange) })}</div><div>${t("Repair rate: {value}", { value: _rangeFmt(repairRateRange) })}</div>`;
         }
-        const cp = id === "chloroplast";
-        const damage = cp ? cell.cpDamage : cell.cellDamage;
-        const rate = cp ? cell.cpPhotoDamageRate : cell.cellDamageRate;
-        const repair = cp ? cell.cpRepairRate : cell.cellRepairRate;
+        const damage = _singleOrganelleDamage(cell, id);
+        const rate = _singleOrganelleDamageRate(cell, id);
+        const repair = _singleOrganelleRepairRate(cell, id);
         return `${title}<div>${t("Performance: {value}", { value: _pct(_damagePerformance(damage)) })}</div><div>${t("Damage: {value}", { value: _fmt(damage) })}</div><div>${t("Damage rate: {value}", { value: _fmt(rate) })}</div><div>${t("Repair rate: {value}", { value: _fmt(repair) })}</div>`;
     }
 
@@ -949,7 +1062,7 @@ function _lysosomeLayouts(seed, count, radius, slots = []) {
 function _drawPreviewCytosolTexture(ctx, cx, cy, radius, color, alpha) {
     const a = _clamp01(alpha) * PREVIEW_CYTOSOL_TEXTURE.alpha;
     if (a <= 0.001) return;
-    const c = color ?? {r: 200, g: 194, b: 170};
+    const c = color ?? {r: 238, g: 240, b: 232};
     ctx.save();
     ctx.beginPath();
     ctx.arc(cx, cy, radius * 0.96, 0, Math.PI * 2);
@@ -1337,13 +1450,204 @@ function _drawMotionArrows(ctx, cell, cx, cy, hitTargets, hover) {
         _drawArrow(ctx, cx, cy, x2, y2, colors.drag, 2.5, 1, hover?.id === "drag");
         hitTargets.push({type:"segment", kind:"force", id:"drag", tooltip: t("Drag force"), x1:cx, y1:cy, x2, y2});
     }
+    _drawRotationalDragTorqueArrow(ctx, motion, cx, cy, colors, hitTargets, hover);
+    _drawFlagellumTorqueArrow(ctx, motion, cx, cy, colors, hitTargets, hover);
+    _drawTotalRotationalTorqueArrow(ctx, motion, cx, cy, colors, hitTargets, hover);
+    _drawFlagellumForceArrows(ctx, cell, cx, cy, colors, hitTargets, hover);
+    _drawTotalForceArrow(ctx, motion, cx, cy, colors, hitTargets, hover);
+
     if (speed > 0.001 && speedDirection) {
         const mag = Math.min(MAX_FORCE_ARROW, Math.max(4, Math.sqrt(speed) * 36));
         const x2 = cx + speedDirection.x * mag, y2 = cy + speedDirection.y * mag;
         _drawDashedArrow(ctx, cx, cy, x2, y2, colors.speed, 1.5, hover?.id === "speed");
         hitTargets.push({type:"segment", kind:"force", id:"speed", tooltip: t("Speed"), x1:cx, y1:cy, x2, y2});
     }
+
+    _drawAngularVelocityArrow(ctx, motion, cx, cy, colors, hitTargets, hover);
 }
+
+function _drawRotationalDragTorqueArrow(ctx, motion, cx, cy, colors, hitTargets, hover) {
+    const torque = Math.max(0, Number(motion.rotationalDragTorque ?? 0) || 0);
+    const omega = Number(motion.angularVelocity ?? 0) || 0;
+    if (torque <= 0.0001 || Math.abs(omega) <= 0.0001) return;
+
+    // Rotational drag is a torque, not a linear force. In Forces mode it is
+    // visualized as a tangential arrow outside the cell, opposite to current
+    // angular velocity. It uses the same color as linear drag because both are
+    // viscous resistance from the surrounding medium.
+    const anchorAngle = -Math.PI * 0.25;
+    const radialX = Math.cos(anchorAngle);
+    const radialY = Math.sin(anchorAngle);
+    const dragSign = -Math.sign(omega);
+    const tangentX = -radialY * dragSign;
+    const tangentY = radialX * dragSign;
+    const radius = PREVIEW_RADIUS + 18;
+    const mag = Math.min(MAX_FORCE_ARROW * 0.9, Math.max(7, Math.log1p(torque) * 13.0));
+    const startX = cx + radialX * radius - tangentX * mag * 0.5;
+    const startY = cy + radialY * radius - tangentY * mag * 0.5;
+    const endX = startX + tangentX * mag;
+    const endY = startY + tangentY * mag;
+
+    _drawArrow(ctx, startX, startY, endX, endY, colors.rotationalDrag, 2.3, 0.95, hover?.id === "rotational-drag");
+    hitTargets.push({
+        type: "segment",
+        kind: "force",
+        id: "rotational-drag",
+        tooltip: t("Rotational drag torque"),
+        x1: startX,
+        y1: startY,
+        x2: endX,
+        y2: endY,
+        hitRadius: FORCE_ARROW_HIT_RADIUS,
+    });
+}
+
+function _drawTotalForceArrow(ctx, motion, cx, cy, colors, hitTargets, hover) {
+    const force = Math.max(0, Number(motion.totalForce ?? 0) || 0);
+    const direction = _directionFromDto(motion.totalForceDirX, motion.totalForceDirY);
+    if (force <= 0.0001 || !direction) return;
+
+    const mag = Math.min(MAX_FORCE_ARROW * 1.08, Math.max(8, Math.log1p(force) * 7.5));
+    const x2 = cx + direction.x * mag;
+    const y2 = cy + direction.y * mag;
+    _drawArrow(ctx, cx, cy, x2, y2, colors.totalForce, 3.0, 0.95, hover?.id === "total-force");
+    hitTargets.push({
+        type: "segment",
+        kind: "force",
+        id: "total-force",
+        tooltip: t("Total force"),
+        x1: cx,
+        y1: cy,
+        x2,
+        y2,
+        hitRadius: FORCE_ARROW_HIT_RADIUS,
+    });
+}
+
+function _drawAngularVelocityArrow(ctx, motion, cx, cy, colors, hitTargets, hover) {
+    const omega = Number(motion.angularVelocity ?? 0) || 0;
+    if (Math.abs(omega) <= 0.0001) return;
+
+    const sign = Math.sign(omega);
+    const anchorAngle = -Math.PI * 0.58;
+    const radius = PREVIEW_RADIUS + 34;
+    const radialX = Math.cos(anchorAngle);
+    const radialY = Math.sin(anchorAngle);
+    const tangentX = -radialY * sign;
+    const tangentY = radialX * sign;
+    const mag = Math.min(MAX_FORCE_ARROW * 0.82, Math.max(7, Math.sqrt(Math.abs(omega)) * 34));
+    const startX = cx + radialX * radius - tangentX * mag * 0.5;
+    const startY = cy + radialY * radius - tangentY * mag * 0.5;
+    const endX = startX + tangentX * mag;
+    const endY = startY + tangentY * mag;
+
+    _drawDashedArrow(ctx, startX, startY, endX, endY, colors.angularVelocity, 1.5, hover?.id === "angular-velocity");
+    hitTargets.push({
+        type: "segment",
+        kind: "force",
+        id: "angular-velocity",
+        tooltip: t("Angular velocity"),
+        x1: startX,
+        y1: startY,
+        x2: endX,
+        y2: endY,
+        hitRadius: FORCE_ARROW_HIT_RADIUS,
+    });
+}
+
+function _drawFlagellumTorqueArrow(ctx, motion, cx, cy, colors, hitTargets, hover) {
+    const torque = Number(motion.flagellumTorque ?? 0) || 0;
+    if (Math.abs(torque) <= 0.0001) return;
+
+    // This is the signed sum of all torque values produced by flagella only:
+    // Σ(rᵢ × Fᵢ). It is shown separately from total rotational torque so the
+    // user can see what part of rotation comes directly from flagella.
+    const sign = Math.sign(torque);
+    const anchorAngle = Math.PI * 0.43;
+    const radius = PREVIEW_RADIUS + 48;
+    const radialX = Math.cos(anchorAngle);
+    const radialY = Math.sin(anchorAngle);
+    const tangentX = -radialY * sign;
+    const tangentY = radialX * sign;
+    const mag = Math.min(MAX_FORCE_ARROW * 0.9, Math.max(7, Math.log1p(Math.abs(torque)) * 13.0));
+    const startX = cx + radialX * radius - tangentX * mag * 0.5;
+    const startY = cy + radialY * radius - tangentY * mag * 0.5;
+    const endX = startX + tangentX * mag;
+    const endY = startY + tangentY * mag;
+
+    _drawArrow(ctx, startX, startY, endX, endY, colors.flagellumTorque, 2.4, 0.94, hover?.id === "flagellum-torque");
+    hitTargets.push({
+        type: "segment",
+        kind: "force",
+        id: "flagellum-torque",
+        tooltip: t("Flagellum torque"),
+        x1: startX,
+        y1: startY,
+        x2: endX,
+        y2: endY,
+        hitRadius: FORCE_ARROW_HIT_RADIUS,
+    });
+}
+
+function _drawTotalRotationalTorqueArrow(ctx, motion, cx, cy, colors, hitTargets, hover) {
+    const torque = Number(motion.totalRotationalTorque ?? 0) || 0;
+    if (Math.abs(torque) <= 0.0001) return;
+
+    const sign = Math.sign(torque);
+    const anchorAngle = Math.PI * 0.23;
+    const radius = PREVIEW_RADIUS + 30;
+    const radialX = Math.cos(anchorAngle);
+    const radialY = Math.sin(anchorAngle);
+    const tangentX = -radialY * sign;
+    const tangentY = radialX * sign;
+    const mag = Math.min(MAX_FORCE_ARROW * 0.95, Math.max(7, Math.log1p(Math.abs(torque)) * 13.0));
+    const startX = cx + radialX * radius - tangentX * mag * 0.5;
+    const startY = cy + radialY * radius - tangentY * mag * 0.5;
+    const endX = startX + tangentX * mag;
+    const endY = startY + tangentY * mag;
+
+    _drawArrow(ctx, startX, startY, endX, endY, colors.totalRotationalTorque, 2.6, 0.96, hover?.id === "total-rotational-torque");
+    hitTargets.push({
+        type: "segment",
+        kind: "force",
+        id: "total-rotational-torque",
+        tooltip: t("Total rotational torque"),
+        x1: startX,
+        y1: startY,
+        x2: endX,
+        y2: endY,
+        hitRadius: FORCE_ARROW_HIT_RADIUS,
+    });
+}
+
+function _drawFlagellumForceArrows(ctx, cell, cx, cy, colors, hitTargets, hover) {
+    const slots = Array.isArray(cell?.flagellumSlots) ? cell.flagellumSlots : [];
+    if (!slots.length) return;
+
+    const sourceRadius = Math.max(1.0e-6, Number(cell?.radius ?? PREVIEW_RADIUS));
+    const scale = PREVIEW_RADIUS / sourceRadius;
+    for (let i = 0; i < slots.length; i++) {
+        const slot = slots[i];
+        const index = Number(slot.index ?? i);
+        const bx = cx + (Number(slot.baseX ?? 0) || 0) * scale;
+        const by = cy + (Number(slot.baseY ?? 0) || 0) * scale;
+        const dx = Number(slot.directionX ?? 0) || 0;
+        const dy = Number(slot.directionY ?? 0) || 0;
+        const dlen = Math.hypot(dx, dy);
+        const force = Math.max(0, Number(slot.force ?? 0) || 0);
+        if (dlen > 0.001 && force > 0.0001) {
+            const ux = dx / dlen;
+            const uy = dy / dlen;
+            const mag = Math.min(MAX_FORCE_ARROW, Math.max(7, Math.log1p(force) * 15.0));
+            const x2 = bx + ux * mag;
+            const y2 = by + uy * mag;
+            const id = `flagellum-force-${index}`;
+            _drawArrow(ctx, bx, by, x2, y2, colors.flagellumForce, 2.2, 0.92, hover?.id === id);
+            hitTargets.push({type:"segment", kind:"force", id, tooltip: t("Flagellum force"), x1:bx, y1:by, x2, y2, hitRadius: FORCE_ARROW_HIT_RADIUS});
+        }
+    }
+}
+
 
 function _drawLightDirectionArrows(ctx, cell, visual, cx, cy, hitTargets, hover) {
     const light = Math.max(0, Number(cell.localLight ?? 0));
@@ -1448,9 +1752,15 @@ function _motionColors(motion) {
         gravity: motion.gravityColor ?? DEFAULT_ARROW_COLORS.gravity,
         buoyancy: motion.buoyancyColor ?? DEFAULT_ARROW_COLORS.buoyancy,
         drag: motion.dragColor ?? DEFAULT_ARROW_COLORS.drag,
+        rotationalDrag: motion.rotationalDragColor ?? DEFAULT_ARROW_COLORS.rotationalDrag,
         impulse: motion.impulseColor ?? DEFAULT_ARROW_COLORS.impulse,
         speed: motion.speedColor ?? DEFAULT_ARROW_COLORS.speed,
+        angularVelocity: motion.angularVelocityColor ?? DEFAULT_ARROW_COLORS.angularVelocity,
         light: motion.lightColor ?? DEFAULT_ARROW_COLORS.light,
+        flagellumForce: motion.flagellumForceColor ?? "#f59e0b",
+        flagellumTorque: motion.flagellumTorqueColor ?? DEFAULT_ARROW_COLORS.flagellumTorque,
+        totalForce: motion.totalForceColor ?? DEFAULT_ARROW_COLORS.totalForce,
+        totalRotationalTorque: motion.totalRotationalTorqueColor ?? DEFAULT_ARROW_COLORS.totalRotationalTorque,
     };
 }
 
@@ -1536,51 +1846,56 @@ function _previewVisualFromGenome(genome, draft = null) {
     const carot = chloroplastEnabled ? _clamp01((genome?.carotenoids ?? 0) / 100) : 0;
     const amount = chloroplastEnabled ? Math.max(0, Math.round(genome?.chloroplastAmount ?? 0)) : 0;
     const lysosomeAmount = lysosomeEnabled ? Math.max(0, Math.round(genome?.lysosomeAmount ?? 0)) : 0;
+    const flagellumEnabled = Boolean(genome?.flagellumEnabled);
+    const flagellumCount = flagellumEnabled ? Math.max(0, Math.min(2, Math.round(genome?.flagellumCount ?? 1))) : 0;
     const lysosomeEnzyme = _clamp01((genome?.lysosomeEnzymeActivity ?? 0) / 100);
     const melanin = melaninEnabled ? _clamp01((genome?.melaninPercent ?? 0) / 100) : 0;
-    const gfp = _clamp01((genome?.gfp ?? 0) / 100);
-    const cellDamage = _clamp01(draft?.startCellDamage ?? 0);
-    const cpDamage = chloroplastEnabled ? _clamp01((draft?.startCpDamage ?? 0) * 0.5) : 0;
+    const gfp = genome?.gfpEnabled ? _clamp01((genome?.gfp ?? 0) / 100) : 0;
+    const cellDamage = _clamp01(draft?.startCytosolDamage ?? 0);
+    const cpDamage = chloroplastEnabled ? _clamp01(draft?.startCpDamage ?? 0) : 0;
     const cpArea = amount * 4;
     const lysosomeArea = lysosomeAmount * PREVIEW_LYSOSOME_AREA_FACTOR;
-    const previewCellArea = Math.max(1, 18 + Math.max(0, genome?.dryMass ?? 0) * 0.58 + PREVIEW_START_ENERGY_AREA + lysosomeArea);
+    const previewCellArea = Math.max(1, 18 + Math.max(0, genome?.cytosolArea ?? 0) * 0.58 + PREVIEW_START_ENERGY_AREA + lysosomeArea);
     const coverage = _clamp01(cpArea / previewCellArea);
     const lysosomeCoverage = _clamp01(lysosomeArea / previewCellArea);
     const pigmentDepth = coverage * (2.4 * chlor + 0.42 * carot);
     const pigmentPresence = Math.max(chlor, carot);
-    const cpColorInfluence = coverage * (0.80 + 0.70 * pigmentPresence);
     const chlorophyllColor = _mixRgb({r: 154, g: 210, b: 82}, {r: 28, g: 96, b: 40}, _clamp01((chlor - 0.15) / 0.85));
     const chloroplastPigmentColor = _mixWeighted(
         chlorophyllColor, Math.max(0.001, chlor),
         {r: 128, g: 72, b: 32}, carot,
         {r: 238, g: 240, b: 232}, 0
     );
-    const chloroplastColor = _mixRgb(chloroplastPigmentColor, {r: 238, g: 240, b: 232}, cpDamage);
+    const chloroplastColor = _mixRgb(chloroplastPigmentColor, {r: 238, g: 240, b: 232}, cpDamage * 0.5);
     const lysosomeBaseColor = _lysosomeAcidColor(lysosomeEnzyme);
-    const lysosomeColorInfluence = lysosomeCoverage * (0.35 + 0.65 * lysosomeEnzyme);
     const cytosolOpacity = _clamp01(0.12 + 0.22 * (1 - Math.exp(-pigmentDepth)));
-    const cellDamageInfluence = Math.pow(cellDamage, 0.62) * 3.25;
     const cytosolColor = {
-        ..._mixWeighted4(
-            {r: 200, g: 194, b: 170}, 1.0,
-            chloroplastColor, cpColorInfluence,
-            lysosomeBaseColor, lysosomeColorInfluence,
-            {r: 96, g: 88, b: 76}, cellDamageInfluence
-        ),
+        ..._mixRgb({r: 238, g: 240, b: 232}, {r: 96, g: 88, b: 76}, cellDamage),
         opacity: cytosolOpacity,
     };
     const membraneOpacity = _clamp01(DEFAULT_MEMBRANE_OPACITY + 0.42 * melanin);
+    const membraneChloroplastWeight = chloroplastEnabled ? Math.sqrt(Math.max(0, cpArea) / previewCellArea) : 0;
+    const membraneLysosomeWeight = lysosomeEnabled ? Math.sqrt(Math.max(0, lysosomeArea) / previewCellArea) : 0;
+    const membraneMelaninWeight = melaninEnabled ? Math.sqrt(melanin) : 0;
+    const membraneColor = _mixWeighted4(
+        {r: 238, g: 240, b: 232}, 1.0,
+        chloroplastColor, membraneChloroplastWeight,
+        lysosomeBaseColor, membraneLysosomeWeight,
+        {r: 65, g: 43, b: 30}, membraneMelaninWeight
+    );
     return {
         cellColor: {...cytosolColor, opacity: cytosolOpacity},
         cytosolColor,
-        membraneColor: {..._mixRgb({r: 218, g: 203, b: 174}, {r: 65, g: 43, b: 30}, melanin), opacity: membraneOpacity},
-        nucleoidColor: {..._mixRgb({r: 82, g: 72, b: 150}, {r: 96, g: 88, b: 76}, cellDamage * 0.42), opacity: 0.82 * (1 - cellDamage * 0.28)},
+        membraneColor: {...membraneColor, opacity: membraneOpacity},
+        nucleoidColor: {r: 82, g: 72, b: 150, opacity: 0.82},
         chloroplastColor: {...chloroplastColor, opacity: chloroplastEnabled ? _clamp01(0.34 + 0.66 * pigmentPresence) : 0},
         chloroplastAmount: amount,
         lysosomeColor: {...lysosomeBaseColor, opacity: lysosomeEnabled ? 0.72 : 0},
         lysosomeAmount,
         lysosomeGlowColor: {r:255,g:170,b:72},
         lysosomeGlowStrength: 0,
+        flagellumColor: {...membraneColor, opacity: flagellumEnabled ? 1.0 : 0},
+        flagellumCount,
         gfpColor: {r: 83, g: 255, b: 139},
         gfpExpression: gfp,
     };
@@ -1595,13 +1910,17 @@ export function drawCreateCellPreview() {
     const cx = width / 2;
     const cy = height / 2;
     const visual = _previewVisualFromGenome(state.cellDraft.genome, state.cellDraft);
-    _drawPreviewBiologyCell(ctx, cx, cy, PREVIEW_RADIUS_EXPANDED, visual, null, selectedPreviewLayerCount(), _createPreviewCursor, _createHitTargets, _createHover, "general");
+    _syncCreatePreviewZoomAuto(width, height);
+    const previewRadius = _currentCreatePreviewRadius(width, height);
+    _drawPreviewBiologyCell(ctx, cx, cy, previewRadius, visual, null, selectedPreviewLayerCount(), _createPreviewCursor, _createHitTargets, _createHover, "general");
 
     const scope = String(state.createInfoScope ?? "general").toLowerCase();
+    _ensurePreviewAnimationLoop();
+
     if (scope === "nucleus" || scope === "nucleoid") {
         const divisionAngleDeg = state.cellDraft.genome.divisionAngle ?? 0;
         const axisRad = (divisionAngleDeg - 90) * Math.PI / 180;
-        const axisLen = PREVIEW_RADIUS_EXPANDED + 6;
+        const axisLen = previewRadius + 6;
         ctx.save();
         ctx.setLineDash([4, 4]);
         ctx.strokeStyle = "rgba(255,255,255,0.55)";
@@ -1614,6 +1933,200 @@ export function drawCreateCellPreview() {
     }
 }
 
+function _syncCreatePreviewZoomAuto(width, height) {
+    const genome = state.cellDraft?.genome ?? {};
+    _syncPreviewZoomAuto("create", width, height, genome);
+}
+
+function _syncSelectedPreviewZoomAuto(width, height, cell) {
+    const genome = cell?.genome ?? state.selectedStrain?.genome ?? {};
+    _syncPreviewZoomAuto("selected", width, height, genome);
+}
+
+function _syncPreviewZoomAuto(kind, width, height, genome) {
+    const zoom = kind === "selected" ? _selectedPreviewZoom : _createPreviewZoom;
+    const scope = kind === "selected"
+        ? String(state.selectedInfoScope ?? "general").toLowerCase()
+        : String(state.createInfoScope ?? "general").toLowerCase();
+    const flagellumVisible = Boolean(genome?.flagellumEnabled) && Math.round(Number(genome?.flagellumCount ?? 0)) > 0;
+    const wantsFit = scope === "flagellum" && flagellumVisible;
+
+    if (!zoom.initialized) {
+        zoom.initialized = true;
+        zoom.level = wantsFit ? 0.0 : 1.0;
+        zoom.target = zoom.level;
+        zoom.lockedToFit = wantsFit;
+        return;
+    }
+
+    if (wantsFit) {
+        if (zoom.lockedToFit) {
+            zoom.target = 0.0;
+            if (!zoom.animationId && Math.abs(zoom.level) > CREATE_PREVIEW_ZOOM_STOP_EPS) {
+                _animatePreviewZoom(kind);
+            }
+        }
+        return;
+    }
+
+    if (zoom.target !== 1.0 || zoom.level < 1.0 - CREATE_PREVIEW_ZOOM_STOP_EPS) {
+        zoom.target = 1.0;
+        zoom.lockedToFit = false;
+        _animatePreviewZoom(kind);
+    }
+}
+
+function _currentCreatePreviewBodyRadius(canvas) {
+    const width = _previewLogicalWidth(canvas);
+    const height = _previewLogicalHeight(canvas);
+    return _currentCreatePreviewRadius(width, height);
+}
+
+function _currentCreatePreviewRadius(width, height) {
+    return _currentPreviewRadius(width, height, state.cellDraft?.genome ?? {}, _createPreviewZoom);
+}
+
+function _currentSelectedPreviewRadius(width, height, cell) {
+    return _currentPreviewRadius(width, height, cell?.genome ?? state.selectedStrain?.genome ?? {}, _selectedPreviewZoom);
+}
+
+function _currentPreviewRadius(width, height, genome, zoom) {
+    const minRadius = _previewFitRadius(width, height, genome);
+    const zoomT = _smoothstep(_clamp01(zoom.level));
+    return minRadius + (PREVIEW_RADIUS_EXPANDED - minRadius) * zoomT;
+}
+
+function _previewFitRadius(width, height, genome) {
+    const flagellumVisible = Boolean(genome?.flagellumEnabled) && Math.round(Number(genome?.flagellumCount ?? 0)) > 0;
+    const lengthFactor = _flagellumLengthFactorFromGenome(genome);
+    const extentFactor = flagellumVisible ? 1.0 + lengthFactor + 0.35 : 1.0;
+    const available = Math.max(8, Math.min(Number(width) || 1, Number(height) || 1) * 0.5 - CREATE_PREVIEW_PADDING);
+    return Math.min(PREVIEW_RADIUS_EXPANDED, Math.max(8, available / extentFactor));
+}
+
+function _animatePreviewZoom(kind) {
+    const zoom = kind === "selected" ? _selectedPreviewZoom : _createPreviewZoom;
+    if (zoom.animationId) return;
+    let lastTime = performance.now();
+    const draw = () => {
+        if (kind === "selected") {
+            const cell = state.cellById?.get?.(state.selectedCellId);
+            if (cell && state.selectedStrain) drawSelectedCellPreview(cell, state.selectedStrain);
+        } else {
+            drawCreateCellPreview();
+        }
+    };
+    const step = now => {
+        const dt = Math.min(34, Math.max(1, now - lastTime));
+        lastTime = now;
+        const alpha = 1 - Math.exp(-dt / CREATE_PREVIEW_ZOOM_TIME_CONSTANT_MS);
+        zoom.level += (zoom.target - zoom.level) * alpha;
+
+        if (Math.abs(zoom.target - zoom.level) <= CREATE_PREVIEW_ZOOM_STOP_EPS) {
+            zoom.level = zoom.target;
+            zoom.animationId = 0;
+            draw();
+            return;
+        }
+
+        draw();
+        zoom.animationId = requestAnimationFrame(step);
+    };
+    zoom.animationId = requestAnimationFrame(step);
+}
+
+
+function _ensurePreviewAnimationLoop() {
+    if (_previewAnimationLoopId || _previewAnimationLoopActive || !_shouldAnimateAnyPreview()) return;
+    _previewAnimationLoopActive = true;
+    if (!_previewAnimationClockStartMs) {
+        _previewAnimationClockStartMs = performance.now();
+        _previewAnimationFrameSeconds = 0;
+    }
+
+    const step = now => {
+        _previewAnimationLoopId = 0;
+        if (!_shouldAnimateAnyPreview()) {
+            _previewAnimationLoopActive = false;
+            _previewAnimationClockStartMs = 0;
+            _previewAnimationFrameSeconds = 0;
+            return;
+        }
+        _updatePreviewAnimationClock(now);
+
+        let keepAnimating = false;
+        if (_shouldAnimateSelectedPreview()) {
+            const cell = state.cellById?.get?.(state.selectedCellId);
+            if (cell && state.selectedStrain) drawSelectedCellPreview(cell, state.selectedStrain);
+            keepAnimating = true;
+        }
+        if (_shouldAnimateCreatePreview()) {
+            drawCreateCellPreview();
+            keepAnimating = true;
+        }
+        if (keepAnimating) {
+            _previewAnimationLoopId = requestAnimationFrame(step);
+        } else {
+            _previewAnimationLoopActive = false;
+            _previewAnimationClockStartMs = 0;
+        }
+    };
+    _previewAnimationLoopId = requestAnimationFrame(step);
+}
+
+function _updatePreviewAnimationClock(now = performance.now()) {
+    if (!_previewAnimationClockStartMs) {
+        _previewAnimationClockStartMs = now;
+        _previewAnimationFrameSeconds = 0;
+        return;
+    }
+    // Advance the preview animation clock exactly once per animation frame.
+    // Interaction redraws (hover, scroll, zoom) reuse this value instead of
+    // sampling performance.now(), so they cannot speed up the flagellum phase.
+    _previewAnimationFrameSeconds = ((now - _previewAnimationClockStartMs) / 1000.0) % 10000.0;
+}
+
+function _previewAnimationSeconds() {
+    return _previewAnimationFrameSeconds;
+}
+
+function _shouldAnimateAnyPreview() {
+    return _shouldAnimateSelectedPreview() || _shouldAnimateCreatePreview();
+}
+
+function _shouldAnimateSelectedPreview() {
+    const cell = state.cellById?.get?.(state.selectedCellId);
+    return Boolean(cell && !cell.dead && _hasActiveFlagellaCilia(cell.genome));
+}
+
+function _shouldAnimateCreatePreview() {
+    return Boolean(state.cellDraft && _hasActiveFlagellaCilia(state.cellDraft.genome));
+}
+
+function _hasActiveFlagellaCilia(genome = {}) {
+    return Boolean(genome?.flagellumEnabled)
+        && Math.round(Number(genome?.flagellumCount ?? 0)) > 0
+        && Number(genome?.flagellumMotorPower ?? 0) > 0;
+}
+
+function _flagellumLengthFactorFromGenome(genome = {}) {
+    const raw = Number(genome?.flagellumLength ?? 1.8);
+    if (!Number.isFinite(raw)) return 1.8;
+    if (raw > 5) return 1.0 + (CREATE_PREVIEW_FLAGELLUM_MAX_LENGTH_FACTOR - 1.0) * _clamp01(raw / 100);
+    return Math.max(1.0, Math.min(CREATE_PREVIEW_FLAGELLUM_MAX_LENGTH_FACTOR, raw));
+}
+
+function _smoothstep(t) {
+    const v = _clamp01(t);
+    return v * v * (3.0 - 2.0 * v);
+}
+
+function _normalizedWheelDelta(event) {
+    if (event.deltaMode === WheelEvent.DOM_DELTA_LINE) return event.deltaY * 16;
+    if (event.deltaMode === WheelEvent.DOM_DELTA_PAGE) return event.deltaY * 240;
+    return event.deltaY;
+}
+
 
 function _syncSelectedPreviewNoticeIndicator(worldCell) {
     const badge = dom.selectedPreviewEventIndicator;
@@ -1621,7 +2134,7 @@ function _syncSelectedPreviewNoticeIndicator(worldCell) {
 
     const notice = _activeSelectedPreviewNotice(worldCell);
     badge.classList.toggle("hidden", !notice);
-    badge.classList.remove("preview-mode-badge--event-dead", "preview-mode-badge--event-divided");
+    badge.classList.remove("preview-mode-badge--event-dead", "preview-mode-badge--event-divided", "preview-mode-badge--event-energy-low");
 
     if (!notice) {
         badge.style.opacity = "";
@@ -1641,6 +2154,14 @@ function _activeSelectedPreviewNotice(worldCell) {
         return {
             type: "dead",
             label: t("DEAD"),
+            alpha: 1,
+        };
+    }
+
+    if (Number(worldCell?.energyAvailability ?? 1) < 0.999) {
+        return {
+            type: "energy-low",
+            label: t("LOW ENERGY"),
             alpha: 1,
         };
     }
@@ -1897,10 +2418,10 @@ function _activePreviewScope(worldCell) {
     return normalized;
 }
 
-function _previewAlpha(realOpacity = 0.1, minAlpha = MIN_ALPHA, maxAlpha = MAX_ALPHA) {
-    const opacity = Math.max(0.0, Number(realOpacity ?? 0.1));
-    if (opacity <= 0.0) return 0.0;
-    return Math.max(minAlpha, Math.min(maxAlpha, opacity * REAL_OPACITY_TO_PREVIEW_ALPHA));
+function _previewAlpha(realOpacity = 0.1) {
+    const opacity = Number(realOpacity ?? 0.1);
+    if (!Number.isFinite(opacity) || opacity <= 0.0) return 0.0;
+    return _clamp01(opacity);
 }
 
 function _splitOpacity(opacity, share) {
@@ -1940,10 +2461,6 @@ function _angleDiff(a, b) {
     return Math.atan2(Math.sin(a - b), Math.cos(a - b));
 }
 
-function _smoothstep(value) {
-    const t = _clamp01(value);
-    return t * t * (3 - 2 * t);
-}
 
 function _rgba(color, alpha = 1) {
     return `rgba(${Math.round(color?.r ?? 255)}, ${Math.round(color?.g ?? 255)}, ${Math.round(color?.b ?? 255)}, ${_clamp01(alpha).toFixed(3)})`;
@@ -1970,5 +2487,7 @@ function _clamp01(value) {
     if (!Number.isFinite(Number(value))) return 0;
     return Math.max(0, Math.min(1, Number(value)));
 }
+
+
 
 

@@ -9,10 +9,6 @@ import { getCanvasCameraState, getVisibleWorldBounds } from "../ui/panels/canvas
 
 const CELL_MIN_LIGHT = 0.38;
 
-const REAL_CELL_OPACITY_TO_RENDER_ALPHA = 9.6;
-const MIN_CELL_RENDER_ALPHA = 0.18;
-const MAX_CELL_RENDER_ALPHA = 0.82;
-
 const CELL_RADIAL_ALPHA = Object.freeze({
     centerFactor: 0.52,
     midFactor: 0.76,
@@ -78,6 +74,7 @@ const SELECTED_CELL_RING = Object.freeze({
 export function render(ctx, state) {
     if (!state.world || !state.config) return;
 
+    const worldAnimationTime = Number.isFinite(Number(state.world.time)) ? Number(state.world.time) : 0;
     const camera = getCanvasCameraState();
     const worldSize = Math.max(1, Number(state.config.tubeDiameter) || camera.worldWidth || 1);
     const visibleBounds = getVisibleWorldBounds(96);
@@ -121,11 +118,11 @@ export function render(ctx, state) {
         const capturedFoods = buildCapturedFoodSlotMap(state.world.foods);
         for (const cell of state.world.cells) {
             if (cell.dead || !isCircleVisible(cell, visibleBounds, 24)) continue;
-            drawCell(ctx, cell, state.world.lighting, false, capturedFoods, camera);
+            drawCell(ctx, cell, state.world.lighting, false, capturedFoods, camera, worldAnimationTime, visibleBounds);
         }
         for (const deadCell of state.world.cells) {
             if (!deadCell.dead || !isCircleVisible(deadCell, visibleBounds, 24)) continue;
-            drawDeadCell(ctx, deadCell, state.world.lighting, false, capturedFoods, camera);
+            drawDeadCell(ctx, deadCell, state.world.lighting, false, capturedFoods, camera, worldAnimationTime, visibleBounds);
         }
         updateDeadCellEffects();
         drawDeadCellEffects(ctx, false);
@@ -218,7 +215,7 @@ function drawFood(ctx, food, lighting, grayscaleMode = false) {
     fillFoodShape(ctx, food, innerFill, FOOD_INNER_BODY.scale);
 }
 
-function drawCell(ctx, cell, lighting, grayscaleMode = false, capturedFoods = null, camera = null) {
+function drawCell(ctx, cell, lighting, grayscaleMode = false, capturedFoods = null, camera = null, animationTime = 0, visibleBounds = null) {
     drawBiologyCell(ctx, cell, {
         lighting,
         grayscale: grayscaleMode,
@@ -226,12 +223,14 @@ function drawCell(ctx, cell, lighting, grayscaleMode = false, capturedFoods = nu
         layerCount: 3,
         cacheStaticBase: true,
         renderScale: (camera?.zoom ?? 1) * (camera?.dpr ?? 1),
+        animationTime,
+        visibleBounds,
     });
 }
 
-function drawDeadCell(ctx, deadCell, lighting, grayscaleMode = false, capturedFoods = null, camera = null) {
+function drawDeadCell(ctx, deadCell, lighting, grayscaleMode = false, capturedFoods = null, camera = null, animationTime = 0, visibleBounds = null) {
     const illum = cellIlluminance(deadCell, lighting);
-    drawCell(ctx, deadCell, lighting, grayscaleMode, capturedFoods, camera);
+    drawCell(ctx, deadCell, lighting, grayscaleMode, capturedFoods, camera, animationTime, visibleBounds);
 
     const l = modulateLightness(ORGANIC_BROWN_COLOR.l, illum);
     const overlayAlpha = clamp01(0.42 + Math.min(0.35, (deadCell.lifetimeTicks ?? 0) / 180));
@@ -371,11 +370,11 @@ function colorOpacity(color, fallback = 1.0) {
 }
 
 function cellRenderAlpha(cell) {
-    const realOpacity = Math.max(0.0, Number(cell?.visual?.cellColor?.opacity ?? cell?.opacity ?? 1.0));
-    if (realOpacity <= 0.0) {
+    const realOpacity = Number(cell?.visual?.cellColor?.opacity ?? cell?.opacity ?? 1.0);
+    if (!Number.isFinite(realOpacity) || realOpacity <= 0.0) {
         return 0.0;
     }
-    return clamp(realOpacity * REAL_CELL_OPACITY_TO_RENDER_ALPHA, MIN_CELL_RENDER_ALPHA, MAX_CELL_RENDER_ALPHA);
+    return clamp01(realOpacity);
 }
 
 function modulateRgb(color, illum) {
@@ -629,5 +628,15 @@ function clamp(value, min, max) {
     if (!Number.isFinite(value)) return min;
     return Math.max(min, Math.min(max, value));
 }
+
+
+
+
+
+
+
+
+
+
 
 

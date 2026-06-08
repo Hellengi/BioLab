@@ -14,3 +14,5 @@ public class DamageFlowEntity {
     @Column(nullable = false) private double repairRate;
     @Column(nullable = false) private double repairEnergyCostRate;
 }
+
+

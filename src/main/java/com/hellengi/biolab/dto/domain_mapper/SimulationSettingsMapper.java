@@ -1,3 +1,4 @@
+
 package com.hellengi.biolab.dto.domain_mapper;
 
 import com.hellengi.biolab.config.YamlConfig;
@@ -38,7 +39,7 @@ public class SimulationSettingsMapper {
                 baseConfig.getCell().getBaseRadius(), baseConfig.getCell().getEnergyToRadiusFactor(),
                 baseConfig.getFood().getBaseRadius(), baseConfig.getFood().getStart(),
                 baseConfig.getFood().getMinEnergy(), baseConfig.getFood().getMaxEnergy(),
-                baseConfig.getCell().getLowEnergyDamageStart(), baseConfig.getCell().getEnergyDecayPerTick(),
+                0.0, baseConfig.getCell().getEnergyDecayPerTick(),
                 genomeMapper.toSettingsDto(baseConfig.getGenome()),
                 control(baseConfig.getMotion().getCellSpeed().getInitial(), baseConfig.getMotion().getCellSpeed()),
                 control(baseConfig.getMotion().getCellDirection().getInitial(), baseConfig.getMotion().getCellDirection())
@@ -46,6 +47,12 @@ public class SimulationSettingsMapper {
     }
 
     private RangedValueDto control(double value, YamlConfig.Control control) {
-        return new RangedValueDto(value, control.getMin(), control.getMax(), control.getStep(), control.getInitial());
+        return new RangedValueDto(value, control.getMin(), control.getMax(), control.getStep(), control.getInitial(), control.getScale());
     }
 }
+
+
+
+
+
+

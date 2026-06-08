@@ -77,7 +77,7 @@ public class SnapshotMapper {
         cell.setAlive(!dto.dead());
         cell.setLifetimeTicks(dto.lifetimeTicks());
         cell.setLocalLight(dto.localLight());
-        cell.setPhysicalState(physical(dto.x(), dto.y(), dto.vx(), dto.vy(), dto.radius(), dto.mass(), dto.density(), dto.opacity(), dto.directionAngle()));
+        cell.setPhysicalState(physical(dto.x(), dto.y(), dto.vx(), dto.vy(), dto.angularVelocity(), dto.radius(), dto.mass(), dto.density(), dto.opacity(), dto.directionAngle()));
         cell.setEnergyFlow(energy(dto.energy(), dto.energyProduction(), dto.energyConsumption(), dto.digestionEnergyProduction(), dto.digestionEnergyCostRate(), dto.repairEnergyCostRate(), 0.0));
         cell.setGenome(genomeMapper.toEntity(dto.genome()));
         cell.setNucleusState(nucleus(dto));
@@ -88,6 +88,10 @@ public class SnapshotMapper {
 
         for (LysosomeSlotDto slot : safe(dto.lysosomeSlots())) {
             cell.addLysosomeSlot(slot(slot));
+        }
+
+        for (FlagellumSlotDto slot : safe(dto.flagellumSlots())) {
+            cell.addFlagellumSlot(flagellumSlot(slot));
         }
 
         int eventIndex = 0;
@@ -107,26 +111,30 @@ public class SnapshotMapper {
         SnapshotCellLysosomesStateEntity lysosomes = entity.getLysosomesState();
         SnapshotCellMembraneStateEntity membrane = entity.getMembraneState();
         LayoutStateEntity nl = nucleus.getLayout();
+        DamageFlowEntity nd = nucleus.getDamageFlow();
         DamageFlowEntity cd = cytosol.getDamageFlow();
         DamageFlowEntity cpd = chloroplasts.getDamageFlow();
+        DamageFlowEntity md = membrane.getDamageFlow();
         DamageFlowEntity ld = lysosomes.getDamageFlow();
 
         return new CellDto(
                 entity.getWorldCellId(),
-                p.getX(), p.getY(), p.getVx(), p.getVy(),
+                p.getX(), p.getY(), p.getVx(), p.getVy(), p.getAngularVelocity(),
                 e.getEnergy(), p.getRadius(),
                 nl.getX(), nl.getY(), nucleus.getRadius(), nl.getTargetX(), nl.getTargetY(),
                 !entity.isAlive(),
                 genomeMapper.toDto(entity.getGenome()),
                 entity.getLifetimeTicks(), entity.getLocalLight(), p.getMass(), p.getDensity(), p.getOpacity(),
-                cd.getDamage(), cpd.getDamage(), ld.getDamage(),
-                e.getProductionRate(), e.getDigestionProductionRate(), e.getConsumptionRate(), e.getDigestionCostRate(),
-                cpd.getDamageRate(), cd.getDamageRate(), ld.getDamageRate(),
-                cpd.getRepairRate(), cd.getRepairRate(), ld.getRepairRate(),
-                e.getRepairCostRate(), ld.getRepairEnergyCostRate(),
+                nd.getDamage(), cd.getDamage(), cpd.getDamage(), md.getDamage(), ld.getDamage(), averageFlagellumDamage(entity),
+                e.getProductionRate(), e.getDigestionProductionRate(), e.getConsumptionRate(), 1.0, e.getConsumptionRate(), e.getDigestionCostRate(),
+                cpd.getDamageRate(), nd.getDamageRate(), cd.getDamageRate(), md.getDamageRate(), ld.getDamageRate(), flagellumDamageRate(entity),
+                cpd.getRepairRate(), nd.getRepairRate(), nd.getRepairEnergyCostRate(), cd.getRepairRate(), md.getRepairRate(), md.getRepairEnergyCostRate(), ld.getRepairRate(), flagellumRepairRate(entity),
+                e.getRepairCostRate(), ld.getRepairEnergyCostRate(), flagellumRepairEnergyCostRate(entity),
                 chloroplasts.getCarotProtection(), membrane.getLightTransmittance(),
                 lysosomes.getCapacity(), lysosomes.getOccupiedSlots(),
                 entity.getLysosomeSlots().stream().map(this::slot).toList(),
+                entity.getFlagellumSlots().size(),
+                entity.getFlagellumSlots().stream().map(this::flagellumSlot).toList(),
                 entity.getEvents().stream().map(this::event).toList(),
                 null, null,
                 p.getDirectionAngle()
@@ -137,6 +145,7 @@ public class SnapshotMapper {
         SnapshotCellNucleusStateEntity entity = new SnapshotCellNucleusStateEntity();
         entity.setRadius(dto.nucleusRadius());
         entity.setLayout(layout(dto.nucleusOffsetX(), dto.nucleusOffsetY(), dto.nucleusRadius(), 0.0, dto.nucleusTargetOffsetX(), dto.nucleusTargetOffsetY(), dto.nucleusRadius(), 0.0));
+        entity.setDamageFlow(damage(dto.nucleusDamage(), dto.nucleusDamageRate(), dto.nucleusRepairRate(), dto.nucleusRepairEnergyCostRate()));
         return entity;
     }
 
@@ -151,6 +160,7 @@ public class SnapshotMapper {
         SnapshotCellMembraneStateEntity entity = new SnapshotCellMembraneStateEntity();
         entity.setOpacity(dto.opacity() != null ? dto.opacity() : 0.0);
         entity.setLightTransmittance(dto.membraneLightTransmittance());
+        entity.setDamageFlow(damage(dto.membraneDamage(), dto.membraneDamageRate(), dto.membraneRepairRate(), dto.membraneRepairEnergyCostRate()));
         return entity;
     }
 
@@ -197,6 +207,67 @@ public class SnapshotMapper {
         );
     }
 
+    private SnapshotFlagellumSlotEntity flagellumSlot(FlagellumSlotDto dto) {
+        SnapshotFlagellumSlotEntity entity = new SnapshotFlagellumSlotEntity();
+        entity.setSlotIndex(dto.index());
+        entity.setLastForce(dto.force());
+        entity.setLastTorque(dto.torque());
+        entity.setLastBaseX(dto.baseX());
+        entity.setLastBaseY(dto.baseY());
+        entity.setLastDirectionX(dto.directionX());
+        entity.setLastDirectionY(dto.directionY());
+        entity.setLastEnergyCostRate(dto.energyCostRate());
+        entity.setDamageFlow(damage(dto.damage(), dto.damageRate(), dto.repairRate(), dto.repairEnergyCostRate()));
+        return entity;
+    }
+
+    private FlagellumSlotDto flagellumSlot(SnapshotFlagellumSlotEntity entity) {
+        DamageFlowEntity d = entity.getDamageFlow();
+        return new FlagellumSlotDto(
+                entity.getSlotIndex(),
+                0.0,
+                d.getDamage(),
+                Math.max(0.0, 1.0 - d.getDamage()),
+                entity.getLastBaseX(),
+                entity.getLastBaseY(),
+                entity.getLastDirectionX(),
+                entity.getLastDirectionY(),
+                0.0,
+                0.0,
+                entity.getLastForce(),
+                entity.getLastTorque(),
+                entity.getLastEnergyCostRate(),
+                d.getDamageRate(),
+                d.getRepairRate(),
+                d.getRepairEnergyCostRate()
+        );
+    }
+
+    private double averageFlagellumDamage(SnapshotCellEntity entity) {
+        return entity.getFlagellumSlots().stream()
+                .mapToDouble(slot -> slot.getDamageFlow().getDamage())
+                .average()
+                .orElse(0.0);
+    }
+
+    private double flagellumDamageRate(SnapshotCellEntity entity) {
+        return entity.getFlagellumSlots().stream()
+                .mapToDouble(slot -> slot.getDamageFlow().getDamageRate())
+                .sum();
+    }
+
+    private double flagellumRepairRate(SnapshotCellEntity entity) {
+        return entity.getFlagellumSlots().stream()
+                .mapToDouble(slot -> slot.getDamageFlow().getRepairRate())
+                .sum();
+    }
+
+    private double flagellumRepairEnergyCostRate(SnapshotCellEntity entity) {
+        return entity.getFlagellumSlots().stream()
+                .mapToDouble(slot -> slot.getDamageFlow().getRepairEnergyCostRate())
+                .sum();
+    }
+
     private SnapshotCellEventEntity event(CellEventDto dto, int position) {
         SnapshotCellEventEntity entity = new SnapshotCellEventEntity();
         entity.setPositionInCell(position);
@@ -223,7 +294,7 @@ public class SnapshotMapper {
         entity.setInsideLysosome(dto.insideLysosome());
         entity.setCapturedCellAnchorX(dto.capturedCellAnchorX());
         entity.setCapturedCellAnchorY(dto.capturedCellAnchorY());
-        entity.setPhysicalState(physical(dto.x(), dto.y(), 0.0, 0.0, dto.radius(), 0.0, 0.0, null, 0.0));
+        entity.setPhysicalState(physical(dto.x(), dto.y(), 0.0, 0.0, 0.0, dto.radius(), 0.0, 0.0, null, 0.0));
         entity.setEnergyFlow(energy(dto.energy(), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0));
         return entity;
     }
@@ -288,9 +359,9 @@ public class SnapshotMapper {
         }
     }
 
-    private PhysicalStateEntity physical(double x, double y, double vx, double vy, double radius, double mass, double density, Double opacity, double directionAngle) {
+    private PhysicalStateEntity physical(double x, double y, double vx, double vy, double angularVelocity, double radius, double mass, double density, Double opacity, double directionAngle) {
         PhysicalStateEntity state = new PhysicalStateEntity();
-        state.setX(x); state.setY(y); state.setVx(vx); state.setVy(vy); state.setRadius(radius); state.setMass(mass); state.setDensity(density); state.setOpacity(opacity); state.setDirectionAngle(directionAngle);
+        state.setX(x); state.setY(y); state.setVx(vx); state.setVy(vy); state.setAngularVelocity(angularVelocity); state.setRadius(radius); state.setMass(mass); state.setDensity(density); state.setOpacity(opacity); state.setDirectionAngle(directionAngle);
         return state;
     }
 
@@ -316,3 +387,7 @@ public class SnapshotMapper {
         return list == null ? List.of() : list;
     }
 }
+
+
+
+

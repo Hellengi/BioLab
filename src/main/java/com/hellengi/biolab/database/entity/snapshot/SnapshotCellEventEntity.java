@@ -32,3 +32,5 @@ public class SnapshotCellEventEntity {
     private Double normalX;
     private Double normalY;
 }
+
+

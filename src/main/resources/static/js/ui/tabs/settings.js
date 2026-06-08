@@ -1,3 +1,4 @@
+
 /**
  * ui/tabs/settings.js
  * Публичный API панели настроек симуляции.
@@ -21,17 +22,15 @@ import {
     patchControl,
     getRange,
     clampByRange,
-    setSliderAndInput,
+    setControlSliderAndInput,
     setDiscreteSlider,
     setAngleSlider,
-    inverseCurveLeftDense,
     applyAllControlRanges,
     bindPercentControl,
     bindLiveControl,
     bindDiscreteControl,
     bindAngleControl,
     bindOrbitSpeedControl,
-    bindLeftDenseControl,
     bindCycleMinLightControl,
 } from "./settings-helpers.js";
 
@@ -46,25 +45,16 @@ export async function loadSettingsIntoPanel() {
 
     applyAllControlRanges();
 
-    setSliderAndInput(dom.initialCellCountSlider, dom.initialCellCountValue, controlValue("initialCellCount"));
-    setSliderAndInput(dom.foodSpawnRateSlider,    dom.foodSpawnRateValue,    controlValue("foodSpawnIntensity"));
-    setSliderAndInput(dom.viscositySlider,        dom.viscosityValue,        controlValue("viscositySlider"));
-    setSliderAndInput(dom.turbiditySlider,        dom.turbidityValue,        controlValue("turbiditySlider"));
-    setSliderAndInput(dom.gravitySlider,          dom.gravityValue,          controlValue("gravitySlider"));
-    setSliderAndInput(dom.radiationSlider,        dom.radiationValue,        controlValue("radiationSlider"));
-    setSliderAndInput(dom.globalLightSlider,      dom.globalLightValue,      controlValue("globalLightPercent"));
-    setSliderAndInput(dom.globalLightCycleMinSlider, dom.globalLightCycleMinValue, controlValue("globalLightCycleMinPercent"));
+    setControlSliderAndInput(dom.initialCellCountSlider, dom.initialCellCountValue, "initialCellCount");
+    setControlSliderAndInput(dom.foodSpawnRateSlider, dom.foodSpawnRateValue, "foodSpawnIntensity");
+    setControlSliderAndInput(dom.viscositySlider, dom.viscosityValue, "viscositySlider");
+    setControlSliderAndInput(dom.turbiditySlider, dom.turbidityValue, "turbiditySlider");
+    setControlSliderAndInput(dom.gravitySlider, dom.gravityValue, "gravitySlider");
+    setControlSliderAndInput(dom.radiationSlider, dom.radiationValue, "radiationSlider");
+    setControlSliderAndInput(dom.globalLightSlider, dom.globalLightValue, "globalLightPercent");
+    setControlSliderAndInput(dom.globalLightCycleMinSlider, dom.globalLightCycleMinValue, "globalLightCycleMinPercent");
 
-    // Период цикла — левоплотный слайдер: слайдер в 0–100, input в реальных секундах
-    const period = Math.round(controlValue("globalLightCyclePeriodSeconds"));
-    setSliderAndInput(
-        dom.globalLightCyclePeriodSlider,
-        null,
-        inverseCurveLeftDense(period, getRange("globalLightCyclePeriodSeconds"))
-    );
-    if (dom.globalLightCyclePeriodValue) {
-        dom.globalLightCyclePeriodValue.value = String(period);
-    }
+    setControlSliderAndInput(dom.globalLightCyclePeriodSlider, dom.globalLightCyclePeriodValue, "globalLightCyclePeriodSeconds");
 
     if (dom.globalLightCycleEnabled) {
         dom.globalLightCycleEnabled.checked = !!state.config.globalLightCycleEnabled;
@@ -78,9 +68,9 @@ export async function loadSettingsIntoPanel() {
 
     setDiscreteSlider(dom.lightSourceCountSlider,      controlValue("lightSourceCount"));
     setAngleSlider   (dom.lightSourceStartAngleSlider, controlValue("lightSourceStartAngle"));
-    setSliderAndInput(dom.lightSourceBrightnessSlider,  dom.lightSourceBrightnessValue,  controlValue("lightSourceBrightness"));
-    setSliderAndInput(dom.lightSourceOrbitRadiusSlider, dom.lightSourceOrbitRadiusValue, controlValue("lightSourceOrbitRadius"));
-    setSliderAndInput(dom.lightSourceOrbitSpeedSlider,  dom.lightSourceOrbitSpeedValue,  controlValue("lightSourceOrbitSpeed"));
+    setControlSliderAndInput(dom.lightSourceBrightnessSlider, dom.lightSourceBrightnessValue, "lightSourceBrightness");
+    setControlSliderAndInput(dom.lightSourceOrbitRadiusSlider, dom.lightSourceOrbitRadiusValue, "lightSourceOrbitRadius");
+    setControlSliderAndInput(dom.lightSourceOrbitSpeedSlider, dom.lightSourceOrbitSpeedValue, "lightSourceOrbitSpeed");
 }
 
 // ── Сброс к дефолтам ─────────────────────────────────────────────────────────
@@ -159,11 +149,11 @@ function bindGlobalLightCycle() {
     });
 
     bindCycleMinLightControl(dom.globalLightCycleMinSlider, dom.globalLightCycleMinValue);
-    bindLeftDenseControl(
+    bindLiveControl(
         dom.globalLightCyclePeriodSlider,
         dom.globalLightCyclePeriodValue,
         "globalLightCyclePeriodSeconds",
-        "globalLightCyclePeriodSeconds"
+        value => Math.round(clampByRange(value, getRange("globalLightCyclePeriodSeconds")))
     );
 }
 
@@ -201,3 +191,7 @@ function _applyLightCycleVisibility(enabled) {
 function _applyLocalLightSourceVisibility(enabled) {
     dom.localLightSourceFields?.classList.toggle("collapsed", !enabled);
 }
+
+
+
+

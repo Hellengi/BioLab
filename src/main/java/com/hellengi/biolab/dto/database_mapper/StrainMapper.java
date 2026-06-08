@@ -20,3 +20,5 @@ public class StrainMapper {
         return new StrainDto(entity.getId(), entity.getName(), genomeMapper.toDto(entity.getGenome()));
     }
 }
+
+

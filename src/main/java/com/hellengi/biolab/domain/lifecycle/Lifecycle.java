@@ -55,7 +55,6 @@ public class Lifecycle {
             Quadtree<Food> foodIndex,
             Map<Long, Food> foodById
     ) {
-        updateDirectionFromVelocity(cell);
         foodDigestion.process(world, cell, foodIndex, foodById, tickScale);
 
         double irradiance = lighting.sampleMetabolicLightAt(cell.getX(), cell.getY());
@@ -128,9 +127,4 @@ public class Lifecycle {
         return SpatialBounds.fromMinMax(-margin, -margin, diameter + margin, diameter + margin);
     }
 
-    private void updateDirectionFromVelocity(Cell cell) {
-        cell.setDirectionAngle(wrapDegrees(
-                Math.toDegrees(Math.atan2(cell.getVy(), cell.getVx())) + 90.0
-        ));
-    }
 }

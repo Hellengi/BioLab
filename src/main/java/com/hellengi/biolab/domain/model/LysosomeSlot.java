@@ -1,3 +1,4 @@
+
 package com.hellengi.biolab.domain.model;
 
 import lombok.Getter;
@@ -51,7 +52,7 @@ public class LysosomeSlot {
     }
 
     public double performance() {
-        return Math.exp(-Math.max(0.0, damage));
+        return DamageModel.performance(damage);
     }
 
     public void occupy(long foodId) {
@@ -140,5 +141,9 @@ public class LysosomeSlot {
         return Double.isFinite(value) ? value : 0.0;
     }
 }
+
+
+
+
 
 

@@ -1,3 +1,4 @@
+
 /* ==========================================================
    preview.css — shared selected/create preview and force view
    ========================================================== */
@@ -263,6 +264,7 @@
 .preview-mode-badge--energy      { color: var(--c-warning);    --preview-mode-bg: var(--c-warning-glow); }
 .preview-mode-badge--event-dead  { color: var(--c-danger);     --preview-mode-bg: var(--c-danger-glow);  }
 .preview-mode-badge--event-divided { color: var(--c-success);  --preview-mode-bg: var(--c-success-glow); }
+.preview-mode-badge--event-energy-low { color: var(--c-warning);  --preview-mode-bg: var(--c-warning-glow); }
 
 /* ────────────────────────────────────────────────────────────────
    Left column: badge абсолютно, кнопки строго по центру
@@ -528,3 +530,7 @@
         padding-right: 10px;
     }
 }
+
+
+
+

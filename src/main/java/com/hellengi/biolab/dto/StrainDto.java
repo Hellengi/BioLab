@@ -6,3 +6,5 @@ public record StrainDto(
         GenomeDto genome
 ) {
 }
+
+

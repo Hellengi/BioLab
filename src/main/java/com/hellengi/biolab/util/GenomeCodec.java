@@ -1,3 +1,4 @@
+
 package com.hellengi.biolab.util;
 
 import com.hellengi.biolab.domain.model.Genome;
@@ -6,8 +7,6 @@ public final class GenomeCodec {
     private static final String PREFIX = "CELL-";
     private static final int GENE_WIDTH = 3;
     private static final int RADIX = 36;
-    private static final int CURRENT_GENE_COUNT = 16;
-
 
     private GenomeCodec() {
     }
@@ -17,9 +16,10 @@ public final class GenomeCodec {
                 + pack(genome.getDivisionThreshold())
                 + pack(genome.getDivisionImpulse())
                 + pack(genome.getDivisionAngle())
-                + pack(genome.getMaxEnergy())
-                + pack(genome.getDryMass())
+                + pack(genome.getCytosolArea())
+                + pack(genome.getCytosolDensity())
                 + pack(genome.getElasticity())
+                + pack(genome.isGfpEnabled() ? 1.0 : 0.0)
                 + pack(genome.getGfp())
                 + pack(genome.isMelaninEnabled() ? 1.0 : 0.0)
                 + pack(genome.getMelaninPercent())
@@ -29,9 +29,14 @@ public final class GenomeCodec {
                 + pack(genome.getCarotenoids())
                 + pack(genome.isLysosomeEnabled() ? 1.0 : 0.0)
                 + pack(genome.getLysosomeAmount())
-                + pack(genome.getLysosomeEnzymeActivity());
+                + pack(genome.getLysosomeEnzymeActivity())
+                + pack(genome.isFlagellumEnabled() ? 1.0 : 0.0)
+                + pack(genome.getFlagellumCount())
+                + pack(genome.getFlagellumLength())
+                + pack(genome.getFlagellumMotorPower())
+                + pack(genome.getFlagellumPairSpreadAngle())
+                + pack(genome.getFlagellumSteeringAsymmetry() + 100.0);
     }
-
 
     private static int scale(double value) {
         return (int) Math.round(value * 10.0);
@@ -46,5 +51,5 @@ public final class GenomeCodec {
 
         return "0".repeat(GENE_WIDTH - encoded.length()) + encoded;
     }
-
 }
+

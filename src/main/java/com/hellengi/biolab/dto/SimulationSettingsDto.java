@@ -48,3 +48,7 @@ public record SimulationSettingsDto(
         RangedValueDto initialCellDirection
 ) {
 }
+
+
+
+

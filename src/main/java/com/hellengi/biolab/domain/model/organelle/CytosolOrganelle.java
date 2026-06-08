@@ -4,27 +4,36 @@ import com.hellengi.biolab.config.YamlConfig;
 import com.hellengi.biolab.domain.model.Cell;
 import lombok.Getter;
 import lombok.Setter;
+
 import static com.hellengi.biolab.util.Utils.percent01;
 
 @Getter
 @Setter
 public class CytosolOrganelle implements Organelle {
-    private double maxEnergy;
-    private double dryMass;
+    private static final double ENERGY_CAPACITY_PER_AREA = 0.72;
+
+    private double area;
+    private double density;
+    private boolean gfpEnabled;
     private double gfp;
 
-    public CytosolOrganelle(double maxEnergy, double dryMass, double gfp) {
-        this.maxEnergy = maxEnergy;
-        this.dryMass = dryMass;
+    public CytosolOrganelle(double area, double density, boolean gfpEnabled, double gfp) {
+        this.area = area;
+        this.density = density;
+        this.gfpEnabled = gfpEnabled;
         this.gfp = gfp;
     }
 
     public CytosolOrganelle copy() {
-        return new CytosolOrganelle(maxEnergy, dryMass, gfp);
+        return new CytosolOrganelle(area, density, gfpEnabled, gfp);
     }
 
     public double gfp01() {
-        return percent01(gfp);
+        return gfpEnabled ? percent01(gfp) : 0.0;
+    }
+
+    public double maxEnergy() {
+        return Math.max(0.0, area) * ENERGY_CAPACITY_PER_AREA;
     }
 
     public double energyConsumption(YamlConfig.CellProperties config, double cytosolMass) {
@@ -49,15 +58,19 @@ public class CytosolOrganelle implements Organelle {
 
     @Override
     public double mass(Cell cell, YamlConfig.CellProperties config) {
-        return Math.max(0.0, dryMass) * config.getCytosolMassFactor()
+        double baseArea = Math.max(0.0, area) * config.getCytosolAreaFactor();
+        return Math.max(0.0, density) * baseArea * config.getCytosolMassFactor()
                 + Math.max(0.0, cell.getEnergy()) * config.getEnergyToMassFactor();
     }
 
     @Override
     public double area(Cell cell, YamlConfig.CellProperties config) {
-        return Math.max(0.0, dryMass) * config.getCytosolAreaFactor()
+        return Math.max(0.0, area) * config.getCytosolAreaFactor()
                 + Math.max(0.0, cell.getEnergy()) * config.getEnergyToRadiusFactor();
     }
 }
+
+
+
 
 

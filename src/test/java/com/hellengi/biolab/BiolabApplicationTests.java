@@ -1,4 +1,3 @@
-
 package com.hellengi.biolab;
 
 import org.junit.jupiter.api.Test;
@@ -12,3 +11,4 @@ class BiolabApplicationTests {
 	}
 
 }
+

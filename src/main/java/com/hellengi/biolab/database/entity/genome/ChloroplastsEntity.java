@@ -25,3 +25,5 @@ public class ChloroplastsEntity {
     @Column(nullable = false)
     private double carotenoids;
 }
+
+

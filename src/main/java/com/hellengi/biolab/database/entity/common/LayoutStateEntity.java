@@ -18,3 +18,5 @@ public class LayoutStateEntity {
     @Column(nullable = false) private double targetRadius;
     @Column(nullable = false) private double targetRotation;
 }
+
+

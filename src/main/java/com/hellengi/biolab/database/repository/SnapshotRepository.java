@@ -11,3 +11,5 @@ public interface SnapshotRepository extends JpaRepository<SnapshotEntity, Long> 
 }
 
 
+
+

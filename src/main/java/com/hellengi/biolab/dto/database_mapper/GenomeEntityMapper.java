@@ -1,3 +1,4 @@
+
 package com.hellengi.biolab.dto.database_mapper;
 
 import com.hellengi.biolab.dto.mapper.GenomeDefaults;
@@ -21,8 +22,9 @@ public class GenomeEntityMapper {
         genome.setNucleus(nucleus);
 
         CytosolEntity cytosol = new CytosolEntity();
-        cytosol.setMaxEnergy(dto.maxEnergy());
-        cytosol.setDryMass(defaults.dryMass(dto.dryMass()));
+        cytosol.setArea(defaults.cytosolArea(dto.cytosolArea()));
+        cytosol.setDensity(defaults.cytosolDensity(dto.cytosolDensity()));
+        cytosol.setGfpEnabled(dto.gfpEnabled());
         cytosol.setGfp(defaults.gfp(dto.gfp()));
         genome.setCytosol(cytosol);
 
@@ -45,6 +47,15 @@ public class GenomeEntityMapper {
         lysosomes.setEnzymeActivity(defaults.lysosomeEnzymeActivity(dto.lysosomeEnzymeActivity()));
         genome.setLysosomes(lysosomes);
 
+        FlagellaEntity flagella = new FlagellaEntity();
+        flagella.setEnabled(dto.flagellumEnabled());
+        flagella.setCount((int) defaults.flagellumCount(dto.flagellumCount()));
+        flagella.setLength(defaults.flagellumLength(dto.flagellumLength()));
+        flagella.setMotorPower(defaults.flagellumMotorPower(dto.flagellumMotorPower()));
+        flagella.setPairSpreadAngle(defaults.flagellumPairSpreadAngle(dto.flagellumPairSpreadAngle()));
+        flagella.setSteeringAsymmetry(defaults.flagellumSteeringAsymmetry(dto.flagellumSteeringAsymmetry()));
+        genome.setFlagella(flagella);
+
         return genome;
     }
 
@@ -57,15 +68,17 @@ public class GenomeEntityMapper {
         MembraneEntity membrane = genome.getMembrane();
         ChloroplastsEntity chloroplasts = genome.getChloroplasts();
         LysosomesEntity lysosomes = genome.getLysosomes();
+        FlagellaEntity flagella = genome.getFlagella();
 
         return new GenomeDto(
                 nucleus.getDivisionThreshold(),
                 nucleus.getDivisionImpulse(),
                 nucleus.getDivisionAngle(),
-                cytosol.getMaxEnergy(),
-                cytosol.getDryMass(),
-                membrane.getElasticity(),
+                cytosol.getArea(),
+                cytosol.getDensity(),
+                cytosol.isGfpEnabled(),
                 cytosol.getGfp(),
+                membrane.getElasticity(),
                 membrane.isMelaninEnabled(),
                 membrane.getMelaninPercent(),
                 chloroplasts.isEnabled(),
@@ -75,8 +88,14 @@ public class GenomeEntityMapper {
                 lysosomes.isEnabled(),
                 lysosomes.getAmount(),
                 lysosomes.getEnzymeActivity(),
+                flagella != null && flagella.isEnabled(),
+                flagella != null ? (double) flagella.getCount() : 1.0,
+                flagella != null ? flagella.getLength() : 1.8,
+                flagella != null ? flagella.getMotorPower() : 30.0,
+                flagella != null ? flagella.getPairSpreadAngle() : 36.0,
+                flagella != null ? flagella.getSteeringAsymmetry() : 0.0,
                 null
         );
     }
-
 }
+

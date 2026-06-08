@@ -29,3 +29,5 @@ public class SnapshotCellChloroplastsStateEntity {
     @Column(nullable = false)
     private double carotProtection;
 }
+
+

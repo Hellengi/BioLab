@@ -25,3 +25,5 @@ public record LysosomeSlotDto(
         double repairEnergyCostRate
 ) {
 }
+
+

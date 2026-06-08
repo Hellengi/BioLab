@@ -30,3 +30,5 @@ public class LightSource {
         return centerY + Math.sin(angle) * orbitRadius;
     }
 }
+
+

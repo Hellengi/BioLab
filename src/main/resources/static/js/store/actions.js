@@ -1,4 +1,3 @@
-
 /**
  * store/actions.js
  * Высокоуровневые действия симуляции: загрузка конфига, сброс, пауза.
@@ -122,6 +121,8 @@ export async function togglePause() {
     updateStats();
     render(dom.ctx, state);
 }
+
+
 
 
 

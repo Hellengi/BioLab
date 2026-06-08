@@ -22,3 +22,5 @@ public class MembraneEntity {
     @Column(nullable = false)
     private double melaninPercent;
 }
+
+

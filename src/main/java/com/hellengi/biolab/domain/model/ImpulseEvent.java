@@ -49,3 +49,5 @@ public class ImpulseEvent implements Event {
         return TYPE;
     }
 }
+
+

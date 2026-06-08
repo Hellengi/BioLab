@@ -42,3 +42,5 @@ export function getLightAt(x, y) {
 
     return getJson(`/api/simulation/light?${query.toString()}`);
 }
+
+

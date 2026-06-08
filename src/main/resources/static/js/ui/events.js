@@ -1,3 +1,5 @@
+
+
 import { dom } from "./dom.js";
 import { bindSettingsForm, resetSettings } from "./tabs/settings.js";
 import {
@@ -26,7 +28,7 @@ import {
 import { onCanvasClick }                from "./panels/canvas.js";
 import { bindCanvasMouseEvents }        from "./panels/cursor.js";
 import { bindCanvasCameraEvents }       from "./panels/canvas-camera.js";
-import { bindInputs, closeModal, bindAsyncClick } from "./panels/_panels.js";
+import { bindInputs, bindMappedInputs, closeModal, bindAsyncClick } from "./panels/_panels.js";
 import { initTabs }                     from "./tabs/_tabs.js";
 import {
     drawCreateCellPreview,
@@ -34,6 +36,8 @@ import {
     handleCreatePreviewClick,
     handleCreatePreviewPointerLeave,
     handleCreatePreviewPointerMove,
+    handleCreatePreviewWheel,
+    handleSelectedPreviewWheel,
     handleSelectedPreviewClick,
     handleSelectedPreviewPointerLeave,
     handleSelectedPreviewPointerMove,
@@ -49,7 +53,9 @@ import { sendDisplayLayers } from "../transport/ws/socket.js";
 import { bindToolbarTooltips } from "./toolbar.js";
 import { t } from "../localization/localization.js";
 import {
+    closeActiveFinePanel,
     closeActiveOrganellePanel,
+    hasActiveFinePanel,
     hasActiveOrganellePanel,
     openOrganellePanel,
 } from "./tabs/creation-organelle.js";
@@ -190,10 +196,12 @@ function bindPreviewLightEvents() {
     dom.selectedCellPreviewCanvas?.addEventListener("pointermove", handleSelectedPreviewPointerMove);
     dom.selectedCellPreviewCanvas?.addEventListener("pointerleave", handleSelectedPreviewPointerLeave);
     dom.selectedCellPreviewCanvas?.addEventListener("click", handleSelectedPreviewClick);
+    dom.selectedCellPreviewCanvas?.addEventListener("wheel", handleSelectedPreviewWheel, { passive: false });
 
     dom.createCellPreviewCanvas?.addEventListener("pointermove", handleCreatePreviewPointerMove);
     dom.createCellPreviewCanvas?.addEventListener("pointerleave", handleCreatePreviewPointerLeave);
     dom.createCellPreviewCanvas?.addEventListener("click", handleCreatePreviewClick);
+    dom.createCellPreviewCanvas?.addEventListener("wheel", handleCreatePreviewWheel, { passive: false });
 }
 
 // ── Панель выбранной клетки ───────────────────────────────────────────────────
@@ -280,8 +288,15 @@ function bindCreatePanelEvents() {
 }
 
 function bindCreateFormEvents() {
-    for (const { range, input } of [...getCreateCellFields(), ...getCreateDebugFields()]) {
-        bindInputs(range, input, onCreateFormChange);
+    for (const { key, range, input, valueFromRange, rangeFromValue } of getCreateCellFields()) {
+        if (typeof valueFromRange === "function" && typeof rangeFromValue === "function") {
+            bindMappedInputs(range, input, valueFromRange, rangeFromValue, () => onCreateFormChange(key));
+        } else {
+            bindInputs(range, input, () => onCreateFormChange(key));
+        }
+    }
+    for (const { key, range, input } of getCreateDebugFields()) {
+        bindInputs(range, input, () => onCreateFormChange(key));
     }
     for (const { range, input } of getCreateChloroplastFields()) {
         bindInputs(range, input, onCreateFormChange);
@@ -296,6 +311,7 @@ function bindPreviewScopeEvents() {
         const shouldFade = scope !== "general" && detail.fadeHighlight === true;
 
         if (scope === "general") {
+            closeActiveFinePanel();
             closeActiveOrganellePanel();
         } else if (_canOpenCreateOrganelle(scope)) {
             openOrganellePanel(scope);
@@ -334,6 +350,10 @@ function bindKeyboardEvents() {
         if (event.key === "Escape") {
             if (state.placeMode) {
                 setPlaceMode(false);
+                return;
+            }
+            if (hasActiveFinePanel()) {
+                closeActiveFinePanel();
                 return;
             }
             if (hasActiveOrganellePanel()) {
@@ -404,10 +424,3 @@ function bindSidebarToggle() {
         }
     });
 }
-
-
-
-
-
-
-

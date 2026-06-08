@@ -5,9 +5,6 @@ const DEAD_CELL_DISAPPEAR_EFFECT_DURATION_MS = 500;
 const DEAD_CELL_DISAPPEAR_EFFECT_MAX_BLUR_PX = 12;
 const DEAD_CELL_DISAPPEAR_EFFECT_GROWTH = 1.35;
 const CELL_MIN_LIGHT = 0.38;
-const REAL_CELL_OPACITY_TO_RENDER_ALPHA = 9.6;
-const MIN_CELL_RENDER_ALPHA = 0.18;
-const MAX_CELL_RENDER_ALPHA = 0.82;
 
 export function updateDeadCellEffects() {
     const currentDeadCellsById = new Map();
@@ -79,16 +76,17 @@ function modulateLightness(baseLightness, illuminance) {
 }
 
 function cellRenderAlpha(cell) {
-    const realOpacity = Math.max(0.0, Number(cell?.opacity ?? 1.0));
-    if (realOpacity <= 0.0) {
+    const realOpacity = Number(cell?.visual?.cellColor?.opacity ?? cell?.opacity ?? 1.0);
+    if (!Number.isFinite(realOpacity) || realOpacity <= 0.0) {
         return 0.0;
     }
-    return Math.max(
-        MIN_CELL_RENDER_ALPHA,
-        Math.min(MAX_CELL_RENDER_ALPHA, realOpacity * REAL_CELL_OPACITY_TO_RENDER_ALPHA)
-    );
+    return Math.max(0.0, Math.min(1.0, realOpacity));
 }
 
 function hsl(hue, saturation, lightness) {
     return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
 }
+
+
+
+

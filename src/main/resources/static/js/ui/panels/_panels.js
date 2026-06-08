@@ -34,6 +34,44 @@ export function bindInputs(rangeInput, numberInput, onInput, onCommit = onInput)
     numberInput.addEventListener("change", commitFromNumber);
 }
 
+/**
+ * Связывает range+number, когда range хранит техническую шкалу,
+ * а number показывает фактическое значение.
+ * @param {HTMLInputElement|null} rangeInput
+ * @param {HTMLInputElement|null} numberInput
+ * @param {Function} valueFromRange
+ * @param {Function} rangeFromValue
+ * @param {Function} onInput
+ * @param {Function} [onCommit]
+ */
+export function bindMappedInputs(rangeInput, numberInput, valueFromRange, rangeFromValue, onInput, onCommit = onInput) {
+    if (!rangeInput || !numberInput) return;
+
+    const syncFromRange = () => {
+        numberInput.value = String(valueFromRange(rangeInput.value));
+        onInput();
+    };
+    const syncFromNumber = () => {
+        rangeInput.value = String(rangeFromValue(numberInput.value));
+        onInput();
+    };
+    const commitFromRange = () => {
+        numberInput.value = String(valueFromRange(rangeInput.value));
+        onCommit();
+    };
+    const commitFromNumber = () => {
+        rangeInput.value = String(rangeFromValue(numberInput.value));
+        onCommit();
+    };
+
+    rangeInput.addEventListener("input", syncFromRange);
+    rangeInput.addEventListener("change", commitFromRange);
+    rangeInput.addEventListener("pointerup", commitFromRange);
+
+    numberInput.addEventListener("input", syncFromNumber);
+    numberInput.addEventListener("change", commitFromNumber);
+}
+
 // ── Canvas-координаты ────────────────────────────────────────────────────────
 
 /**
@@ -90,7 +128,3 @@ export function applyInputBounds(element, { min, max, step }) {
     element.max  = String(max);
     element.step = String(step);
 }
-
-
-
-

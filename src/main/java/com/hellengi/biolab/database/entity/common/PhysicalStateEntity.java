@@ -13,9 +13,12 @@ public class PhysicalStateEntity {
     @Column(nullable = false) private double y;
     @Column(nullable = false) private double vx;
     @Column(nullable = false) private double vy;
+    @Column(nullable = false) private double angularVelocity;
     @Column(nullable = false) private double radius;
     @Column(nullable = false) private double mass;
     @Column(nullable = false) private double density;
     private Double opacity;
     @Column(nullable = false) private double directionAngle;
 }
+
+

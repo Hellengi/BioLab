@@ -102,3 +102,5 @@ public class SimulationWorld {
         foodSpawnBudget = 0.0;
     }
 }
+
+

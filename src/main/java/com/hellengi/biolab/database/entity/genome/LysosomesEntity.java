@@ -22,3 +22,5 @@ public class LysosomesEntity {
     @Column(nullable = false)
     private double enzymeActivity;
 }
+
+

@@ -1,5 +1,6 @@
 package com.hellengi.biolab.database.entity.snapshot;
 
+import com.hellengi.biolab.database.entity.common.DamageFlowEntity;
 import com.hellengi.biolab.database.entity.common.LayoutStateEntity;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -17,6 +18,7 @@ public class SnapshotCellNucleusStateEntity {
     @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "cell_id", nullable = false)
     private SnapshotCellEntity cell;
+
     @Embedded
     @AttributeOverrides({
             @AttributeOverride(name = "x", column = @Column(name = "layout_x", nullable = false)),
@@ -30,6 +32,19 @@ public class SnapshotCellNucleusStateEntity {
     })
     private LayoutStateEntity layout = new LayoutStateEntity();
 
+    @Embedded
+    @AttributeOverrides({
+            @AttributeOverride(name = "damage", column = @Column(name = "damage_flow_damage", nullable = false)),
+            @AttributeOverride(name = "damageRate", column = @Column(name = "damage_flow_damage_rate", nullable = false)),
+            @AttributeOverride(name = "repairRate", column = @Column(name = "damage_flow_repair_rate", nullable = false)),
+            @AttributeOverride(name = "repairEnergyCostRate", column = @Column(name = "damage_flow_repair_energy_cost_rate", nullable = false))
+    })
+    private DamageFlowEntity damageFlow = new DamageFlowEntity();
+
     @Column(nullable = false)
     private double radius;
 }
+
+
+
+

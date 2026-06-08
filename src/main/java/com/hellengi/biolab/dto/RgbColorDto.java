@@ -7,3 +7,5 @@ public record RgbColorDto(
         double opacity
 ) {
 }
+
+

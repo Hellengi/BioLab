@@ -29,3 +29,5 @@ public class SnapshotCellCytosolStateEntity {
     @Column(nullable = false)
     private double opacity;
 }
+
+

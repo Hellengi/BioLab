@@ -19,3 +19,5 @@ public final class IdGenerator {
         SEQUENCE.accumulateAndGet(restoredId + 1, Math::max);
     }
 }
+
+

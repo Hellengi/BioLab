@@ -7,3 +7,5 @@ public record QuadtreeNodeDto(
         double height
 ) {
 }
+
+

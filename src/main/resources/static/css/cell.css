@@ -87,3 +87,5 @@
 }
 /* Исключение: impulse-row не схлопывается при .hidden пока видимый */
 #selectedCellImpulseRow.impulse-visible.hidden { display: grid !important; }
+
+

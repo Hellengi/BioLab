@@ -1,6 +1,6 @@
 import {dom} from "../dom.js";
 import {ensureCreateCellPreviewReady} from "./creation.js";
-import {closeActiveOrganellePanel} from "./creation-organelle.js";
+import {closeActiveOrganellePanel, hideActiveFinePanel} from "./creation-organelle.js";
 
 const TAB_PANELS = {
     control: "tabControl",
@@ -58,6 +58,7 @@ export function switchTab(tabKey) {
     }
 
     if (tabKey !== "create") {
+        hideActiveFinePanel();
         closeActiveOrganellePanel();
     }
 }
@@ -76,3 +77,5 @@ export function getActiveTab() {
 export function getLastTab() {
     return _lastTab;
 }
+
+

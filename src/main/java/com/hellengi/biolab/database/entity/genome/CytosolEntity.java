@@ -14,11 +14,18 @@ public class CytosolEntity {
     private Long id;
 
     @Column(nullable = false)
-    private double maxEnergy;
+    private double area;
 
     @Column(nullable = false)
-    private double dryMass;
+    private double density;
+
+    @Column(nullable = false)
+    private boolean gfpEnabled;
 
     @Column(nullable = false)
     private double gfp;
 }
+
+
+
+

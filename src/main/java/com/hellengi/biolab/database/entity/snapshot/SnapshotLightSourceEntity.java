@@ -41,3 +41,5 @@ public class SnapshotLightSourceEntity {
     @Column(length = 40)
     private String renderType;
 }
+
+

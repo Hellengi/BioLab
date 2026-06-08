@@ -14,3 +14,5 @@ public record FoodDto(
         Double capturedCellAnchorY
 ) {
 }
+
+

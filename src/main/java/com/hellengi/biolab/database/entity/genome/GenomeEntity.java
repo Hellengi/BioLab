@@ -32,4 +32,10 @@ public class GenomeEntity {
     @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true, optional = false)
     @JoinColumn(name = "lysosomes_id", nullable = false)
     private LysosomesEntity lysosomes = new LysosomesEntity();
+
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true, optional = false)
+    @JoinColumn(name = "flagella_id", nullable = false)
+    private FlagellaEntity flagella = new FlagellaEntity();
 }
+
+

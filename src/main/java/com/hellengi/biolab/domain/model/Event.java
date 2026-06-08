@@ -16,3 +16,5 @@ public interface Event {
                 && currentSeconds - getTime() >= getDuration();
     }
 }
+
+

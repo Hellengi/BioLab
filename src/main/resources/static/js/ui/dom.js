@@ -140,6 +140,7 @@ export function bindDom() {
     dom.createInfoGrid = optionalEl("createInfoGrid");
 
     dom.organellePanelHost   = optionalEl("organellePanelHost");
+    dom.flagellumSubscopeControls = optionalEl("flagellumSubscopeControls");
 
     dom.selectedCellIllumination = optionalEl("selectedCellIllumination");
 
@@ -155,15 +156,16 @@ export function bindDom() {
     dom.createDivisionAngleSlider = optionalEl("createDivisionAngleSlider");
     dom.createDivisionAngleInput = optionalEl("createDivisionAngleInput");
 
-    dom.createMaxEnergySlider = optionalEl("createMaxEnergySlider");
-    dom.createMaxEnergyInput = optionalEl("createMaxEnergyInput");
+    dom.createCytosolAreaSlider = optionalEl("createCytosolAreaSlider");
+    dom.createCytosolAreaInput = optionalEl("createCytosolAreaInput");
 
-    dom.createDryMassSlider = optionalEl("createDryMassSlider");
-    dom.createDryMassInput = optionalEl("createDryMassInput");
+    dom.createCytosolDensitySlider = optionalEl("createCytosolDensitySlider");
+    dom.createCytosolDensityInput = optionalEl("createCytosolDensityInput");
 
     dom.createElasticitySlider = optionalEl("createElasticitySlider");
     dom.createElasticityInput = optionalEl("createElasticityInput");
 
+    dom.gfpEnabled = optionalEl("gfpEnabled");
     dom.createGfpSlider = optionalEl("createGfpSlider");
     dom.createGfpInput = optionalEl("createGfpInput");
 
@@ -179,8 +181,10 @@ export function bindDom() {
     dom.createNucleusStartDamage = optionalEl("createNucleusStartDamage");
     dom.createNucleusFormula = optionalEl("createNucleusFormula");
 
-    dom.createStartCellDamageSlider = optionalEl("createStartCellDamageSlider");
-    dom.createStartCellDamageInput = optionalEl("createStartCellDamageInput");
+    dom.createStartNucleusDamageSlider = optionalEl("createStartNucleusDamageSlider");
+    dom.createStartNucleusDamageInput = optionalEl("createStartNucleusDamageInput");
+    dom.createStartCytosolDamageSlider = optionalEl("createStartCytosolDamageSlider");
+    dom.createStartCytosolDamageInput = optionalEl("createStartCytosolDamageInput");
     dom.createCytosolGfpCost = optionalEl("createCytosolGfpCost");
     dom.createMembraneOpacity = optionalEl("createMembraneOpacity");
     dom.createMembraneTransmittance = optionalEl("createMembraneTransmittance");
@@ -198,6 +202,12 @@ export function bindDom() {
 
     dom.createStartCpDamageSlider = optionalEl("createStartCpDamageSlider");
     dom.createStartCpDamageInput = optionalEl("createStartCpDamageInput");
+    dom.createStartMembraneDamageSlider = optionalEl("createStartMembraneDamageSlider");
+    dom.createStartMembraneDamageInput = optionalEl("createStartMembraneDamageInput");
+    dom.createStartLysosomeDamageSlider = optionalEl("createStartLysosomeDamageSlider");
+    dom.createStartLysosomeDamageInput = optionalEl("createStartLysosomeDamageInput");
+    dom.createStartFlagellumDamageSlider = optionalEl("createStartFlagellumDamageSlider");
+    dom.createStartFlagellumDamageInput = optionalEl("createStartFlagellumDamageInput");
     dom.createChloroplastStartDamage = optionalEl("createChloroplastStartDamage");
 
     dom.createLysosomeAmountSlider = optionalEl("createLysosomeAmountSlider");
@@ -208,6 +218,23 @@ export function bindDom() {
     dom.createLysosomeDigestRate = optionalEl("createLysosomeDigestRate");
     dom.createLysosomeNetYield = optionalEl("createLysosomeNetYield");
     dom.createLysosomeLeakRisk = optionalEl("createLysosomeLeakRisk");
+
+    dom.flagellumModeButtons = Array.from(document.querySelectorAll("[data-flagellum-mode]"));
+    dom.createFlagellumLengthSlider = optionalEl("createFlagellumLengthSlider");
+    dom.createFlagellumLengthInput = optionalEl("createFlagellumLengthInput");
+    dom.createFlagellumMotorPowerSlider = optionalEl("createFlagellumMotorPowerSlider");
+    dom.createFlagellumMotorPowerInput = optionalEl("createFlagellumMotorPowerInput");
+    dom.createFlagellumPairSpreadAngleSlider = optionalEl("createFlagellumPairSpreadAngleSlider");
+    dom.createFlagellumPairSpreadAngleInput = optionalEl("createFlagellumPairSpreadAngleInput");
+    dom.createFlagellumSteeringAsymmetrySlider = optionalEl("createFlagellumSteeringAsymmetrySlider");
+    dom.createFlagellumSteeringAsymmetryInput = optionalEl("createFlagellumSteeringAsymmetryInput");
+    dom.createFlagellumSummary = optionalEl("createFlagellumSummary");
+    dom.createFlagellumEnergyCost = optionalEl("createFlagellumEnergyCost");
+    dom.createFlagellumThrust = optionalEl("createFlagellumThrust");
+    dom.createFlagellumEnergyPriority = optionalEl("createFlagellumEnergyPriority");
+    dom.createFlagellumFormulaInfo = optionalEl("createFlagellumFormulaInfo");
+    dom.createMembraneStartDamage = optionalEl("createMembraneStartDamage");
+    dom.createLysosomeStartDamage = optionalEl("createLysosomeStartDamage");
 
     dom.exportWorldBtn = optionalEl("exportWorldBtn");
     dom.importWorldBtn = optionalEl("importWorldBtn");
@@ -243,6 +270,11 @@ export function bindDom() {
     dom.loadCellDeleteBtn = optionalEl("loadCellDeleteBtn");
     dom.loadCellConfirmBtn = optionalEl("loadCellConfirmBtn");
 }
+
+
+
+
+
 
 
 

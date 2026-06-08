@@ -10,3 +10,5 @@ public record CellEventDto(
         Double normalY
 ) {
 }
+
+
