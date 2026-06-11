@@ -48,6 +48,8 @@ import { setCreateInfoScope, setDisplayLayer, setSelectedInfoScope, state } from
 import { sendDisplayLayers } from "../transport/ws/socket.js";
 import { bindToolbarTooltips } from "./toolbar.js";
 import { t } from "../localization/localization.js";
+import { bindBenchmarkControls } from "../metrics/benchmark-ui.js";
+import { bindEventLogControls, refreshEventLog } from "../metrics/event-log.js";
 import {
     closeActiveFinePanel,
     closeActiveOrganellePanel,
@@ -70,6 +72,8 @@ export function bindEvents() {
     bindToolbarEvents();
     bindSettingsTabEvents();
     bindDisplayLayerEvents();
+    bindBenchmarkControls();
+    bindEventLogControls();
     bindSelectedCellEvents();
     bindPreviewLayerEvents();
     bindPreviewLightEvents();
@@ -95,8 +99,10 @@ function bindToolbarEvents() {
 
     dom.pauseBtn.addEventListener("click", () => togglePause());
 
-    bindAsyncClick(dom.resetBtn, handleSimulationReset,
-        "Reset simulation error", "Failed to reset simulation");
+    bindAsyncClick(dom.resetBtn, async () => {
+        await handleSimulationReset();
+        await refreshEventLog();
+    }, "Reset simulation error", "Failed to reset simulation");
 }
 
 // ── Панель настроек ───────────────────────────────────────────────────────────
@@ -420,5 +426,7 @@ function bindSidebarToggle() {
         }
     });
 }
+
+
 
 

@@ -1,6 +1,7 @@
 package com.hellengi.biolab.api.websocket;
 
 import com.hellengi.biolab.dto.DisplayLayersDto;
+import com.hellengi.biolab.metrics.PerformanceMetricsRegistry;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.stereotype.Component;
@@ -34,9 +35,11 @@ import java.util.stream.Collectors;
 public class SocketHandler extends TextWebSocketHandler {
     private static final String TYPE_DISPLAY_LAYERS = "displayLayers";
     private static final String TYPE_SUBSCRIBE = "subscribe";
+    private static final String TYPE_CLIENT_METRICS = "clientMetrics";
 
     private final Map<String, SessionChannel> sessions = new ConcurrentHashMap<>();
     private final JsonMapper objectMapper;
+    private final PerformanceMetricsRegistry performanceMetrics;
     private final ExecutorService sendExecutor = new ThreadPoolExecutor(
             BroadcastConstants.SEND_EXECUTOR_THREADS,
             BroadcastConstants.SEND_EXECUTOR_THREADS,
@@ -62,6 +65,10 @@ public class SocketHandler extends TextWebSocketHandler {
         try {
             Map<?, ?> payload = objectMapper.readValue(message.getPayload(), Map.class);
             String type = String.valueOf(payload.get("type"));
+            if (TYPE_CLIENT_METRICS.equals(type)) {
+                performanceMetrics.recordClientMetrics(session.getId(), payload);
+                return;
+            }
             if (!TYPE_DISPLAY_LAYERS.equals(type) && !TYPE_SUBSCRIBE.equals(type)) {
                 return;
             }
@@ -77,6 +84,7 @@ public class SocketHandler extends TextWebSocketHandler {
 
     public boolean hasOpenSessions() {
         removeClosedSessions();
+        recordSocketGauges();
         return sessions.values().stream().anyMatch(SessionChannel::isOpen);
     }
 
@@ -130,9 +138,31 @@ public class SocketHandler extends TextWebSocketHandler {
 
     private List<SessionChannel> openChannels() {
         removeClosedSessions();
+        recordSocketGauges();
         return sessions.values().stream()
                 .filter(SessionChannel::isOpen)
                 .toList();
+    }
+
+    private void recordSocketGauges() {
+        int open = 0;
+        int pending = 0;
+        int dropped = 0;
+        int skipped = 0;
+        for (SessionChannel channel : sessions.values()) {
+            if (!channel.isOpen()) {
+                continue;
+            }
+            open++;
+            pending += channel.pendingByLane.size();
+            dropped += channel.droppedFrames.get();
+            skipped += channel.skippedSends.get();
+        }
+
+        performanceMetrics.setGauge("server.websocket.sessions.open", open);
+        performanceMetrics.setGauge("server.websocket.pendingMessages", pending);
+        performanceMetrics.setGauge("server.websocket.droppedFrames.current", dropped);
+        performanceMetrics.setGauge("server.websocket.skippedSends.current", skipped);
     }
 
     private Optional<SessionChannel> channelOf(WebSocketSession session) {
@@ -257,13 +287,20 @@ public class SocketHandler extends TextWebSocketHandler {
             }
 
             String safeLane = lane == null ? BroadcastConstants.LANE_GENERIC : lane;
+            performanceMetrics.recordBytes("server.websocket.offeredBytes", Math.max(0, message.getPayloadLength()));
+            performanceMetrics.recordBytes("server.websocket.offeredBytes." + safeLane, Math.max(0, message.getPayloadLength()));
+
             WebSocketMessage<?> replaced = pendingByLane.put(safeLane, message);
             if (replaced != null) {
                 droppedFrames.incrementAndGet();
+                performanceMetrics.incrementCounter(PerformanceMetricsRegistry.SERVER_DROPPED_FRAMES);
+                performanceMetrics.incrementCounter(PerformanceMetricsRegistry.SERVER_DROPPED_FRAMES + "." + safeLane);
             }
+            recordSocketGauges();
 
             if (!sending.compareAndSet(false, true)) {
                 if (skippedSends.incrementAndGet() > BroadcastConstants.MAX_SKIPPED_SENDS_BEFORE_CLOSE) {
+                    performanceMetrics.incrementCounter("server.websocket.closed.slowClient");
                     closeQuietly();
                 }
                 return;
@@ -275,12 +312,20 @@ public class SocketHandler extends TextWebSocketHandler {
         private void drainLatest() {
             try {
                 while (isOpen()) {
-                    WebSocketMessage<?> message = pollNextMessage();
-                    if (message == null) {
+                    LaneMessage laneMessage = pollNextMessage();
+                    if (laneMessage == null) {
                         return;
                     }
-                    session.sendMessage(message);
+                    long sendStartNanos = System.nanoTime();
+                    session.sendMessage(laneMessage.message());
+                    long sendNanos = System.nanoTime() - sendStartNanos;
+                    performanceMetrics.recordDuration(PerformanceMetricsRegistry.SERVER_WEBSOCKET_SEND, sendNanos);
+                    performanceMetrics.recordDuration(PerformanceMetricsRegistry.SERVER_WEBSOCKET_SEND + "." + laneMessage.lane(), sendNanos);
+                    performanceMetrics.incrementCounter("server.websocket.sent." + laneMessage.lane());
+                    performanceMetrics.recordBytes("server.websocket.sentBytes", Math.max(0, laneMessage.message().getPayloadLength()));
+                    performanceMetrics.recordBytes("server.websocket.sentBytes." + laneMessage.lane(), Math.max(0, laneMessage.message().getPayloadLength()));
                     skippedSends.set(0);
+                    recordSocketGauges();
                 }
             } catch (IOException | RuntimeException ignored) {
                 closeQuietly();
@@ -292,11 +337,11 @@ public class SocketHandler extends TextWebSocketHandler {
             }
         }
 
-        private WebSocketMessage<?> pollNextMessage() {
+        private LaneMessage pollNextMessage() {
             for (String lane : BroadcastConstants.SEND_LANE_PRIORITY) {
                 WebSocketMessage<?> message = pendingByLane.remove(lane);
                 if (message != null) {
-                    return message;
+                    return new LaneMessage(lane, message);
                 }
             }
             return null;
@@ -312,6 +357,9 @@ public class SocketHandler extends TextWebSocketHandler {
         }
     }
 
+    private record LaneMessage(String lane, WebSocketMessage<?> message) {
+    }
+
     private static final class WebSocketThreadFactory implements ThreadFactory {
         private final AtomicInteger index = new AtomicInteger();
 
@@ -323,3 +371,5 @@ public class SocketHandler extends TextWebSocketHandler {
         }
     }
 }
+
+

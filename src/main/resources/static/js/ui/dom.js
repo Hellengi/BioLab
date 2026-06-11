@@ -35,6 +35,10 @@ export function bindDom() {
     dom.timeClock = optionalEl("timeClock");
     dom.timeTooltip = optionalEl("timeTooltip");
     dom.timeTooltipTick = optionalEl("timeTooltipTick");
+    dom.timeControlGroup = optionalEl("timeControlGroup");
+    dom.benchmarkToolbarIndicator = optionalEl("benchmarkToolbarIndicator");
+    dom.benchmarkToolbarTitle = optionalEl("benchmarkToolbarTitle");
+    dom.benchmarkToolbarProgress = optionalEl("benchmarkToolbarProgress");
     dom.timeSlider = requireEl("timeSlider");
     dom.pauseBtn = requireEl("pauseBtn");
     dom.speedLabel = requireEl("speedLabel");
@@ -270,4 +274,19 @@ export function bindDom() {
     dom.loadCellCancelBtn = optionalEl("loadCellCancelBtn");
     dom.loadCellDeleteBtn = optionalEl("loadCellDeleteBtn");
     dom.loadCellConfirmBtn = optionalEl("loadCellConfirmBtn");
+
+    dom.benchmarkWarmupMsInput = optionalEl("benchmarkWarmupMsInput");
+    dom.benchmarkRunMsInput = optionalEl("benchmarkRunMsInput");
+    dom.benchmarkSyntheticClientsInput = optionalEl("benchmarkSyntheticClientsInput");
+    dom.benchmarkRunAllBtn = optionalEl("benchmarkRunAllBtn");
+    dom.benchmarkScenarioButtons = Array.from(document.querySelectorAll("[data-benchmark-scenario]"));
+    dom.benchmarkResultsModal = optionalEl("benchmarkResultsModal");
+    dom.benchmarkResultsBody = optionalEl("benchmarkResultsBody");
+    dom.benchmarkCloseBtn = optionalEl("benchmarkCloseBtn");
+    dom.benchmarkCopyJsonBtn = optionalEl("benchmarkCopyJsonBtn");
+    dom.benchmarkDownloadBtn = optionalEl("benchmarkDownloadBtn");
+    dom.eventLogList = optionalEl("eventLogList");
+    dom.eventLogClearBtn = optionalEl("eventLogClearBtn");
 }
+
+

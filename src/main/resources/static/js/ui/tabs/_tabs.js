@@ -26,6 +26,7 @@ export function initTabs() {
 }
 
 export function switchTab(tabKey) {
+    const previousTab = _activeTab;
     if (tabKey === _activeTab) {
         return;
     }
@@ -61,6 +62,10 @@ export function switchTab(tabKey) {
         hideActiveFinePanel();
         closeActiveOrganellePanel();
     }
+
+    window.dispatchEvent(new CustomEvent("biolab:tab-change", {
+        detail: { tabKey, previousTab },
+    }));
 }
 
 export function setSelectedTabEnabled(enabled) {
@@ -77,5 +82,7 @@ export function getActiveTab() {
 export function getLastTab() {
     return _lastTab;
 }
+
+
 
 

@@ -1,5 +1,6 @@
 import { state } from "../store/state.js";
 import {updateStats} from "../store/actions.js";
+import { recordClientFps } from "../metrics/client-metrics.js";
 
 let changedFrameCount = 0;
 let windowStartMs = performance.now();
@@ -19,10 +20,13 @@ export function recordWorldFrame(world) {
     if (elapsed < 1000) return;
 
     state.fps = Math.round(changedFrameCount * 1000 / elapsed);
+    recordClientFps(state.fps);
     changedFrameCount = 0;
     windowStartMs = now;
 
     updateStats();
 }
+
+
 
 

@@ -95,7 +95,29 @@
   </div>
 </div>
 
+<!-- ══════════════════════════════════════════════════════════════════════════
+     Baseline benchmark results
+     ══════════════════════════════════════════════════════════════════════════ -->
+
+<div th:fragment="benchmarkResultsModal" id="benchmarkResultsModal" class="modal-overlay hidden">
+  <div class="modal-box modal-box--wide">
+    <div class="modal-header">
+      <span class="modal-title">Baseline benchmark results</span>
+    </div>
+    <div class="modal-body benchmark-modal-body">
+      <div id="benchmarkResultsBody" class="benchmark-results-body"></div>
+    </div>
+    <div class="modal-footer">
+      <button id="benchmarkCloseBtn" class="btn btn-outline-secondary">Close</button>
+      <button id="benchmarkCopyJsonBtn" class="btn btn-outline-secondary" disabled>Copy JSON</button>
+      <button id="benchmarkDownloadBtn" class="btn btn-primary" disabled>Download JSON</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
+
+
 
 

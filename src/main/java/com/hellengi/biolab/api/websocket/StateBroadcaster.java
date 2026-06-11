@@ -5,6 +5,7 @@ import com.hellengi.biolab.domain.SimulationEngine;
 import com.hellengi.biolab.dto.DisplayLayersDto;
 import com.hellengi.biolab.dto.SimulationMetricsDto;
 import com.hellengi.biolab.dto.SimulationRenderFrameDto;
+import com.hellengi.biolab.metrics.PerformanceMetricsRegistry;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -22,6 +23,7 @@ public class StateBroadcaster {
     private final SocketHandler socketHandler;
     private final JsonMapper objectMapper;
     private final BinaryRenderFrameEncoder binaryRenderFrameEncoder;
+    private final PerformanceMetricsRegistry performanceMetrics;
 
     private long lastMetricsBroadcastMs = 0L;
     private long lastLightingBroadcastMs = 0L;
@@ -53,7 +55,13 @@ public class StateBroadcaster {
         Map<RenderGroupKey, List<SocketHandler.SessionChannel>> groups = socketHandler.renderGroups();
         socketHandler.broadcastGrouped(BroadcastConstants.LANE_RENDER, groups, group -> {
             SimulationRenderFrameDto frame = simulationEngine.getRenderFrameDto(group.displayLayers(), group.viewport(), tps);
-            return binaryRenderFrameEncoder.encode(frame);
+            long encodeStartNanos = System.nanoTime();
+            WebSocketMessage<?> message = binaryRenderFrameEncoder.encode(frame);
+            long encodeNanos = System.nanoTime() - encodeStartNanos;
+            performanceMetrics.recordDuration(PerformanceMetricsRegistry.SERVER_RENDER_ENCODE, encodeNanos);
+            performanceMetrics.recordDuration(PerformanceMetricsRegistry.SERVER_RENDER_ENCODE + ".binary", encodeNanos);
+            recordPayloadBytes(BroadcastConstants.LANE_RENDER, message);
+            return message;
         });
     }
 
@@ -91,6 +99,7 @@ public class StateBroadcaster {
 
     private void refreshMeasuredTps() {
         lastKnownTps = simulationEngine.getMetricsDto().tps();
+        performanceMetrics.setGauge("server.tps", lastKnownTps);
     }
 
     public void broadcast(Object dto) {
@@ -100,11 +109,39 @@ public class StateBroadcaster {
     }
 
     private WebSocketMessage<?> toTextMessage(Object dto) {
+        long startNanos = System.nanoTime();
         try {
             String payload = objectMapper.writeValueAsString(dto);
-            return new TextMessage(payload);
+            WebSocketMessage<?> message = new TextMessage(payload);
+            performanceMetrics.recordDuration("server.text.encode", System.nanoTime() - startNanos);
+            recordPayloadBytes(payloadLane(dto), message);
+            return message;
         } catch (Exception e) {
             throw new RuntimeException("Failed to broadcast simulation payload", e);
         }
     }
+
+    private void recordPayloadBytes(String lane, WebSocketMessage<?> message) {
+        if (message == null) {
+            return;
+        }
+        int bytes = Math.max(0, message.getPayloadLength());
+        performanceMetrics.recordBytes(PerformanceMetricsRegistry.SERVER_PAYLOAD_BYTES, bytes);
+        performanceMetrics.recordBytes(PerformanceMetricsRegistry.SERVER_PAYLOAD_BYTES + "." + lane, bytes);
+    }
+
+    private String payloadLane(Object dto) {
+        if (dto instanceof SimulationMetricsDto) {
+            return BroadcastConstants.LANE_METRICS;
+        }
+        if (dto instanceof com.hellengi.biolab.dto.SimulationLightingFrameDto) {
+            return BroadcastConstants.LANE_LIGHTING;
+        }
+        if (dto instanceof com.hellengi.biolab.dto.CellDetailsDto) {
+            return BroadcastConstants.LANE_DETAILS;
+        }
+        return BroadcastConstants.LANE_GENERIC;
+    }
 }
+
+

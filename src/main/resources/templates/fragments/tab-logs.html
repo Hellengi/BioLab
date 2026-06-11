@@ -5,20 +5,21 @@
 <div th:fragment="tab-logs" id="tabLogs" class="tab-panel hidden">
   <div class="panel-header-row">
     <h2>Event Log</h2>
+    <button id="eventLogClearBtn" type="button" class="btn btn-outline-secondary event-log-clear-btn">Clear history</button>
   </div>
-  <div class="placeholder-block placeholder-block--large">
-    <div class="placeholder-icon">🧾</div>
-    <div class="placeholder-text">Event log coming soon</div>
-    <div class="placeholder-sub">
-      Real-time simulation events, including mutations, species extinctions,
-      population milestones, food scarcity alerts, energy spikes, and cell division bursts.
-    </div>
+  <div id="eventLogList" class="event-log-list" aria-live="polite">
+    <article class="log-entry log-entry--muted log-entry--static" data-log-static="true">
+      <div class="log-entry-icon">I</div>
+      <div class="log-entry-content">
+        <div class="log-entry-header">
+          <div class="log-entry-title">Event log ready</div>
+          <time class="log-entry-time">--:--:--</time>
+        </div>
+        <div class="log-entry-body">Benchmark summaries and simulation events appear here from top to bottom. Stored entries are loaded from the backend after page reload.</div>
+      </div>
+    </article>
   </div>
 </div>
 
 </body>
 </html>
-
-
-
-

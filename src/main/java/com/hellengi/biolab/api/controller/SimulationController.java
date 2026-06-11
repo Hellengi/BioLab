@@ -6,6 +6,12 @@ import com.hellengi.biolab.dto.LightProbeDto;
 import com.hellengi.biolab.dto.SimulationSettingsDto;
 import com.hellengi.biolab.dto.SimulationWorldDto;
 import com.hellengi.biolab.dto.SnapshotDto;
+import com.hellengi.biolab.metrics.BaselineScenarioRequestDto;
+import com.hellengi.biolab.metrics.EventLogAppendRequestDto;
+import com.hellengi.biolab.metrics.EventLogEntryDto;
+import com.hellengi.biolab.metrics.EventLogStore;
+import com.hellengi.biolab.metrics.PerformanceMetricsRegistry;
+import com.hellengi.biolab.metrics.PerformanceMetricsSnapshotDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,11 +25,58 @@ import java.util.Map;
 public class SimulationController {
     private final SimulationEngine simulationEngine;
     private final SnapshotService snapshotService;
+    private final PerformanceMetricsRegistry performanceMetrics;
+    private final EventLogStore eventLogStore;
 
     @PostMapping("/reset")
     public ResponseEntity<Map<String, String>> reset() {
         simulationEngine.reset();
+        eventLogStore.append(new EventLogAppendRequestDto(
+                "world-reset",
+                "World reset",
+                "Simulation world reset to initial state.",
+                "info",
+                "R",
+                Map.of("source", "server")
+        ));
         return ResponseEntity.ok(Map.of("status", "reset"));
+    }
+
+    @GetMapping("/event-log")
+    public ResponseEntity<List<EventLogEntryDto>> eventLog() {
+        return ResponseEntity.ok(eventLogStore.list());
+    }
+
+    @PostMapping("/event-log")
+    public ResponseEntity<EventLogEntryDto> appendEventLog(@RequestBody EventLogAppendRequestDto requestDto) {
+        return ResponseEntity.ok(eventLogStore.append(requestDto));
+    }
+
+    @DeleteMapping("/event-log")
+    public ResponseEntity<Map<String, String>> clearEventLog() {
+        eventLogStore.clear();
+        return ResponseEntity.ok(Map.of("status", "cleared"));
+    }
+
+
+    @GetMapping("/metrics/performance")
+    public ResponseEntity<PerformanceMetricsSnapshotDto> performanceMetrics() {
+        return ResponseEntity.ok(performanceMetrics.snapshot());
+    }
+
+    @PostMapping("/metrics/performance/reset")
+    public ResponseEntity<Map<String, String>> resetPerformanceMetrics() {
+        performanceMetrics.reset();
+        return ResponseEntity.ok(Map.of("status", "reset"));
+    }
+
+    @PostMapping("/benchmark/reset")
+    public ResponseEntity<Map<String, String>> resetForBenchmark(@RequestBody(required = false) BaselineScenarioRequestDto requestDto) {
+        simulationEngine.resetForBaseline(requestDto);
+        return ResponseEntity.ok(Map.of(
+                "status", "reset",
+                "scenario", requestDto == null ? "manual" : requestDto.normalizedName()
+        ));
     }
 
     @GetMapping("/world")
@@ -76,5 +129,7 @@ public class SimulationController {
         return ResponseEntity.ok(Map.of("status", "deleted"));
     }
 }
+
+
 
 

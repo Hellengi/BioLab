@@ -1,6 +1,7 @@
 package com.hellengi.biolab.domain.settings;
 
 import com.hellengi.biolab.dto.RangedValueDto;
+import com.hellengi.biolab.metrics.BaselineScenarioRequestDto;
 import com.hellengi.biolab.dto.SimulationSettingsDto;
 import com.hellengi.biolab.config.YamlConfig;
 import org.springframework.stereotype.Component;
@@ -275,6 +276,63 @@ public class RuntimeOverrides {
         );
     }
 
+
+    public void prepareForBaseline(BaselineScenarioRequestDto scenario) {
+        reset();
+        this.timeSlider = TIME_SLIDER_CENTER;
+        this.paused = scenario == null || !scenario.running();
+
+        if (scenario == null) {
+            return;
+        }
+
+        if (scenario.globalLightPercent() != null) {
+            this.globalLight = clampUnit(scenario.globalLightPercent() / 100.0);
+        }
+        if (scenario.globalLightCycleEnabled() != null) {
+            this.globalLightCycleEnabled = scenario.globalLightCycleEnabled();
+        }
+        if (scenario.globalLightCycleMinPercent() != null) {
+            this.globalLightCycleMin = clampUnit(scenario.globalLightCycleMinPercent() / 100.0);
+        }
+        if (scenario.globalLightCyclePeriodSeconds() != null) {
+            this.globalLightCyclePeriodSeconds = controlDoubleRaw(
+                    scenario.globalLightCyclePeriodSeconds(),
+                    baseConfig.getControls().getGlobalLightCyclePeriod()
+            );
+        }
+        if (scenario.localLightSourcesEnabled() != null) {
+            this.localLightSourcesEnabled = scenario.localLightSourcesEnabled();
+        }
+        if (scenario.lightSourceCount() != null) {
+            this.lightSourceCount = controlIntRaw(
+                    scenario.lightSourceCount(),
+                    baseConfig.getControls().getLightSourceCount()
+            );
+        }
+        if (scenario.lightSourceStartAngle() != null) {
+            this.lightSourceStartAngle = normalizeStartAngle(scenario.lightSourceStartAngle());
+        }
+        if (scenario.lightSourceBrightness() != null) {
+            this.lightSourceBrightness = controlIntRaw(
+                    scenario.lightSourceBrightness(),
+                    baseConfig.getControls().getLightSourceBrightness()
+            );
+        }
+        if (scenario.lightSourceOrbitRadius() != null) {
+            this.lightSourceOrbitRadius = controlIntRaw(
+                    scenario.lightSourceOrbitRadius(),
+                    baseConfig.getControls().getLightSourceOrbitRadius()
+            );
+        }
+        if (scenario.lightSourceOrbitSpeed() != null) {
+            this.lightSourceOrbitSpeed = controlIntRaw(
+                    scenario.lightSourceOrbitSpeed(),
+                    baseConfig.getControls().getLightSourceOrbitSpeed()
+            );
+        }
+    }
+
     public void reset() {
         this.initialCellCount = null;
         this.foodSpawnIntensity = null;
@@ -298,6 +356,10 @@ public class RuntimeOverrides {
 
     public void pause() {
         this.paused = true;
+    }
+
+    public void setPaused(boolean paused) {
+        this.paused = paused;
     }
 
 
@@ -356,6 +418,27 @@ public class RuntimeOverrides {
         return Math.round((clamped - control.getMin()) / step) * step + control.getMin();
     }
 
+
+    private int controlIntRaw(int value, YamlConfig.Control control) {
+        int min = (int) Math.round(control.getMin());
+        int max = (int) Math.round(control.getMax());
+        int step = Math.max(1, (int) Math.round(control.getStep()));
+
+        int clamped = clampInt(value, min, max);
+        return Math.round((clamped - min) / (float) step) * step + min;
+    }
+
+    private double controlDoubleRaw(double value, YamlConfig.Control control) {
+        double clamped = clampDouble(value, control.getMin(), control.getMax());
+        double step = control.getStep();
+
+        if (step <= 0.0) {
+            return clamped;
+        }
+
+        return Math.round((clamped - control.getMin()) / step) * step + control.getMin();
+    }
+
     private int clampInt(int value, int min, int max) {
         return Math.max(min, Math.min(max, value));
     }
@@ -376,5 +459,7 @@ public class RuntimeOverrides {
         return Math.max(0.0, Math.min(1.0, value));
     }
 }
+
+
 
 

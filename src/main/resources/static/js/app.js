@@ -10,6 +10,7 @@ import {applySimulationConfig, loadSimulationConfig, resetClientState, updateSta
 import { refreshSelection } from "./ui/tabs/selection.js";
 import { applyTranslations, initLocalization, t } from "./localization/localization.js";
 import { getCanvasCameraState } from "./ui/panels/canvas-camera.js";
+import { recordClientDrawTime } from "./metrics/client-metrics.js";
 
 
 let lastRenderedWorld = null;
@@ -69,7 +70,9 @@ function bindLocalizationRefresh() {
 function animationLoop(now = performance.now()) {
     refreshViewportSubscription(now);
     if (state.world && state.config && shouldRenderWorldFrame(now)) {
+        const drawStart = performance.now();
         render(dom.ctx, state);
+        recordClientDrawTime(performance.now() - drawStart);
         recordWorldFrame(state.world);
         lastRenderAtMs = now;
     }
@@ -153,5 +156,7 @@ function rounded(value, multiplier = 100) {
     if (!Number.isFinite(number)) return 0;
     return Math.round(number * multiplier) / multiplier;
 }
+
+
 
 

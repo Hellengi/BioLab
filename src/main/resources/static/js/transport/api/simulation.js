@@ -1,4 +1,4 @@
-import { getJson, putJsonForJson, post, postForJson, del } from "./_http.js";
+import { getJson, putJsonForJson, post, postForJson, postJsonForJson, del } from "./_http.js";
 
 export function getConfig() {
     return getJson("/api/simulation/config");
@@ -39,4 +39,30 @@ export function getLightAt(x, y) {
     });
 
     return getJson(`/api/simulation/light?${query.toString()}`);
+}
+
+
+export function getPerformanceMetrics() {
+    return getJson("/api/simulation/metrics/performance");
+}
+
+export function resetPerformanceMetrics() {
+    return postForJson("/api/simulation/metrics/performance/reset");
+}
+
+export function resetSimulationForBenchmark(payload) {
+    return postJsonForJson("/api/simulation/benchmark/reset", payload ?? {});
+}
+
+export function getEventLog() {
+    return getJson("/api/simulation/event-log");
+}
+
+export function appendEventLogEntry(payload) {
+    return postJsonForJson("/api/simulation/event-log", payload ?? {});
+}
+
+export async function clearEventLog() {
+    const response = await del("/api/simulation/event-log");
+    return response.json();
 }

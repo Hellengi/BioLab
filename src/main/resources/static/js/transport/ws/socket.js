@@ -10,6 +10,7 @@ import {
 import { updateStats } from "../../store/actions.js";
 import { getCanvasCameraState, getVisibleWorldBounds } from "../../ui/panels/canvas-camera.js";
 import { decodeBinaryRenderFrame } from "./binary-render-frame.js";
+import { configureClientMetricsSender, recordClientDecodeTime } from "../../metrics/client-metrics.js";
 
 let socket = null;
 let pendingRenderFrame = null;
@@ -92,16 +93,26 @@ export function connectSocket() {
     socket.binaryType = "arraybuffer";
     socket.onopen = () => {
         console.log("WebSocket connected");
+        configureClientMetricsSender(payload => {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify(payload));
+            }
+        });
         lastDisplayLayersPayload = "";
         sendDisplayLayers({ force: true });
     };
     socket.onmessage = (event) => {
+        const decodeStart = performance.now();
         let message;
+        let payloadBytes = 0;
         if (event.data instanceof ArrayBuffer) {
+            payloadBytes = event.data.byteLength;
             message = decodeBinaryRenderFrame(event.data);
         } else {
+            payloadBytes = event.data?.length ?? 0;
             message = JSON.parse(event.data);
         }
+        recordClientDecodeTime(performance.now() - decodeStart, payloadBytes);
 
         switch (message.type) {
             case SERVER_MESSAGE_TYPES.world:
@@ -131,6 +142,7 @@ export function connectSocket() {
         pendingCellDetails = null;
         pendingMetricsMessage = null;
         resetMetrics();
+        configureClientMetricsSender(null);
         lastDisplayLayersPayload = "";
         console.log("WebSocket disconnected. Reconnecting...");
         setTimeout(connectSocket, 1000);
@@ -194,4 +206,6 @@ function currentViewportPayload() {
         return null;
     }
 }
+
+
 
