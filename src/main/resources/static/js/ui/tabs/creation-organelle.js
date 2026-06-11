@@ -1,4 +1,3 @@
-
 import { cssVar } from "../../core/utils.js";
 import { setCreateInfoScope } from "../../store/state.js";
 
@@ -12,7 +11,7 @@ export let lysosomeEnabled = false;
 export let flagellumEnabled = false;
 export let flagellumCount = 1;
 export let melaninEnabled = false;
-export let gfpEnabled = false;
+export let bioluminescenceEnabled = false;
 
 export function setChloroplastEnabled(value) {
     chloroplastEnabled = Boolean(value);
@@ -49,9 +48,9 @@ export function setMelaninEnabled(value) {
     _syncMelaninUi();
 }
 
-export function setGfpEnabled(value) {
-    gfpEnabled = Boolean(value);
-    _syncGfpUi();
+export function setBioluminescenceEnabled(value) {
+    bioluminescenceEnabled = Boolean(value);
+    _syncBioluminescenceUi();
 }
 
 export function initOrganellePanels(onToggle) {
@@ -65,7 +64,7 @@ export function initOrganellePanels(onToggle) {
     _bindLysosomeToggle(onToggle);
     _bindFlagellumToggle(onToggle);
     _bindMelaninToggle(onToggle);
-    _bindGfpToggle(onToggle);
+    _bindBioluminescenceToggle(onToggle);
     _bindFlagellumSubscopeButtons();
 
     _organellePanelsInitialized = true;
@@ -159,13 +158,13 @@ function _bindMelaninToggle(onToggle) {
     });
 }
 
-function _bindGfpToggle(onToggle) {
-    const cb = document.getElementById("gfpEnabled");
+function _bindBioluminescenceToggle(onToggle) {
+    const cb = document.getElementById("bioluminescenceEnabled");
     if (!cb) return;
 
-    _syncGfpUi();
+    _syncBioluminescenceUi();
     cb.addEventListener("change", () => {
-        setGfpEnabled(cb.checked);
+        setBioluminescenceEnabled(cb.checked);
         onToggle?.();
     });
 }
@@ -206,9 +205,9 @@ function _syncMelaninUi() {
     if (cb) cb.checked = melaninEnabled;
 }
 
-function _syncGfpUi() {
-    const cb = document.getElementById("gfpEnabled");
-    if (cb) cb.checked = gfpEnabled;
+function _syncBioluminescenceUi() {
+    const cb = document.getElementById("bioluminescenceEnabled");
+    if (cb) cb.checked = bioluminescenceEnabled;
 }
 
 export function hasActiveOrganellePanel() {
@@ -361,8 +360,3 @@ function _normalizeFlagellumCount(value) {
 function _cap(s) {
     return s.charAt(0).toUpperCase() + s.slice(1);
 }
-
-
-
-
-

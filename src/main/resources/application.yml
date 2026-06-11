@@ -1,3 +1,4 @@
+
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/biolab
@@ -35,7 +36,10 @@ simulation:
     orbit-speed-max-radians-per-tick: 0.01
     falloff-factor: 400.0
     grid-step: 8
-    cell-fluorescence-max-brightness: 0.02
+    cell-bioluminescence-max-brightness: 0.18
+    bioluminescence-energy-to-light-factor: 3.0
+    scattering-albedo: 0.48
+    scattered-light-radius-grid-cells: 6.0
 
   collision:
     cell-restitution: 1.0
@@ -58,17 +62,17 @@ simulation:
       max: 100
       step: 1
     offset-range: 20.0
-    nucleoid-mass-factor: 45.0
+    nucleoid-density-factor: 1.10
     nucleoid-area-factor: 18.0
     nucleoid-energy-consumption: 0.012
     nucleoid-div-energy-cost: 5.0
-    cytosol-mass-factor: 1.0
+    cytosol-density-factor: 1.0
     cytosol-area-factor: 0.58
     cytosol-energy-consumption-factor: 0.0007
     cytosol-div-energy-cost-factor: 0.02
-    cytosol-gfp-consumption-factor: 0.0009
+    cytosol-bioluminescence-consumption-factor: 0.04
     cytosol-color-weight: 1.0
-    membrane-mass-factor: 2.2
+    membrane-density-factor: 1.05
     membrane-area-factor: 0.32
     membrane-energy-consumption-factor: 0.0012
     membrane-div-energy-cost-factor: 0.025
@@ -76,7 +80,7 @@ simulation:
     membrane-melanin-opacity-factor: 0.42
     membrane-melanin-protection-factor: 3.2
     membrane-melanin-energy-consumption-factor: 0.003
-    chloroplast-mass-factor: 6.0
+    chloroplast-density-factor: 1.15
     chloroplast-area-factor: 4.0
     chloroplast-energy-consumption-factor: 0.0014
     chloroplast-div-energy-cost-factor: 0.12
@@ -88,7 +92,7 @@ simulation:
     cp-photo-damage-factor: 0.006
     cp-damage-leak-threshold: 0.55
     cp-damage-leak-factor: 0.035
-    lysosome-mass-factor: 4.5
+    lysosome-density-factor: 1.10
     lysosome-area-factor: 4.7
     lysosome-energy-consumption-factor: 0.006
     lysosome-div-energy-cost-factor: 0.09
@@ -101,7 +105,7 @@ simulation:
     lysosome-capture-damage-threshold: 0.65
     lysosome-repair-share: 0.12
     lysosome-repair-energy-cost: 1.2
-    flagellum-mass-factor: 2.2
+    flagellum-density-factor: 1.05
     flagellum-area-factor: 0.75
     flagellum-div-energy-cost-factor: 0.05
     flagellum-base-thrust-factor: 0.045
@@ -247,8 +251,8 @@ simulation:
       min: 0.05
       max: 1.0
       step: 0.01
-    gfp-enabled-initial: false
-    gfp:
+    bioluminescence-enabled-initial: false
+    bioluminescence:
       initial: 0.0
       min: 0.0
       max: 100.0
@@ -340,7 +344,7 @@ simulation:
       cytosol-area: 4.0
       cytosol-density: 0.08
       elasticity: 0.04
-      gfp: 8.0
+      bioluminescence: 8.0
       melanin-percent: 8.0
       chloroplast-amount: 0.12
       chlorophyll: 8.0
@@ -363,5 +367,3 @@ simulation:
       min: 0.0
       max: 359.0
       step: 1.0
-
-

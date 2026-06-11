@@ -1,5 +1,7 @@
+
 package com.hellengi.biolab.dto.database_mapper;
 
+import com.hellengi.biolab.config.YamlConfig;
 import com.hellengi.biolab.database.entity.SnapshotEntity;
 import com.hellengi.biolab.database.entity.common.*;
 import com.hellengi.biolab.database.entity.snapshot.*;
@@ -11,11 +13,18 @@ import tools.jackson.databind.json.JsonMapper;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import static com.hellengi.biolab.dto.database_mapper.SnapshotEntityStateFactory.damage;
+import static com.hellengi.biolab.dto.database_mapper.SnapshotEntityStateFactory.energy;
+import static com.hellengi.biolab.dto.database_mapper.SnapshotEntityStateFactory.layout;
+import static com.hellengi.biolab.dto.database_mapper.SnapshotEntityStateFactory.physical;
+import static com.hellengi.biolab.util.Utils.safeList;
+
 @Component
 @RequiredArgsConstructor
 public class SnapshotMapper {
     private final GenomeEntityMapper genomeMapper;
     private final JsonMapper objectMapper;
+    private final YamlConfig baseConfig;
 
     public SnapshotEntity toEntity(String name, LocalDateTime createdAt, SnapshotDto snapshot) {
         if (snapshot == null || snapshot.world() == null || snapshot.settings() == null) {
@@ -30,12 +39,12 @@ public class SnapshotMapper {
         entity.setLighting(lighting(snapshot.world().lighting()));
 
         int cellIndex = 0;
-        for (CellDto cell : safe(snapshot.world().cells())) {
+        for (CellDto cell : safeList(snapshot.world().cells())) {
             entity.addCell(cell(cell, cellIndex++));
         }
 
         int foodIndex = 0;
-        for (FoodDto food : safe(snapshot.world().foods())) {
+        for (FoodDto food : safeList(snapshot.world().foods())) {
             entity.addFood(food(food, foodIndex++));
         }
 
@@ -86,20 +95,32 @@ public class SnapshotMapper {
         cell.setChloroplastsState(chloroplasts(dto));
         cell.setLysosomesState(lysosomes(dto));
 
-        for (LysosomeSlotDto slot : safe(dto.lysosomeSlots())) {
+        for (LysosomeSlotDto slot : safeList(dto.lysosomeSlots())) {
             cell.addLysosomeSlot(slot(slot));
         }
 
-        for (FlagellumSlotDto slot : safe(dto.flagellumSlots())) {
+        for (FlagellumSlotDto slot : safeList(dto.flagellumSlots())) {
             cell.addFlagellumSlot(flagellumSlot(slot));
         }
 
         int eventIndex = 0;
-        for (CellEventDto event : safe(dto.events())) {
+        for (CellEventDto event : safeList(dto.events())) {
             cell.addEvent(event(event, eventIndex++));
         }
 
         return cell;
+    }
+
+    private double snapshotMaxEnergy(SnapshotCellEntity entity) {
+        double cytosolArea = entity.getGenome() != null && entity.getGenome().getCytosol() != null
+                ? Math.max(0.0, entity.getGenome().getCytosol().getArea())
+                : 0.0;
+        return cytosolArea * 0.72;
+    }
+
+    private double snapshotDryMass(double mass, double energy) {
+        double energyMass = Math.max(0.0, energy) * Math.max(0.0, baseConfig.getCell().getEnergyToMassFactor());
+        return Math.max(0.0, mass - energyMass);
     }
 
     private CellDto cell(SnapshotCellEntity entity) {
@@ -120,11 +141,11 @@ public class SnapshotMapper {
         return new CellDto(
                 entity.getWorldCellId(),
                 p.getX(), p.getY(), p.getVx(), p.getVy(), p.getAngularVelocity(),
-                e.getEnergy(), p.getRadius(),
+                e.getEnergy(), snapshotMaxEnergy(entity), p.getRadius(),
                 nl.getX(), nl.getY(), nucleus.getRadius(), nl.getTargetX(), nl.getTargetY(),
                 !entity.isAlive(),
                 genomeMapper.toDto(entity.getGenome()),
-                entity.getLifetimeTicks(), entity.getLocalLight(), p.getMass(), p.getDensity(), p.getOpacity(),
+                entity.getLifetimeTicks(), entity.getLocalLight(), p.getMass(), snapshotDryMass(p.getMass(), e.getEnergy()), p.getDensity(), p.getOpacity(),
                 nd.getDamage(), cd.getDamage(), cpd.getDamage(), md.getDamage(), ld.getDamage(), averageFlagellumDamage(entity),
                 e.getProductionRate(), e.getDigestionProductionRate(), e.getConsumptionRate(), 1.0, e.getConsumptionRate(), e.getDigestionCostRate(),
                 cpd.getDamageRate(), nd.getDamageRate(), cd.getDamageRate(), md.getDamageRate(), ld.getDamageRate(), flagellumDamageRate(entity),
@@ -316,7 +337,7 @@ public class SnapshotMapper {
         entity.setGridWidth(dto.gridWidth());
         entity.setGridHeight(dto.gridHeight());
         int i = 0;
-        for (LightSourceDto source : safe(dto.sources())) {
+        for (LightSourceDto source : safeList(dto.sources())) {
             SnapshotLightSourceEntity item = new SnapshotLightSourceEntity();
             item.setPositionInSnapshot(i++);
             item.setX(source.x());
@@ -339,7 +360,7 @@ public class SnapshotMapper {
                 entity.getGlobalLight(), entity.getCycleTick(),
                 entity.getSources().stream().map(s -> new LightSourceDto(s.getX(), s.getY(), s.getBrightness(), s.getOrbitRadius(), s.getOrbitSpeed(), s.getAngle(), s.getRenderType())).toList(),
                 entity.getGridStep(), entity.getGridWidth(), entity.getGridHeight(),
-                new double[0], null, new double[0], List.of()
+                new double[0], null, null, null, new double[0], List.of()
         );
     }
 
@@ -359,35 +380,4 @@ public class SnapshotMapper {
         }
     }
 
-    private PhysicalStateEntity physical(double x, double y, double vx, double vy, double angularVelocity, double radius, double mass, double density, Double opacity, double directionAngle) {
-        PhysicalStateEntity state = new PhysicalStateEntity();
-        state.setX(x); state.setY(y); state.setVx(vx); state.setVy(vy); state.setAngularVelocity(angularVelocity); state.setRadius(radius); state.setMass(mass); state.setDensity(density); state.setOpacity(opacity); state.setDirectionAngle(directionAngle);
-        return state;
-    }
-
-    private EnergyFlowEntity energy(double energy, double production, double consumption, double digestionProduction, double digestionCost, double repairCost, double divisionCost) {
-        EnergyFlowEntity state = new EnergyFlowEntity();
-        state.setEnergy(energy); state.setProductionRate(production); state.setConsumptionRate(consumption); state.setDigestionProductionRate(digestionProduction); state.setDigestionCostRate(digestionCost); state.setRepairCostRate(repairCost); state.setDivisionCost(divisionCost);
-        return state;
-    }
-
-    private DamageFlowEntity damage(double damage, double damageRate, double repairRate, double repairEnergyCostRate) {
-        DamageFlowEntity state = new DamageFlowEntity();
-        state.setDamage(damage); state.setDamageRate(damageRate); state.setRepairRate(repairRate); state.setRepairEnergyCostRate(repairEnergyCostRate);
-        return state;
-    }
-
-    private LayoutStateEntity layout(double x, double y, double radius, double rotation, double targetX, double targetY, double targetRadius, double targetRotation) {
-        LayoutStateEntity state = new LayoutStateEntity();
-        state.setX(x); state.setY(y); state.setRadius(radius); state.setRotation(rotation); state.setTargetX(targetX); state.setTargetY(targetY); state.setTargetRadius(targetRadius); state.setTargetRotation(targetRotation);
-        return state;
-    }
-
-    private <T> List<T> safe(List<T> list) {
-        return list == null ? List.of() : list;
-    }
 }
-
-
-
-

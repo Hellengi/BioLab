@@ -1,3 +1,4 @@
+
 package com.hellengi.biolab.config;
 
 import lombok.Getter;
@@ -66,7 +67,10 @@ public class YamlConfig {
         private double orbitSpeedMaxRadiansPerTick = 0.01;
         private double falloffFactor = 300.0;
         private int gridStep = 8;
-        private double cellFluorescenceMaxBrightness = 0.02;
+        private double cellBioluminescenceMaxBrightness = 0.18;
+        private double bioluminescenceEnergyToLightFactor = 3.0;
+        private double scatteringAlbedo = 0.48;
+        private double scatteredLightRadiusGridCells = 6.0;
     }
 
     @Getter @Setter
@@ -90,19 +94,19 @@ public class YamlConfig {
         private Control start = new Control();
         private double offsetRange;
 
-        private double nucleoidMassFactor = 45.0;
+        private double nucleoidDensityFactor = 1.10;
         private double nucleoidAreaFactor = 18.0;
         private double nucleoidEnergyConsumption = 0.012;
         private double nucleoidDivEnergyCost = 5.0;
 
-        private double cytosolMassFactor = 1.0;
+        private double cytosolDensityFactor = 1.0;
         private double cytosolAreaFactor = 0.58;
         private double cytosolEnergyConsumptionFactor = 0.0007;
         private double cytosolDivEnergyCostFactor = 0.02;
-        private double cytosolGfpConsumptionFactor = 0.0009;
+        private double cytosolBioluminescenceConsumptionFactor = 0.04;
         private double cytosolColorWeight = 1.0;
 
-        private double membraneMassFactor = 2.2;
+        private double membraneDensityFactor = 1.05;
         private double membraneAreaFactor = 0.32;
         private double membraneEnergyConsumptionFactor = 0.0012;
         private double membraneDivEnergyCostFactor = 0.025;
@@ -111,7 +115,7 @@ public class YamlConfig {
         private double membraneMelaninProtectionFactor = 3.2;
         private double membraneMelaninEnergyConsumptionFactor = 0.003;
 
-        private double chloroplastMassFactor = 6.0;
+        private double chloroplastDensityFactor = 1.15;
         private double chloroplastAreaFactor = 4.0;
         private double chloroplastEnergyConsumptionFactor = 0.0014;
         private double chloroplastDivEnergyCostFactor = 0.12;
@@ -124,7 +128,7 @@ public class YamlConfig {
         private double cpDamageLeakThreshold = 0.55;
         private double cpDamageLeakFactor = 0.006;
 
-        private double lysosomeMassFactor = 4.5;
+        private double lysosomeDensityFactor = 1.10;
         private double lysosomeAreaFactor = 4.7;
         private double lysosomeEnergyConsumptionFactor = 0.006;
         private double lysosomeDivEnergyCostFactor = 0.09;
@@ -138,7 +142,7 @@ public class YamlConfig {
         private double lysosomeRepairShare = 0.20;
         private double lysosomeRepairEnergyCost = 1.2;
 
-        private double flagellumMassFactor = 2.2;
+        private double flagellumDensityFactor = 1.05;
         private double flagellumAreaFactor = 0.75;
         private double flagellumDivEnergyCostFactor = 0.05;
         private double flagellumBaseThrustFactor = 0.045;
@@ -207,8 +211,8 @@ public class YamlConfig {
         private Control cytosolArea = new Control();
         private Control cytosolDensity = new Control();
         private Control elasticity = new Control();
-        private boolean gfpEnabledInitial = false;
-        private Control gfp = new Control();
+        private boolean bioluminescenceEnabledInitial = false;
+        private Control bioluminescence = new Control();
         private boolean melaninEnabledInitial = false;
         private Control melaninPercent = new Control();
         private boolean chloroplastEnabledInitial = true;
@@ -234,7 +238,7 @@ public class YamlConfig {
             private double cytosolArea;
             private double cytosolDensity;
             private double elasticity;
-            private double gfp;
+            private double bioluminescence;
             private double melaninPercent;
             private double chloroplastAmount;
             private double chlorophyll;
@@ -267,16 +271,3 @@ public class YamlConfig {
         private String scale = "linear";
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-

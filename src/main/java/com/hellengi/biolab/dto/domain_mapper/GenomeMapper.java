@@ -1,4 +1,3 @@
-
 package com.hellengi.biolab.dto.domain_mapper;
 
 import com.hellengi.biolab.config.YamlConfig;
@@ -7,6 +6,7 @@ import com.hellengi.biolab.dto.GenomeDto;
 import com.hellengi.biolab.dto.GenomeSettingsDto;
 import com.hellengi.biolab.dto.RangedValueDto;
 import com.hellengi.biolab.dto.mapper.GenomeDefaults;
+import com.hellengi.biolab.dto.mapper.GenomeValues;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -22,8 +22,8 @@ public class GenomeMapper {
                 genome.getDivisionAngle(),
                 genome.getCytosolArea(),
                 genome.getCytosolDensity(),
-                genome.isGfpEnabled(),
-                genome.getGfp(),
+                genome.isBioluminescenceEnabled(),
+                genome.getBioluminescence(),
                 genome.getElasticity(),
                 genome.isMelaninEnabled(),
                 genome.getMelaninPercent(),
@@ -45,33 +45,31 @@ public class GenomeMapper {
     }
 
     public Genome toDomain(GenomeDto dto) {
-        if (dto == null) {
-            throw new IllegalArgumentException("Genome must not be null");
-        }
+        GenomeValues values = defaults.normalize(dto);
         return new Genome(
-                dto.divisionThreshold(),
-                dto.divisionImpulse(),
-                dto.divisionAngle(),
-                defaults.cytosolArea(dto.cytosolArea()),
-                defaults.cytosolDensity(dto.cytosolDensity()),
-                dto.gfpEnabled(),
-                defaults.gfp(dto.gfp()),
-                defaults.elasticity(dto.elasticity()),
-                dto.melaninEnabled(),
-                defaults.melaninPercent(dto.melaninPercent()),
-                dto.chloroplastEnabled(),
-                defaults.chloroplastAmount(dto.chloroplastAmount()),
-                defaults.chlorophyll(dto.chlorophyll()),
-                defaults.carotenoids(dto.carotenoids()),
-                dto.lysosomeEnabled(),
-                defaults.lysosomeAmount(dto.lysosomeAmount()),
-                defaults.lysosomeEnzymeActivity(dto.lysosomeEnzymeActivity()),
-                dto.flagellumEnabled(),
-                defaults.flagellumCount(dto.flagellumCount()),
-                defaults.flagellumLength(dto.flagellumLength()),
-                defaults.flagellumMotorPower(dto.flagellumMotorPower()),
-                defaults.flagellumPairSpreadAngle(dto.flagellumPairSpreadAngle()),
-                defaults.flagellumSteeringAsymmetry(dto.flagellumSteeringAsymmetry())
+                values.divisionThreshold(),
+                values.divisionImpulse(),
+                values.divisionAngle(),
+                values.cytosolArea(),
+                values.cytosolDensity(),
+                values.bioluminescenceEnabled(),
+                values.bioluminescence(),
+                values.elasticity(),
+                values.melaninEnabled(),
+                values.melaninPercent(),
+                values.chloroplastEnabled(),
+                values.chloroplastAmount(),
+                values.chlorophyll(),
+                values.carotenoids(),
+                values.lysosomeEnabled(),
+                values.lysosomeAmount(),
+                values.lysosomeEnzymeActivity(),
+                values.flagellumEnabled(),
+                values.flagellumCount(),
+                values.flagellumLength(),
+                values.flagellumMotorPower(),
+                values.flagellumPairSpreadAngle(),
+                values.flagellumSteeringAsymmetry()
         );
     }
 
@@ -88,8 +86,8 @@ public class GenomeMapper {
                 control(genome.getStartFlagellumDamage()),
                 control(genome.getCytosolArea()),
                 control(genome.getCytosolDensity()),
-                genome.isGfpEnabledInitial(),
-                control(genome.getGfp()),
+                genome.isBioluminescenceEnabledInitial(),
+                control(genome.getBioluminescence()),
                 control(genome.getElasticity()),
                 genome.isMelaninEnabledInitial(),
                 control(genome.getMelaninPercent()),
@@ -116,4 +114,3 @@ public class GenomeMapper {
         );
     }
 }
-

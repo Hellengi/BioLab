@@ -1,3 +1,4 @@
+
 package com.hellengi.biolab.domain.model.organelle;
 
 import com.hellengi.biolab.config.YamlConfig;
@@ -159,10 +160,7 @@ public class FlagellaOrganelle implements Organelle {
     }
 
     public double totalMass(YamlConfig.CellProperties config) {
-        return activeAmount()
-                * config.getFlagellumMassFactor()
-                * lengthToRadiusFactor(config)
-                * normalizedThicknessForCost(config);
+        return totalArea(config) * config.getFlagellumDensityFactor();
     }
 
     public double totalArea(YamlConfig.CellProperties config) {
@@ -275,5 +273,3 @@ public class FlagellaOrganelle implements Organelle {
         return totalArea(config);
     }
 }
-
-

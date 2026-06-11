@@ -1,14 +1,13 @@
 
-
 import { dom } from "../dom.js";
 import { state } from "../../store/state.js";
 import { drawCreateCellPreview } from "../../render/preview.js";
 import { loadSimulationConfig } from "../../store/actions.js";
 import { applyInputBounds } from "../panels/_panels.js";
 import { sliderBoundsForControl, valueFromSlider, sliderFromValue, roundControlValue } from "../control-scale.js";
-import { spawnCell } from "../../transport/api/cell.js";
+import { previewCell, spawnCell } from "../../transport/api/cell.js";
 import { formatTwoDecimals, setText } from "../../core/utils.js";
-import { clearTooltipElement, setTooltipValue } from "../cell-info.js";
+import { clearTooltipElement, setTooltipPairValue, setTooltipValue } from "../cell-info.js";
 import { t } from "../../localization/localization.js";
 import {
     initOrganellePanels,
@@ -17,15 +16,19 @@ import {
     flagellumEnabled as _getFlagellumEnabled,
     flagellumCount as _getFlagellumCount,
     melaninEnabled as _getMelaninEnabled,
-    gfpEnabled as _getGfpEnabled,
+    bioluminescenceEnabled as _getBioluminescenceEnabled,
     setChloroplastEnabled,
     setLysosomeEnabled,
     setFlagellumEnabled,
     setFlagellumMode,
     setMelaninEnabled,
-    setGfpEnabled,
+    setBioluminescenceEnabled,
     openOrganellePanel,
 } from "./creation-organelle.js";
+
+
+let _createPreviewMetricsRequestId = 0;
+let _createPreviewMetricsTimer = 0;
 
 function scaledGenomeField(field) {
     return {
@@ -44,7 +47,7 @@ export function getCreateCellFields() {
         { key: "cytosolArea",         range: dom.createCytosolAreaSlider,         input: dom.createCytosolAreaInput },
         { key: "cytosolDensity",           range: dom.createCytosolDensitySlider,           input: dom.createCytosolDensityInput },
         { key: "elasticity",        range: dom.createElasticitySlider,        input: dom.createElasticityInput },
-        { key: "gfp",               range: dom.createGfpSlider,               input: dom.createGfpInput },
+        { key: "bioluminescence",               range: dom.createBioluminescenceSlider,               input: dom.createBioluminescenceInput },
         { key: "melaninPercent",    range: dom.createMelaninPercentSlider,    input: dom.createMelaninPercentInput },
         { key: "chloroplastAmount", range: dom.createChloroplastAmountSlider, input: dom.createChloroplastAmountInput },
         { key: "chlorophyll",       range: dom.createChlorophyllSlider,       input: dom.createChlorophyllInput },
@@ -89,11 +92,13 @@ export async function initCreatePanel() {
 export function resetCreatePanelFromConfig() {
     _applyGenomeInputRanges();
     state.cellDraft = createDraft();
+    state.cellDraftPreview = null;
+    state.cellDraftPreviewSignature = "";
     setChloroplastEnabled(Boolean(state.config.initialGenome.chloroplastEnabled));
     setLysosomeEnabled(Boolean(state.config.initialGenome.lysosomeEnabled));
     setFlagellumMode(Boolean(state.config.initialGenome.flagellumEnabled) ? (state.config.initialGenome.flagellumCount?.value >= 2 ? "pair" : "single") : "off");
     setMelaninEnabled(Boolean(state.config.initialGenome.melaninEnabled));
-    setGfpEnabled(Boolean(state.config.initialGenome.gfpEnabled));
+    setBioluminescenceEnabled(Boolean(state.config.initialGenome.bioluminescenceEnabled));
     syncDraftToForm();
     setPlaceMode(false);
 }
@@ -110,7 +115,7 @@ function createDraft() {
     genome.flagellumEnabled = Boolean(state.config.initialGenome.flagellumEnabled);
     genome.flagellumCount = Math.max(1, Math.min(2, Math.round(state.config.initialGenome.flagellumCount?.value ?? 1)));
     genome.melaninEnabled = Boolean(state.config.initialGenome.melaninEnabled);
-    genome.gfpEnabled = Boolean(state.config.initialGenome.gfpEnabled);
+    genome.bioluminescenceEnabled = Boolean(state.config.initialGenome.bioluminescenceEnabled);
 
     return {
         id: null,
@@ -151,10 +156,11 @@ export function syncDraftToForm() {
     setLysosomeEnabled(Boolean(state.cellDraft.genome.lysosomeEnabled));
     setFlagellumMode(Boolean(state.cellDraft.genome.flagellumEnabled) ? (state.cellDraft.genome.flagellumCount >= 2 ? "pair" : "single") : "off");
     setMelaninEnabled(Boolean(state.cellDraft.genome.melaninEnabled));
-    setGfpEnabled(Boolean(state.cellDraft.genome.gfpEnabled));
+    setBioluminescenceEnabled(Boolean(state.cellDraft.genome.bioluminescenceEnabled));
     if (dom.melaninEnabled) dom.melaninEnabled.checked = Boolean(state.cellDraft.genome.melaninEnabled);
-    if (dom.gfpEnabled) dom.gfpEnabled.checked = Boolean(state.cellDraft.genome.gfpEnabled);
+    if (dom.bioluminescenceEnabled) dom.bioluminescenceEnabled.checked = Boolean(state.cellDraft.genome.bioluminescenceEnabled);
 
+    refreshCreatePreviewMetrics();
     syncCreateInfoPanel();
     drawCreateCellPreview();
 }
@@ -188,7 +194,7 @@ export function readDraftFromForm(changedKey = null) {
         : Math.max(1, Math.min(2, Math.round(state.cellDraft.genome.flagellumCount ?? 1)));
     normalizeFlagellumGeometry(draft.genome, changedKey);
     draft.genome.melaninEnabled = _getMelaninEnabled;
-    draft.genome.gfpEnabled = _getGfpEnabled;
+    draft.genome.bioluminescenceEnabled = _getBioluminescenceEnabled;
     return draft;
 }
 
@@ -205,6 +211,7 @@ export async function toggleCellPlacement() {
         setPlaceMode(false);
     } else {
         state.cellDraft = readDraftFromForm();
+        refreshCreatePreviewMetrics({immediate: true});
         drawCreateCellPreview();
         setPlaceMode(true);
     }
@@ -237,8 +244,64 @@ export async function spawnDraftCell(x, y) {
 
 export async function ensureCreateCellPreviewReady() {
     if (!state.cellDraft) await initCreatePanel();
+    refreshCreatePreviewMetrics({immediate: true});
     syncCreateInfoPanel();
     requestAnimationFrame(() => drawCreateCellPreview());
+}
+
+function refreshCreatePreviewMetrics(options = {}) {
+    if (!state.cellDraft?.genome) return;
+    const signature = createPreviewSignature(state.cellDraft);
+    if (state.cellDraftPreviewSignature === signature && state.cellDraftPreview) return;
+
+    if (_createPreviewMetricsTimer) {
+        clearTimeout(_createPreviewMetricsTimer);
+        _createPreviewMetricsTimer = 0;
+    }
+
+    const run = () => {
+        const requestId = ++_createPreviewMetricsRequestId;
+        previewCell(state.cellDraft)
+            .then(metrics => {
+                if (requestId !== _createPreviewMetricsRequestId) return;
+                if (createPreviewSignature(state.cellDraft) !== signature) return;
+                state.cellDraftPreview = metrics;
+                state.cellDraftPreviewSignature = signature;
+                syncCreateInfoPanel();
+                drawCreateCellPreview();
+            })
+            .catch(() => {
+                if (requestId !== _createPreviewMetricsRequestId) return;
+                state.cellDraftPreview = null;
+                state.cellDraftPreviewSignature = "";
+            });
+    };
+
+    if (options.immediate) {
+        run();
+    } else {
+        _createPreviewMetricsTimer = setTimeout(run, 35);
+    }
+}
+
+function createPreviewSignature(draft) {
+    const genome = draft?.genome ?? {};
+    return JSON.stringify({
+        genome,
+        startNucleusDamage: draft?.startNucleusDamage ?? 0,
+        startCytosolDamage: draft?.startCytosolDamage ?? 0,
+        startCpDamage: draft?.startCpDamage ?? 0,
+        startMembraneDamage: draft?.startMembraneDamage ?? 0,
+        startLysosomeDamage: draft?.startLysosomeDamage ?? 0,
+        startFlagellumDamage: draft?.startFlagellumDamage ?? 0,
+    });
+}
+
+function currentCreatePreviewMetrics(options = {}) {
+    if (!state.cellDraft || !state.cellDraftPreview) return null;
+    const signature = createPreviewSignature(state.cellDraft);
+    const exact = state.cellDraftPreviewSignature === signature;
+    return exact || options.allowStale ? state.cellDraftPreview : null;
 }
 
 export function syncCreateInfoPanel() {
@@ -279,10 +342,10 @@ function renderCreateInfoGrid(scope, values = null) {
         return;
     }
     if (scope === "cytosol") {
-        row(grid, "Cytosol density", formatTwoDecimals(g.cytosolDensity), "CtMass = CtDensity × CtArea × CtMassFactor + Energy × EnergyToMassFactor");
+        row(grid, "Cytosol density", formatTwoDecimals(g.cytosolDensity), "CtMass = CtDensity × CtArea × CtDensityFactor + Energy × EnergyToMassFactor");
         row(grid, "Cytosol area", formatTwoDecimals(g.cytosolArea), "CtArea defines cytoplasm size; MaxEnergy = CtArea × EnergyCapacityFactor");
-        row(grid, "GFP enabled", g.gfpEnabled ? "on" : "off", "GFP is an optional cytosol parameter and can mutate on/off like optional organelles");
-        row(grid, "GFP", formatTwoDecimals(g.gfp ?? 0), "GfpEnergyConsumption = GfpExpression × CytosolGfpConsumptionFactor");
+        row(grid, "Bioluminescence enabled", g.bioluminescenceEnabled ? "on" : "off", "Bioluminescence is an optional cytosol parameter and can mutate on/off like optional organelles");
+        row(grid, "Bioluminescence", formatTwoDecimals(g.bioluminescence ?? 0), "BioluminescenceEnergyConsumption = BioluminescenceExpression × CytosolBioluminescenceConsumptionFactor");
         row(grid, "Start cytosol damage", formatTwoDecimals(state.cellDraft.startCytosolDamage ?? 0), "Initial cytosol damage; cytosol damage controls cell death and global stress effects");
         row(grid, "Cytosol color", `${v.cytosolColor.r}, ${v.cytosolColor.g}, ${v.cytosolColor.b} / ${formatTwoDecimals(v.cytosolColor.opacity)}`, "CytosolColor = weighted(BaseCytosolColor, Nucleus/Chloroplast/Lysosome influence, CytosolDamage)");
         return;
@@ -335,12 +398,28 @@ function renderCreateInfoGrid(scope, values = null) {
         return;
     }
 
-    row(grid, "Mass", formatTwoDecimals(v.mass), "CellMass = NcMass + CtMass + MbMass + CpTotalMass + LyTotalMass");
+    rowPair(
+        grid,
+        "Energy",
+        formatTwoDecimals(v.energy),
+        "CurrentEnergy = initial stored reserve after spawn clamps it to MaxEnergy",
+        formatTwoDecimals(v.maxEnergy),
+        "MaxEnergy = CytosolArea × EnergyCapacityPerArea"
+    );
+    rowPair(
+        grid,
+        "Mass",
+        formatTwoDecimals(v.mass),
+        "CurrentMass = DryMass + EnergyMass; runtime physics uses this value",
+        formatTwoDecimals(v.dryMass),
+        "DryMass = structural organelle mass without stored-energy mass"
+    );
+    row(grid, "Density", formatTwoDecimals(v.density), "CellDensity = CellMass / CellArea; values below medium density float upward");
     row(grid, "Cytosol area", formatTwoDecimals(g.cytosolArea), "MaxEnergy is derived from cytosol area, not edited directly");
     row(grid, "Cytosol opacity", formatTwoDecimals(v.cytosolColor.opacity), "CytosolOpacity is calculated from cytosol pigment depth; membrane opacity is shown separately");
     row(grid, "Membrane opacity", formatTwoDecimals(v.membraneColor.opacity), "MembraneOpacity = MembraneBaseOpacity + MembraneMelaninOpacityFactor × MelaninPercent");
-    row(grid, "GFP enabled", g.gfpEnabled ? "on" : "off", "GFP is an optional cytosol parameter and can mutate on/off like optional organelles");
-    row(grid, "GFP", formatTwoDecimals(g.gfp ?? 0), "GFP is localized in cytosol and displayed as internal cytosol glow when enabled");
+    row(grid, "Bioluminescence enabled", g.bioluminescenceEnabled ? "on" : "off", "Bioluminescence is an optional cytosol parameter and can mutate on/off like optional organelles");
+    row(grid, "Bioluminescence", formatTwoDecimals(g.bioluminescence ?? 0), "Bioluminescence is localized in cytosol and displayed as internal cytosol glow when enabled");
     row(grid, "Start cytosol damage", formatTwoDecimals(state.cellDraft.startCytosolDamage ?? 0), "Initial cytosol damage; high cytosol damage can kill the cell");
     row(grid, "Start membrane damage", formatTwoDecimals(state.cellDraft.startMembraneDamage ?? 0), "Initial membrane damage");
     row(grid, "Start chloroplast damage", formatTwoDecimals(state.cellDraft.startCpDamage ?? 0), "Initial chloroplast damage");
@@ -366,7 +445,7 @@ function syncOrganellePanelReadouts(v) {
     setPanelTooltipValue("createNucleusStartDamage", formatTwoDecimals(state.cellDraft?.startNucleusDamage ?? 0), "StartNucleusDamage is applied when a cell is spawned from this draft");
     setPanelTooltipValue("createNucleusFormula", "threshold / impulse / angle", "DivisionAxis = CellAngle + NcDivAngle; CellDivEnergyThreshold = MaxEnergy × DivisionThreshold%");
 
-    setPanelTooltipValue("createCytosolGfpCost", formatTwoDecimals(v.gfpCost), "GfpEnergyConsumption = GfpExpression × CytosolGfpConsumptionFactor");
+    setPanelTooltipValue("createCytosolBioluminescenceCost", formatTwoDecimals(v.bioluminescenceCost), "BioluminescenceEnergyConsumption = BioluminescenceExpression × CytosolBioluminescenceConsumptionFactor");
     setPanelTooltipValue("createCytosolColor", `${v.cytosolColor.r}, ${v.cytosolColor.g}, ${v.cytosolColor.b}`, "CytosolColor is tinted by organelles and CytosolDamage, but not by membrane color");
 
     setPanelTooltipValue("createMembraneOpacity", formatTwoDecimals(v.membraneColor.opacity), "MembraneOpacity = MembraneBaseOpacity + MelaninOpacityFactor × MelaninPercent");
@@ -393,6 +472,15 @@ function setPanelTooltipValue(id, value, tooltip) {
     const el = document.getElementById(id);
     if (!el) return;
     setTooltipValue(el, t(String(value)), t(tooltip));
+}
+
+function rowPair(grid, label, leftValue, leftTooltip, rightValue, rightTooltip) {
+    const labelEl = document.createElement("div");
+    labelEl.className = "cell-info-label";
+    labelEl.textContent = t(label);
+    const valueEl = document.createElement("div");
+    grid.append(labelEl, valueEl);
+    setTooltipPairValue(valueEl, t(String(leftValue)), t(leftTooltip), t(String(rightValue)), t(rightTooltip));
 }
 
 function row(grid, label, value, tooltip) {
@@ -422,14 +510,17 @@ function _previewValues(g) {
     const flagellumLengthFactor = normalizeFlagellumLengthValue(g.flagellumLength ?? 1.8);
     const flagellumActivity01 = _clamp01((g.flagellumMotorPower ?? 30) / 100);
     const flagellumThicknessFactor = 1.0;
-    const cpArea = amount * 4;
-    const lysosomeArea = lysosomeAmount * 4.7;
-    const cellArea = 18 + Math.max(0, g.cytosolArea ?? 0) * 0.58 + lysosomeArea;
-    const radius = Math.max(6, Math.sqrt(cellArea / Math.PI));
+    const metrics = currentCreatePreviewMetrics({allowStale: true});
+    const cpArea = Number.isFinite(Number(metrics?.chloroplastArea)) ? Number(metrics.chloroplastArea) : amount * 4;
+    const lysosomeArea = Number.isFinite(Number(metrics?.lysosomeArea)) ? Number(metrics.lysosomeArea) : lysosomeAmount * 4.7;
+    const cellArea = Number.isFinite(Number(metrics?.cellArea))
+        ? Number(metrics.cellArea)
+        : 18 + Math.max(0, g.cytosolArea ?? 0) * 0.58 + cpArea + lysosomeArea;
+    const radius = Number.isFinite(Number(metrics?.radius)) ? Number(metrics.radius) : Math.max(6, Math.sqrt(cellArea / Math.PI));
     const coverage = _clamp01(cpArea / Math.max(cellArea, 1.0));
     const pigmentDepth = coverage * (2.4 * chlor + 0.42 * carot);
-    const lightCapture = chlorEnabled ? 1 - Math.exp(-pigmentDepth) : 0;
-    const membraneOpacity = _clamp01(0.075 + 0.42 * melanin);
+    const lightCapture = Number.isFinite(Number(metrics?.lightCapture)) ? Number(metrics.lightCapture) : (chlorEnabled ? 1 - Math.exp(-pigmentDepth) : 0);
+    const membraneOpacity = Number.isFinite(Number(metrics?.membraneOpacity)) ? _clamp01(Number(metrics.membraneOpacity)) : _clamp01(0.095 + 0.42 * melanin);
     const cytosolOpacity = _clamp01(0.12 + 0.22 * (1 - Math.exp(-pigmentDepth)));
     const pigmentPresence = Math.max(chlor, carot);
     const chlorophyllColor = _mixRgb({r:154,g:210,b:82}, {r:28,g:96,b:40}, _clamp01((chlor - 0.15) / 0.85));
@@ -442,10 +533,17 @@ function _previewValues(g) {
         lysosomeColor, lysosomeCoverage * (0.35 + 0.65 * lysosomeEnzyme01),
         {r:104,g:98,b:86}, 0
     );
-    const membraneLength = 2 * Math.PI * radius;
-    const flagellumMass = flagellumCount * 2.2 * flagellumLengthFactor * flagellumThicknessFactor;
-    const cytosolMass = Math.max(0, g.cytosolDensity ?? 0) * Math.max(0, g.cytosolArea ?? 0) * 0.58;
-    const mass = 45 + cytosolMass + amount * 6 + lysosomeAmount * 4.5 + flagellumMass + membraneLength * 2.2 * (1 + melanin);
+    const membraneLength = Number.isFinite(Number(metrics?.membraneLength)) ? Number(metrics.membraneLength) : 2 * Math.PI * radius;
+    const flagellumMass = Number.isFinite(Number(metrics?.flagellumMass)) ? Number(metrics.flagellumMass) : flagellumCount * 0.75 * flagellumLengthFactor * flagellumThicknessFactor * 1.05;
+    const cytosolMass = Number.isFinite(Number(metrics?.cytosolMass))
+        ? Number(metrics.cytosolMass)
+        : Math.max(0, g.cytosolDensity ?? 0) * Math.max(0, g.cytosolArea ?? 0) * 0.58;
+    const mass = Number.isFinite(Number(metrics?.mass))
+        ? Number(metrics.mass)
+        : 18 * 1.10 + cytosolMass + amount * 4 * 1.15 + lysosomeAmount * 4.7 * 1.10 + flagellumMass + membraneLength * 0.32 * 1.05 * (1 + melanin);
+    const energy = Number.isFinite(Number(metrics?.energy)) ? Number(metrics.energy) : 0;
+    const maxEnergy = Number.isFinite(Number(metrics?.maxEnergy)) ? Number(metrics.maxEnergy) : Math.max(0, Number(g.cytosolArea ?? 0) || 0) * 0.72;
+    const dryMass = Number.isFinite(Number(metrics?.dryMass)) ? Number(metrics.dryMass) : Math.max(0, mass);
     const lysosomeDigestRate = lysosomeEnabled ? 0.22 * lysosomeAmount * (0.40 + 0.60 * lysosomeEnzyme01) : 0;
     const grossYield = 1.0;
     const digestCostShare = 0.085 * (0.35 + 1.65 * lysosomeEnzyme01 * lysosomeEnzyme01);
@@ -454,32 +552,38 @@ function _previewValues(g) {
     const lysosomeLeakExcess = Math.max(0, lysosomeStartDamage - 0.55);
     const lysosomeLeakRisk = lysosomeEnabled ? _clamp01(0.006 * lysosomeLeakExcess * (1.0 + lysosomeLeakExcess) * (0.35 + 0.65 * lysosomeEnzyme01)) : 0;
     const lysosomeMaintenance = lysosomeAmount * 0.006 * (0.84 + 0.16 * lysosomeEnzyme01);
-    const divCost = Math.pow(g.divisionImpulse ?? 0, 2) / Math.max(2 * mass, 1.0)
-        + 5
-        + cytosolMass * 0.02
-        + membraneLength * 0.025
-        + amount * 0.12
-        + lysosomeAmount * 0.09 * (0.80 + 0.20 * lysosomeEnzyme01)
-        + flagellumMass * 0.05;
-    const protection = chlorEnabled ? _clamp01(1 - Math.exp(-2.8 * carot / Math.max(chlor, 0.000001))) : 0;
+    const divCost = Number.isFinite(Number(metrics?.divisionEnergyCost))
+        ? Number(metrics.divisionEnergyCost)
+        : Math.pow(g.divisionImpulse ?? 0, 2) / Math.max(2 * mass, 1.0)
+            + 5
+            + cytosolMass * 0.02
+            + membraneLength * 0.025
+            + amount * 0.12
+            + lysosomeAmount * 0.09 * (0.80 + 0.20 * lysosomeEnzyme01)
+            + flagellumMass * 0.05;
+    const protection = Number.isFinite(Number(metrics?.carotProtection)) ? _clamp01(Number(metrics.carotProtection)) : (chlorEnabled ? _clamp01(1 - Math.exp(-2.8 * carot / Math.max(chlor, 0.000001))) : 0);
     const membraneColor = _mixRgb({r:238,g:240,b:232}, {r:65,g:43,b:30}, melanin);
-    const gfp01 = g.gfpEnabled ? _clamp01((g.gfp ?? 0) / 100) : 0;
-    const gfpCost = gfp01 * 0.0009;
+    const bioluminescence01 = g.bioluminescenceEnabled ? _clamp01((g.bioluminescence ?? 0) / 100) : 0;
+    const bioluminescenceCost = bioluminescence01 * 0.04;
     const cytosolColor = {...cytosolBaseColor, opacity: cytosolOpacity};
     const flagellumThrust = flagellumCount * 0.045 * radius * radius * flagellumActivity01 * flagellumLengthFactor;
     const translationalDrag = 6 * Math.PI * Math.max(radius, 1.0e-9);
     const flagellumEnergyCost = 0.018 * Math.abs(flagellumThrust) * (Math.abs(flagellumThrust) / Math.max(translationalDrag, 1.0e-9));
     return {
+        energy,
+        maxEnergy,
         mass,
+        dryMass,
+        density: Number.isFinite(Number(metrics?.density)) ? Number(metrics.density) : mass / Math.max(cellArea, 1.0e-9),
         divCost,
         membraneColor: {...membraneColor, opacity: membraneOpacity},
         cytosolColor,
         cellColor: {...cytosolBaseColor, opacity: cytosolOpacity},
-        transmittance: Math.exp(-membraneOpacity),
+        transmittance: Number.isFinite(Number(metrics?.membraneTransmittance)) ? Number(metrics.membraneTransmittance) : Math.exp(-membraneOpacity),
         lightCapture,
         protection,
-        gfpCost,
-        lysosomeCapacity: lysosomeAmount,
+        bioluminescenceCost,
+        lysosomeCapacity: Number.isFinite(Number(metrics?.lysosomeCapacity)) ? Number(metrics.lysosomeCapacity) : lysosomeAmount,
         lysosomeDigestRate,
         lysosomeNetYield,
         lysosomeLeakRisk,
@@ -638,5 +742,3 @@ function _lysosomeAcidColor(enzyme01) {
     if (activity < 0.5) return _mixRgb(low, mid, activity / 0.5);
     return _mixRgb(mid, high, (activity - 0.5) / 0.5);
 }
-
-

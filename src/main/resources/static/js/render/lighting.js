@@ -58,6 +58,7 @@ const quadtreeStrokeColorCache = new Map();
 
 const backgroundRasterCache = createRasterCache();
 const opacityOverlayRasterCache = createRasterCache();
+const lightLayerRasterCache = createRasterCache();
 const fallbackRasterCache = createRasterCache();
 
 function backgroundValue(illumination) {
@@ -165,6 +166,11 @@ function grayscaleBackgroundColor(illumination) {
 export function drawDisplayLayers(ctx, lighting, displayLayers, options = {}) {
     if (!lighting || !displayLayers) return;
 
+    const combinedLightLayer = combinedDisplayLightMap(lighting, displayLayers);
+    if (combinedLightLayer) {
+        applyDiagnosticLightGrid(ctx, lighting, combinedLightLayer.map, options, combinedLightLayer.id);
+    }
+
     const hasOpacityMap = displayLayers.opacityMap
         && Array.isArray(lighting.opacityMap)
         && lighting.opacityMap.length > 0;
@@ -173,7 +179,6 @@ export function drawDisplayLayers(ctx, lighting, displayLayers, options = {}) {
         applyOpticalDensityFilter(ctx, lighting, options);
     }
 
-
     if (displayLayers.lightDirection) {
         drawLightDirectionLayer(ctx, lighting);
     }
@@ -181,6 +186,62 @@ export function drawDisplayLayers(ctx, lighting, displayLayers, options = {}) {
     if (displayLayers.quadtree) {
         drawQuadtreeGrid(ctx, lighting, displayLayers);
     }
+}
+
+function combinedDisplayLightMap(lighting, displayLayers) {
+    const directed = displayLayers.directedLightMap && Array.isArray(lighting?.directedLightMap)
+        ? lighting.directedLightMap
+        : null;
+    const scattered = displayLayers.scatteredLightMap && Array.isArray(lighting?.scatteredLightMap)
+        ? lighting.scatteredLightMap
+        : null;
+
+    if (directed && directed.length > 0 && scattered && scattered.length > 0) {
+        const total = Array.isArray(lighting?.lightMap) && lighting.lightMap.length > 0
+            ? lighting.lightMap
+            : directed;
+        return { map: total, id: "directed+scattered" };
+    }
+
+    if (directed && directed.length > 0) {
+        return { map: directed, id: "directed" };
+    }
+
+    if (scattered && scattered.length > 0) {
+        return { map: scattered, id: "scattered" };
+    }
+
+    return null;
+}
+
+function applyDiagnosticLightGrid(ctx, lighting, lightMap, options = {}, id = "light") {
+    const cols = lighting?.gridWidth ?? 0;
+    const rows = lighting?.gridHeight ?? 0;
+    if (!Array.isArray(lightMap) || lightMap.length === 0 || cols <= 0 || rows <= 0) return;
+
+    const globalLight = lighting?.globalLight ?? 0.75;
+    const offscreen = getCachedGridCanvas(
+        lightLayerRasterCache,
+        lightMap,
+        `${cols}x${rows}|diagnostic-light|${id}|${globalLight}`,
+        cols,
+        rows,
+        (idx, data, dataIdx) => {
+            const color = opticalDensityBackgroundColor(lightMap[idx] ?? 0.0);
+            data[dataIdx] = color.r;
+            data[dataIdx + 1] = color.g;
+            data[dataIdx + 2] = color.b;
+            data[dataIdx + 3] = 255;
+        }
+    );
+
+    ctx.save();
+    ctx.globalCompositeOperation = "source-over";
+    ctx.imageSmoothingEnabled = false;
+    const W = Math.max(1, Number(options.worldWidth) || ctx.canvas.width);
+    const H = Math.max(1, Number(options.worldHeight) || ctx.canvas.height);
+    ctx.drawImage(offscreen, 0, 0, W, H);
+    ctx.restore();
 }
 
 function applyOpticalDensityFilter(ctx, lighting, options = {}) {
@@ -729,9 +790,3 @@ function drawTrapezoidSource(ctx, source) {
     ctx.strokeStyle = 'rgba(255,255,255,0.9)';
     ctx.stroke();
 }
-
-
-
-
-
-

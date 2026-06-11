@@ -1,4 +1,5 @@
-import { getJson, postJson, del } from "./_http.js";
+
+import { getJson, postJson, postJsonForJson, del } from "./_http.js";
 
 // ── Шаблоны клеток ────────────────────────────────────────────────────────────
 
@@ -53,6 +54,18 @@ export function spawnCell(x, y, cell) {
     });
 }
 
-
-
-
+export function previewCell(cell) {
+    return postJsonForJson("/api/cell/preview", {
+        x: 0,
+        y: 0,
+        genome: cell.genome,
+        initialSpeed: cell.initialSpeed ?? 0,
+        initialDirection: cell.initialDirection ?? 0,
+        startNucleusDamage: cell.startNucleusDamage ?? 0,
+        startCytosolDamage: cell.startCytosolDamage ?? 0,
+        startCpDamage: cell.startCpDamage ?? 0,
+        startMembraneDamage: cell.startMembraneDamage ?? 0,
+        startLysosomeDamage: cell.startLysosomeDamage ?? 0,
+        startFlagellumDamage: cell.startFlagellumDamage ?? 0,
+    });
+}

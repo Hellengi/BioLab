@@ -1,3 +1,4 @@
+
 package com.hellengi.biolab.domain.spawn;
 
 import com.hellengi.biolab.config.YamlConfig;
@@ -42,20 +43,35 @@ public class CellFactory {
     }
 
     public Cell createCell(SpawnCellRequestDto requestDto) {
-        Genome genome = genomeMapper.toDomain(requestDto.genome());
-        double initialEnergy = Math.min(baseConfig.getCell().getStartEnergy(), genome.getMaxEnergy());
         Point worldCenter = new Point(baseConfig.worldCenterX(), baseConfig.worldCenterY());
         Point point = clampInsideCircle(worldCenter, baseConfig.worldRadius(), requestDto.x(), requestDto.y());
-        Velocity velocity = toVelocity(
-                requestDto.initialDirection(), Math.max(0.0, requestDto.initialSpeed())
-        );
+        return createCellModel(requestDto, point.x(), point.y(), requestDto.initialDirection(), requestDto.initialSpeed());
+    }
+
+    public Cell createPreviewCell(SpawnCellRequestDto requestDto) {
+        return createCellModel(requestDto, baseConfig.worldCenterX(), baseConfig.worldCenterY(), 0.0, 0.0);
+    }
+
+    private Cell createCellModel(
+            SpawnCellRequestDto requestDto,
+            double x,
+            double y,
+            double initialDirection,
+            double initialSpeed
+    ) {
+        if (requestDto == null || requestDto.genome() == null) {
+            throw new IllegalArgumentException("Cell genome must not be null");
+        }
+        Genome genome = genomeMapper.toDomain(requestDto.genome());
+        double initialEnergy = Math.min(baseConfig.getCell().getStartEnergy(), genome.getMaxEnergy());
+        Velocity velocity = toVelocity(initialDirection, Math.max(0.0, initialSpeed));
 
         Cell cell = new Cell(baseConfig);
-        cell.setPosition(point.x(), point.y());
+        cell.setPosition(x, y);
         cell.setVelocity(velocity.vx(), velocity.vy());
         cell.setEnergy(initialEnergy);
         cell.setGenome(genome);
-        cell.setDirectionAngle(requestDto.initialDirection());
+        cell.setDirectionAngle(initialDirection);
         applyInitialDamage(
                 cell,
                 requestDto.startNucleusDamage(),
@@ -66,6 +82,7 @@ public class CellFactory {
                 requestDto.startFlagellumDamage()
         );
         cell.ensureInternalLayoutInitialized();
+        cell.setMass();
         return cell;
     }
 
@@ -100,7 +117,7 @@ public class CellFactory {
                 genome.getCytosolArea().getInitial(),
                 genome.getCytosolDensity().getInitial(),
                 false,
-                genome.getGfp().getInitial(),
+                genome.getBioluminescence().getInitial(),
                 genome.getElasticity().getInitial(),
                 genome.isMelaninEnabledInitial(),
                 genome.getMelaninPercent().getInitial(),
@@ -149,7 +166,7 @@ public class CellFactory {
             String name = getter.getName();
             if (!name.startsWith("is") || !name.endsWith("EnabledInitial")) continue;
             String suffix = name.substring(2, name.length() - "Initial".length());
-            if ("GfpEnabled".equals(suffix)) continue;
+            if ("BioluminescenceEnabled".equals(suffix)) continue;
             try {
                 Method setter = Genome.class.getMethod("set" + suffix, boolean.class);
                 setter.invoke(genome, random.nextBoolean());
@@ -196,8 +213,3 @@ public class CellFactory {
         return random.nextDouble() * 2.0 * halfRange - halfRange;
     }
 }
-
-
-
-
-

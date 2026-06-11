@@ -708,9 +708,34 @@ function clampedCameraPosition(x, y, zoom) {
     const viewportW = effectiveClampViewportWidth();
     const viewportH = camera.viewportHeight;
 
+    return clampedCircularCameraPosition(x, y, viewportW, viewportH, width, height);
+}
+
+function clampedCircularCameraPosition(x, y, viewportW, viewportH, contentW, contentH) {
+    const viewportCenterX = viewportW / 2;
+    const viewportCenterY = viewportH / 2;
+    const contentCenterX = x + contentW / 2;
+    const contentCenterY = y + contentH / 2;
+    const radiusX = Math.max(0, contentW / 2 - viewportW / 2 + CAMERA_PADDING);
+    const radiusY = Math.max(0, contentH / 2 - viewportH / 2 + CAMERA_PADDING);
+    let offsetX = radiusX > 0 ? contentCenterX - viewportCenterX : 0;
+    let offsetY = radiusY > 0 ? contentCenterY - viewportCenterY : 0;
+
+    if (radiusX > 0 && radiusY > 0) {
+        const normalizedDistance = Math.hypot(offsetX / radiusX, offsetY / radiusY);
+        if (normalizedDistance > 1) {
+            offsetX /= normalizedDistance;
+            offsetY /= normalizedDistance;
+        }
+    } else if (radiusX > 0) {
+        offsetX = clamp(offsetX, -radiusX, radiusX);
+    } else if (radiusY > 0) {
+        offsetY = clamp(offsetY, -radiusY, radiusY);
+    }
+
     return {
-        x: clampAxis(x, viewportW, width),
-        y: clampAxis(y, viewportH, height),
+        x: viewportCenterX + offsetX - contentW / 2,
+        y: viewportCenterY + offsetY - contentH / 2,
     };
 }
 
@@ -726,16 +751,6 @@ function rightOrganellePanelOcclusionWidth() {
     const cssWidth = getComputedStyle(document.documentElement).getPropertyValue("--organelle-panel-w");
     const parsed = Number.parseFloat(cssWidth);
     return Number.isFinite(parsed) && parsed > 0 ? parsed : ORGANELLE_PANEL_WIDTH_PX;
-}
-
-function clampAxis(value, viewportSize, contentSize) {
-    if (contentSize <= Math.max(1, viewportSize - CAMERA_PADDING * 2)) {
-        return (viewportSize - contentSize) / 2;
-    }
-
-    const min = viewportSize - CAMERA_PADDING - contentSize;
-    const max = CAMERA_PADDING;
-    return clamp(value, min, max);
 }
 
 function centeredCameraPosition(zoom) {
@@ -848,7 +863,3 @@ function clampZoom(value) {
 function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
 }
-
-
-
-

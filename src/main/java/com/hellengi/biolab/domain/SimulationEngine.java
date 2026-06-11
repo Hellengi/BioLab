@@ -1,6 +1,7 @@
 package com.hellengi.biolab.domain;
 
 import com.hellengi.biolab.config.YamlConfig;
+import com.hellengi.biolab.api.websocket.ClientViewport;
 import com.hellengi.biolab.domain.lifecycle.Lifecycle;
 import com.hellengi.biolab.domain.physics.Lighting;
 import com.hellengi.biolab.domain.physics.Motion;
@@ -120,6 +121,28 @@ public class SimulationEngine {
         }
     }
 
+    public SimulationRenderFrameDto getRenderFrameDto(DisplayLayersDto displayLayers, Long tps) {
+        return getRenderFrameDto(displayLayers, ClientViewport.FULL_WORLD, tps);
+    }
+
+    public SimulationRenderFrameDto getRenderFrameDto(DisplayLayersDto displayLayers, ClientViewport viewport, Long tps) {
+        synchronized (world) {
+            return worldMapper.toRenderFrameDto(world, displayLayers, viewport, tps);
+        }
+    }
+
+    public SimulationLightingFrameDto getLightingFrameDto(DisplayLayersDto displayLayers) {
+        synchronized (world) {
+            return worldMapper.toLightingFrameDto(world, displayLayers);
+        }
+    }
+
+    public CellDetailsDto getCellDetailsDto(DisplayLayersDto displayLayers) {
+        synchronized (world) {
+            return worldMapper.toCellDetailsDto(world, displayLayers);
+        }
+    }
+
     public SimulationSettingsDto getSettingsDto() {
         synchronized (world) {
             return settingsMapper.toDto(runtimeConfig);
@@ -187,6 +210,10 @@ public class SimulationEngine {
         lighting.invalidateLightCache();
     }
 }
+
+
+
+
 
 
 

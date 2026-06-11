@@ -1,3 +1,4 @@
+
 {
   "0% aligned backward; 100% radial inward; mutually limited with surface distribution so the visible tail stays outside the membrane": "0% — назад; 100% — радиально внутрь; взаимно ограничивается с Surface distribution, чтобы видимый хвост оставался снаружи мембраны",
   "Actual basal supply": "Фактическое базовое питание",
@@ -43,7 +44,7 @@
   "CellEnergy <= CytosolArea": "CellEnergy <= CytosolArea",
   "CellEnergy is clamped by computed cytosol capacity": "CellEnergy ограничивается вычисленной вместимостью цитозоля",
   "CellForward + SymmetricOrientationOffsetᵢ; side motors rotate the cell through τ = r × F": "Направление клетки + симметричное смещение; боковые моторы разворачивают клетку через τ = r × F",
-  "CellMass = NcMass + CtMass + MbMass + CpTotalMass + LyTotalMass": "CellMass = NcMass + CtMass + MbMass + CpTotalMass + LyTotalMass",
+  "CellMass = Σ(OrganelleArea × OrganelleDensityFactor) + EnergyMass": "CellMass = Σ(OrganelleArea × OrganelleDensityFactor) + EnergyMass",
   "CellPerformance = exp(−CellDamage)": "CellPerformance = exp(−CellDamage)",
   "CellPerformance = exp(−CellDamage); lowers repair capacity and can kill the cell": "CellPerformance = exp(−CellDamage); снижает ремонтную способность и может убить клетку",
   "CellRadius = sqrt(CellArea / π)": "CellRadius = sqrt(CellArea / π)",
@@ -93,7 +94,7 @@
   "Create cell information scope": "Область информации создаваемой клетки",
   "Create cell preview controls": "Управление предпросмотром создаваемой клетки",
   "Create preview render layers": "Слои отрисовки предпросмотра создания",
-  "CtMass = CtMassFactor × cytosolDensity + Energy × EnergyToMassFactor": "CtMass = CtMassFactor × cytosolDensity + Energy × EnergyToMassFactor",
+  "CtMass = CtDensity × CtArea × CtDensityFactor + Energy × EnergyToMassFactor": "CtMass = CtDensity × CtArea × CtDensityFactor + Energy × EnergyToMassFactor",
   "Cursor mode": "Режим курсора",
   "Cursor readout": "Показания курсора",
   "Cycle period, sec": "Период цикла, сек",
@@ -107,7 +108,7 @@
   "Cytosol opacity": "Прозрачность цитозоля",
   "Cytosol performance": "Работоспособность цитозоля",
   "Cytosol repair rate": "Скорость ремонта цитозоля",
-  "Cytosol upkeep {upkeep}; GFP upkeep; repair energy {repair}": "Содержание цитозоля {upkeep}; содержание GFP; энергия ремонта {repair}",
+  "Cytosol upkeep {upkeep}; Bioluminescence upkeep; repair energy {repair}": "Содержание цитозоля {upkeep}; содержание Bioluminescence; энергия ремонта {repair}",
   "CytosolColor = weighted(BaseCytosolColor, Nucleus/Chloroplast/Lysosome influence, CellDamage)": "CytosolColor = weighted(BaseCytosolColor, влияние Nucleus/Chloroplast/Lysosome, CellDamage)",
   "CytosolColor = weighted(BaseCytosolColor, Nucleus/Chloroplast/Lysosome influence, CellDamage); membrane color is not included": "CytosolColor = weighted(BaseCytosolColor, влияние Nucleus/Chloroplast/Lysosome, CellDamage); цвет мембраны не учитывается",
   "CytosolColor is the former Cell Color and does not include membrane color": "CytosolColor — прежний Cell Color; цвет мембраны не включён",
@@ -200,15 +201,15 @@
   "Forces": "Силы",
   "Forces mode": "Режим сил",
   "Formula": "Формула",
-  "GFP": "GFP",
-  "GFP consumption": "Потребление GFP",
-  "GFP is localized in cytosol and displayed as internal cytosol glow": "GFP локализован в цитозоле и отображается как внутреннее свечение цитозоля",
+  "Bioluminescence": "Биолюминесценция",
+  "Bioluminescence consumption": "Потребление биолюминесценции",
+  "Bioluminescence is localized in cytosol and displayed as internal cytosol glow": "Биолюминесценция локализована в цитозоле и отображается как внутреннее свечение цитозоля",
   "General": "Общее",
   "General Control": "Общее управление",
   "General mode": "Общий режим",
   "Genome code": "Код генома",
   "Geometry": "Геометрия",
-  "GfpEnergyConsumption = GfpExpression × CytosolGfpConsumptionFactor": "GfpEnergyConsumption = GfpExpression × CytosolGfpConsumptionFactor",
+  "BioluminescenceEnergyConsumption = BioluminescenceExpression × CytosolBioluminescenceConsumptionFactor": "Потребление биолюминесценции = выраженность биолюминесценции × коэффициент расхода цитозоля",
   "Gravity": "Гравитация",
   "Gravity force": "Сила тяжести",
   "Gravity/buoyancy": "Гравитация/выталкивание",
@@ -431,5 +432,3 @@
   "One": "Один",
   "Pair": "Пара"
 }
-
-

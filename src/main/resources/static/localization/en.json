@@ -1,3 +1,4 @@
+
 {
   "0% aligned backward; 100% radial inward; mutually limited with surface distribution so the visible tail stays outside the membrane": "0% aligned backward; 100% radial inward; mutually limited with surface distribution so the visible tail stays outside the membrane",
   "Actual basal supply": "Actual basal supply",
@@ -42,7 +43,7 @@
   "CellEnergy <= CytosolArea": "CellEnergy <= CytosolArea",
   "CellEnergy is clamped by computed cytosol capacity": "CellEnergy is clamped by computed cytosol capacity",
   "CellForward + SymmetricOrientationOffsetᵢ; side motors rotate the cell through τ = r × F": "CellForward + SymmetricOrientationOffsetᵢ; side motors rotate the cell through τ = r × F",
-  "CellMass = NcMass + CtMass + MbMass + CpTotalMass + LyTotalMass": "CellMass = NcMass + CtMass + MbMass + CpTotalMass + LyTotalMass",
+  "CellMass = Σ(OrganelleArea × OrganelleDensityFactor) + EnergyMass": "CellMass = Σ(OrganelleArea × OrganelleDensityFactor) + EnergyMass",
   "CellPerformance = exp(−CellDamage)": "CellPerformance = exp(−CellDamage)",
   "CellPerformance = exp(−CellDamage); lowers repair capacity and can kill the cell": "CellPerformance = exp(−CellDamage); lowers repair capacity and can kill the cell",
   "CellRadius = sqrt(CellArea / π)": "CellRadius = sqrt(CellArea / π)",
@@ -92,7 +93,7 @@
   "Create cell information scope": "Create cell information scope",
   "Create cell preview controls": "Create cell preview controls",
   "Create preview render layers": "Create preview render layers",
-  "CtMass = CtMassFactor × cytosolDensity + Energy × EnergyToMassFactor": "CtMass = CtMassFactor × cytosolDensity + Energy × EnergyToMassFactor",
+  "CtMass = CtDensity × CtArea × CtDensityFactor + Energy × EnergyToMassFactor": "CtMass = CtDensity × CtArea × CtDensityFactor + Energy × EnergyToMassFactor",
   "Cursor mode": "Cursor mode",
   "Cursor readout": "Cursor readout",
   "Cycle period, sec": "Cycle period, sec",
@@ -106,7 +107,7 @@
   "Cytosol opacity": "Cytosol opacity",
   "Cytosol performance": "Cytosol performance",
   "Cytosol repair rate": "Cytosol repair rate",
-  "Cytosol upkeep {upkeep}; GFP upkeep; repair energy {repair}": "Cytosol upkeep {upkeep}; GFP upkeep; repair energy {repair}",
+  "Cytosol upkeep {upkeep}; Bioluminescence upkeep; repair energy {repair}": "Cytosol upkeep {upkeep}; Bioluminescence upkeep; repair energy {repair}",
   "CytosolColor = weighted(BaseCytosolColor, Nucleus/Chloroplast/Lysosome influence, CellDamage)": "CytosolColor = weighted(BaseCytosolColor, Nucleus/Chloroplast/Lysosome influence, CellDamage)",
   "CytosolColor = weighted(BaseCytosolColor, Nucleus/Chloroplast/Lysosome influence, CellDamage); membrane color is not included": "CytosolColor = weighted(BaseCytosolColor, Nucleus/Chloroplast/Lysosome influence, CellDamage); membrane color is not included",
   "CytosolColor is the former Cell Color and does not include membrane color": "CytosolColor is the former Cell Color and does not include membrane color",
@@ -199,15 +200,15 @@
   "Forces": "Forces",
   "Forces mode": "Forces mode",
   "Formula": "Formula",
-  "GFP": "GFP",
-  "GFP consumption": "GFP consumption",
-  "GFP is localized in cytosol and displayed as internal cytosol glow": "GFP is localized in cytosol and displayed as internal cytosol glow",
+  "Bioluminescence": "Bioluminescence",
+  "Bioluminescence consumption": "Bioluminescence consumption",
+  "Bioluminescence is localized in cytosol and displayed as internal cytosol glow": "Bioluminescence is localized in cytosol and displayed as internal cytosol glow",
   "General": "General",
   "General Control": "General Control",
   "General mode": "General mode",
   "Genome code": "Genome code",
   "Geometry": "Geometry",
-  "GfpEnergyConsumption = GfpExpression × CytosolGfpConsumptionFactor": "GfpEnergyConsumption = GfpExpression × CytosolGfpConsumptionFactor",
+  "BioluminescenceEnergyConsumption = BioluminescenceExpression × CytosolBioluminescenceConsumptionFactor": "BioluminescenceEnergyConsumption = BioluminescenceExpression × CytosolBioluminescenceConsumptionFactor",
   "Gravity": "Gravity",
   "Gravity force": "Gravity force",
   "Gravity/buoyancy": "Gravity/buoyancy",
@@ -433,5 +434,3 @@
   "One": "One",
   "Pair": "Pair"
 }
-
-

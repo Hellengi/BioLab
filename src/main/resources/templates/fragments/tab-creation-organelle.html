@@ -1,5 +1,3 @@
-
-
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="en">
 <body>
@@ -76,14 +74,14 @@
             </div>
           </div>
           <label class="settings-checkbox-row">
-            <input id="gfpEnabled" type="checkbox">
-            <span>GFP enabled</span>
+            <input id="bioluminescenceEnabled" type="checkbox">
+            <span>Bioluminescence enabled</span>
           </label>
           <div class="settings-field">
-            <label for="createGfpSlider">GFP</label>
+            <label for="createBioluminescenceSlider">Bioluminescence</label>
             <div class="settings-input-row">
-              <input id="createGfpSlider" type="range" class="form-range">
-              <input id="createGfpInput" type="number" class="form-control form-control-sm">
+              <input id="createBioluminescenceSlider" type="range" class="form-range">
+              <input id="createBioluminescenceInput" type="number" class="form-control form-control-sm">
             </div>
           </div>
         </div>
@@ -101,7 +99,7 @@
         </div>
       </div>
       <div class="cell-info-grid">
-        <div class="cell-info-label">GFP consumption</div><div id="createCytosolGfpCost"></div>
+        <div class="cell-info-label">Bioluminescence consumption</div><div id="createCytosolBioluminescenceCost"></div>
         <div class="cell-info-label">Cytosol color</div><div id="createCytosolColor">#c8c2aa</div>
       </div>
     </div>

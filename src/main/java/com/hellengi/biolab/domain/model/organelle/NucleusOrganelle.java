@@ -1,4 +1,5 @@
 
+
 package com.hellengi.biolab.domain.model.organelle;
 
 import com.hellengi.biolab.config.YamlConfig;
@@ -52,7 +53,7 @@ public class NucleusOrganelle implements Organelle {
 
     @Override
     public double mass(Cell cell, YamlConfig.CellProperties config) {
-        return config.getNucleoidMassFactor();
+        return area(cell, config) * config.getNucleoidDensityFactor();
     }
 
     @Override
@@ -60,8 +61,3 @@ public class NucleusOrganelle implements Organelle {
         return config.getNucleoidAreaFactor();
     }
 }
-
-
-
-
-

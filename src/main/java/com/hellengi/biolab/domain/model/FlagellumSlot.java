@@ -1,10 +1,10 @@
-
 package com.hellengi.biolab.domain.model;
 
 import lombok.Getter;
 import lombok.Setter;
 
 import static com.hellengi.biolab.util.Utils.clamp01;
+import static com.hellengi.biolab.util.Utils.finiteOrZero;
 
 @Getter
 @Setter
@@ -57,23 +57,21 @@ public class FlagellumSlot {
     }
 
     public void rememberPhysics(double force, double torque, double baseX, double baseY, double dirX, double dirY, double energyCostRate) {
-        this.lastForce = Math.max(0.0, force);
-        this.lastTorque = torque;
-        this.lastBaseX = baseX;
-        this.lastBaseY = baseY;
-        this.lastDirectionX = dirX;
-        this.lastDirectionY = dirY;
-        this.lastEnergyCostRate = Math.max(0.0, energyCostRate);
+        this.lastForce = Math.max(0.0, finiteOrZero(force));
+        this.lastTorque = finiteOrZero(torque);
+        this.lastBaseX = finiteOrZero(baseX);
+        this.lastBaseY = finiteOrZero(baseY);
+        this.lastDirectionX = finiteOrZero(dirX);
+        this.lastDirectionY = finiteOrZero(dirY);
+        this.lastEnergyCostRate = Math.max(0.0, finiteOrZero(energyCostRate));
     }
 
     public void rememberDamageRate(double rate) {
-        this.lastDamageRate = Math.max(0.0, rate);
+        this.lastDamageRate = Math.max(0.0, finiteOrZero(rate));
     }
 
     public void rememberRepairRates(double repairRate, double energyCostRate) {
-        this.lastRepairRate = Math.max(0.0, repairRate);
-        this.lastRepairEnergyCostRate = Math.max(0.0, energyCostRate);
+        this.lastRepairRate = Math.max(0.0, finiteOrZero(repairRate));
+        this.lastRepairEnergyCostRate = Math.max(0.0, finiteOrZero(energyCostRate));
     }
 }
-
-

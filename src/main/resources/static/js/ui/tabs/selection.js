@@ -1,9 +1,10 @@
 import { dom } from "../dom.js";
 import { formatTwoDecimals, getCellRgbString, setText } from "../../core/utils.js";
+import { energyConsumptionFor, formatOrganelleEnergy } from "../../core/energy-info.js";
 import { drawSelectedCellPreview } from "../../render/preview.js";
 import { getActiveTab, getLastTab, setSelectedTabEnabled, switchTab } from "./_tabs.js";
 import { getSelectedCell, setSelectedInfoScope, state } from "../../store/state.js";
-import { clearTooltipElement, setTooltipValue } from "../cell-info.js";
+import { clearTooltipElement, setTooltipPairValue, setTooltipValue } from "../cell-info.js";
 import { sendDisplayLayers } from "../../transport/ws/socket.js";
 import { t } from "../../localization/localization.js";
 
@@ -16,12 +17,20 @@ export function selectCell(cell) {
     state.selectedCellId = cell.id;
     state.selectedPreviewNotice = cell.dead ? { type: "dead" } : null;
     if (!state.selectedPreviewMode) state.selectedPreviewMode = "general";
-    updateSelectedCellPanel(cell);
-    lastSelectionPanelRefreshMs = performance.now();
-    lastSelectionPanelCellId = cell.id;
     showCellContent(true);
     setSelectedTabEnabled(true);
     switchTab("selected");
+
+    if (hasCellDetails(cell)) {
+        updateSelectedCellPanel(cell);
+        lastSelectionPanelRefreshMs = performance.now();
+        lastSelectionPanelCellId = cell.id;
+    } else {
+        showSelectedCellDetailsPending(cell);
+        lastSelectionPanelRefreshMs = 0;
+        lastSelectionPanelCellId = cell.id;
+    }
+
     sendDisplayLayers();
 }
 
@@ -64,6 +73,14 @@ export function refreshSelection(force = false) {
     }
     const now = performance.now();
     const cellChanged = lastSelectionPanelCellId !== cell.id;
+    if (!hasCellDetails(cell)) {
+        if (force || cellChanged) {
+            showSelectedCellDetailsPending(cell);
+            lastSelectionPanelRefreshMs = now;
+            lastSelectionPanelCellId = cell.id;
+        }
+        return;
+    }
     if (!force && !cellChanged && now - lastSelectionPanelRefreshMs < SELECTION_PANEL_REFRESH_INTERVAL_MS) return;
     updateSelectedCellPanel(cell, { skipInfoRender: !force && isSelectedInfoTooltipActive() });
     lastSelectionPanelRefreshMs = now;
@@ -80,6 +97,20 @@ function isSelectedInfoTooltipActive() {
     return Boolean(dom.selectedInfoGrid?.querySelector(
         ".cell-info-tooltip-host:hover, .cell-info-tooltip-host.app-tooltip--visible"
     )) || Boolean(active?.closest?.("#selectedInfoGrid .cell-info-tooltip-host"));
+}
+
+function hasCellDetails(cell) {
+    return Boolean(cell?.genome);
+}
+
+function showSelectedCellDetailsPending(cell) {
+    syncSelectedCellTitle(cell);
+    state.selectedStrain = null;
+    clearGrid(dom.selectedInfoGrid);
+    if (dom.selectedInfoGrid) {
+        row(dom.selectedInfoGrid, "Status", t("Loading cell details…"), "Detailed genome and diagnostic data are requested after selecting a cell");
+    }
+    drawSelectedCellPreview(cell, state.selectedStrain);
 }
 
 function updateSelectedCellPanel(cell, options = {}) {
@@ -128,9 +159,9 @@ function renderGeneralInfo(grid, cell, scope) {
         return;
     }
     if (scope === "cytosol") {
-        row(grid, "Cytosol density", formatTwoDecimals(genome.cytosolDensity), "CtMass = CtDensity × CtArea × CtMassFactor + Energy × EnergyToMassFactor");
+        row(grid, "Cytosol density", formatTwoDecimals(genome.cytosolDensity), "CtMass = CtDensity × CtArea × CtDensityFactor + Energy × EnergyToMassFactor");
         row(grid, "Cytosol area", formatTwoDecimals(genome.cytosolArea), "MaxEnergy = CytosolArea × EnergyCapacityPerArea");
-        row(grid, "GFP", `${genome.gfpEnabled ? t("on") : t("off")} / ${formatTwoDecimals(genome.gfp ?? 0)}%`, "GFP is an optional cytosol parameter; when disabled its expression and cost are zero");
+        row(grid, "Bioluminescence", `${genome.bioluminescenceEnabled ? t("on") : t("off")} / ${formatTwoDecimals(genome.bioluminescence ?? 0)}%`, "Bioluminescence is an optional cytosol parameter; when disabled its expression and cost are zero");
         row(grid, "Cytosol damage", formatTwoDecimals(cell.cellDamage ?? 0), "CytosolDamage is the main lethal damage channel");
         row(grid, "Cytosol color / opacity", rgbaString(visual.cytosolColor), "CytosolColor = weighted(BaseCytosolColor, Nucleus/Chloroplast/Lysosome influence, CytosolDamage); membrane color is not included");
         return;
@@ -179,8 +210,22 @@ function renderGeneralInfo(grid, cell, scope) {
 
     row(grid, "Status", cell.dead ? t("Dead") : t("Alive"), "Dead cells can be inspected like living cells until they decay");
     row(grid, "Code", genome.code ?? "", "Genome code");
-    row(grid, "Energy", `${formatTwoDecimals(cell.energy)} / ${formatTwoDecimals((genome.cytosolArea ?? 0) * 0.72)}`, "CellEnergy += Production − Consumption − RepairCost; MaxEnergy = CytosolArea × 0.72");
-    row(grid, "Mass", formatTwoDecimals(cell.mass), "CellMass = NcMass + CtMass + MbMass + CpTotalMass + LyTotalMass");
+    rowPair(
+        grid,
+        "Energy",
+        formatTwoDecimals(cell.energy ?? 0),
+        "CurrentEnergy = stored reserve after production, consumption, repair and digestion costs",
+        formatTwoDecimals(maxEnergyForCell(cell)),
+        "MaxEnergy = CytosolArea × EnergyCapacityPerArea"
+    );
+    rowPair(
+        grid,
+        "Mass",
+        formatTwoDecimals(cell.mass ?? 0),
+        "CurrentMass = DryMass + EnergyMass; runtime physics uses this value",
+        formatTwoDecimals(dryMassForCell(cell)),
+        "DryMass = structural organelle mass without stored-energy mass"
+    );
     row(grid, "Radius", formatTwoDecimals(cell.radius), "CellRadius = sqrt(CellArea / π)");
     row(grid, "Area", formatTwoDecimals(Math.PI * (cell.radius ?? 0) * (cell.radius ?? 0)), "CellArea = π × CellRadius²");
     row(grid, "Density", formatTwoDecimals(cell.density), "CellDensity = CellMass / CellArea");
@@ -314,38 +359,6 @@ function renderEnergyInfo(grid, cell, scope) {
     row(grid, "Rate components", energyRateComponents(cell, scope), "Concrete production and consumption factors for this scope");
 }
 
-function energyProductionFor(cell, scope) {
-    const photosynthesis = Math.max(0, cell.energyProduction ?? 0);
-    const digestion = Math.max(0, cell.digestionEnergyProduction ?? 0);
-    if (scope === "lysosome") {
-        const slotValues = organelleEnergyValues(cell, scope, "production");
-        return slotValues.length ? sum(slotValues) : digestion;
-    }
-    if (scope === "chloroplast") return photosynthesis;
-    return scope === "general" ? photosynthesis + digestion : 0;
-}
-
-function energyConsumptionFor(cell, scope) {
-    const total = Math.max(0, cell.energyConsumption ?? 0);
-    const repair = Math.max(0, cell.repairEnergyCostRate ?? 0);
-    const base = Math.max(0, total - repair);
-    if (scope === "nucleus") return base * 0.13;
-    if (scope === "cytosol") return base * 0.43 + repair;
-    if (scope === "membrane") return base * 0.18 + Math.max(0, cell.membraneRepairEnergyCostRate ?? 0);
-    if (scope === "chloroplast") return base * 0.24;
-    if (scope === "lysosome") {
-        const slotValues = organelleEnergyValues(cell, scope, "consumption");
-        return slotValues.length ? sum(slotValues) : base * 0.08 + Math.max(0, cell.digestionEnergyCostRate ?? 0) + Math.max(0, cell.lysosomeRepairEnergyCostRate ?? 0);
-    }
-    if (scope === "flagellum") {
-        const slotValues = organelleEnergyValues(cell, scope, "consumption");
-        return slotValues.length ? sum(slotValues) : Math.max(0, cell.flagellumEnergyCostRate ?? 0) + Math.max(0, cell.flagellumRepairEnergyCostRate ?? 0);
-    }
-    return total;
-}
-
-
-
 function performanceInputsSummary(cell) {
     const supply = Math.round(energySupply01(cell) * 100);
     return t("Supply {supply}%; damage: N {nucleus}, C {cytosol}, M {membrane}, CP {cp}, Ly {ly}, Fl {fl}; flagella motor {motor}%", {
@@ -419,24 +432,6 @@ function organelleHealthValues(cell, scope, metric) {
     return values.length > 1 ? values : values;
 }
 
-function formatOrganelleEnergy(cell, scope, kind) {
-    const values = organelleEnergyValues(cell, scope, kind);
-    const total = kind === "production" ? energyProductionFor(cell, scope) : energyConsumptionFor(cell, scope);
-    if (values.length > 1) {
-        return `${formatTwoDecimals(total)} (${formatTwoDecimals(Math.min(...values))} ~ ${formatTwoDecimals(Math.max(...values))})`;
-    }
-    return formatTwoDecimals(total);
-}
-
-function organelleEnergyValues(cell, scope, kind) {
-    const slots = organelleSlots(cell, scope);
-    if (!slots.length) return [];
-    return slots.map(slot => {
-        if (kind === "production") return Number(slot.energyProductionRate ?? slot.productionRate ?? 0);
-        return Number(slot.energyCostRate ?? 0) + Number(slot.repairEnergyCostRate ?? 0);
-    }).filter(Number.isFinite);
-}
-
 function organelleSlots(cell, scope) {
     if (scope === "flagellum") return Array.isArray(cell?.flagellumSlots) ? cell.flagellumSlots : [];
     if (scope === "lysosome") return Array.isArray(cell?.lysosomeSlots) ? cell.lysosomeSlots : [];
@@ -469,10 +464,6 @@ function formatNumberRange(values) {
     const min = Math.min(...values);
     const max = Math.max(...values);
     return Math.abs(min - max) < 1.0e-9 ? formatTwoDecimals(min) : `${formatTwoDecimals(min)} ~ ${formatTwoDecimals(max)}`;
-}
-
-function sum(values) {
-    return values.reduce((total, value) => total + (Number(value) || 0), 0);
 }
 
 function healthRateComponents(cell, scope) {
@@ -556,7 +547,7 @@ function energyRateComponents(cell, scope) {
         });
     }
     if (scope === "cytosol") {
-        return t("Cytosol upkeep {upkeep}; GFP upkeep; repair energy {repair}", {
+        return t("Cytosol upkeep {upkeep}; Bioluminescence upkeep; repair energy {repair}", {
             upkeep: formatTwoDecimals(Math.max(0, energyConsumptionFor(cell, scope) - repair)),
             repair: formatTwoDecimals(repair),
         });
@@ -578,6 +569,28 @@ function energyRateComponents(cell, scope) {
 
 function damagePerformance(damage) {
     return Math.max(0, Math.min(1, Math.exp(-Math.max(0, Number(damage) || 0))));
+}
+
+function maxEnergyForCell(cell) {
+    const backend = Number(cell?.maxEnergy);
+    if (Number.isFinite(backend) && backend >= 0) return backend;
+    return Math.max(0, Number(cell?.genome?.cytosolArea ?? 0) || 0) * 0.72;
+}
+
+function dryMassForCell(cell) {
+    const backend = Number(cell?.dryMass);
+    if (Number.isFinite(backend) && backend >= 0) return backend;
+    const mass = Number(cell?.mass ?? 0) || 0;
+    return Math.max(0, mass);
+}
+
+function rowPair(grid, label, leftValue, leftTooltip, rightValue, rightTooltip) {
+    const labelEl = document.createElement("div");
+    labelEl.className = "cell-info-label";
+    labelEl.textContent = t(label);
+    const valueEl = document.createElement("div");
+    grid.append(labelEl, valueEl);
+    setTooltipPairValue(valueEl, t(String(leftValue)), t(leftTooltip), t(String(rightValue)), t(rightTooltip));
 }
 
 function row(grid, label, value, tooltip) {
@@ -620,6 +633,8 @@ function getLastCollisionImpulse(cell) {
 }
 
 function mapWorldCellToTemplate(cell) {
+    if (!hasCellDetails(cell)) return null;
+
     return {
         id: null,
         name: null,
@@ -629,8 +644,8 @@ function mapWorldCellToTemplate(cell) {
             divisionAngle: cell.genome.divisionAngle,
             cytosolArea: cell.genome.cytosolArea,
             cytosolDensity: cell.genome.cytosolDensity,
-            gfpEnabled: Boolean(cell.genome.gfpEnabled),
-            gfp: cell.genome.gfp ?? 0,
+            bioluminescenceEnabled: Boolean(cell.genome.bioluminescenceEnabled),
+            bioluminescence: cell.genome.bioluminescence ?? 0,
             elasticity: cell.genome.elasticity,
             melaninEnabled: cell.genome.melaninEnabled,
             melaninPercent: cell.genome.melaninPercent ?? 0,
@@ -671,7 +686,6 @@ function rgbaString(color) {
     if (!color) return "—";
     return `${Math.round(color.r ?? 0)}, ${Math.round(color.g ?? 0)}, ${Math.round(color.b ?? 0)} / ${formatTwoDecimals(color.opacity ?? 0)}`;
 }
-
 
 
 

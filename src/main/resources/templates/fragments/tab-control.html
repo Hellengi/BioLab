@@ -49,8 +49,22 @@
           <button id="opacityLayerToggle" class="display-layer-toggle" type="button" data-layer="opacityMap" aria-pressed="false">
             <span class="display-layer-checkbox" aria-hidden="true"></span>
             <span class="display-layer-copy">
-              <span class="display-layer-title">Optical density & light</span>
-              <span class="display-layer-subtitle">Shows computed illumination and optical density</span>
+              <span class="display-layer-title">Optical density</span>
+              <span class="display-layer-subtitle">Shows the computed extinction / opacity field</span>
+            </span>
+          </button>
+          <button id="directedLightLayerToggle" class="display-layer-toggle" type="button" data-layer="directedLightMap" aria-pressed="false">
+            <span class="display-layer-checkbox" aria-hidden="true"></span>
+            <span class="display-layer-copy">
+              <span class="display-layer-title">Directed light</span>
+              <span class="display-layer-subtitle">Shows light transported from external sources by rays</span>
+            </span>
+          </button>
+          <button id="scatteredLightLayerToggle" class="display-layer-toggle" type="button" data-layer="scatteredLightMap" aria-pressed="false">
+            <span class="display-layer-checkbox" aria-hidden="true"></span>
+            <span class="display-layer-copy">
+              <span class="display-layer-title">Scattered light</span>
+              <span class="display-layer-subtitle">Shows redistributed light and bioluminescent emission</span>
             </span>
           </button>
           <button id="lightDirectionLayerToggle" class="display-layer-toggle" type="button" data-layer="lightDirection" aria-pressed="false">
@@ -126,7 +140,3 @@
 </div>
 </body>
 </html>
-
-
-
-

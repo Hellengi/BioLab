@@ -1,4 +1,3 @@
-
 package com.hellengi.biolab.domain.lifecycle;
 
 import com.hellengi.biolab.config.YamlConfig;
@@ -18,6 +17,7 @@ import java.util.Map;
 
 import static com.hellengi.biolab.util.Utils.EPSILON;
 import static com.hellengi.biolab.util.Utils.clamp01;
+import static com.hellengi.biolab.util.Utils.smoothstep;
 
 @Component
 @RequiredArgsConstructor
@@ -424,11 +424,6 @@ public class FoodDigestion {
     }
 
 
-    private double smoothstep(double t) {
-        double x = clamp01(t);
-        return x * x * (3.0 - 2.0 * x);
-    }
-
     private double clamp(double value, double min, double max) {
         if (!Double.isFinite(value)) return min;
         return Math.max(min, Math.min(max, value));
@@ -443,11 +438,3 @@ public class FoodDigestion {
     private record DigestionResult(double grossEnergyGain, double energyCost) {
     }
 }
-
-
-
-
-
-
-
-

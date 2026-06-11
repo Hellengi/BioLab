@@ -6,86 +6,200 @@ import org.jspecify.annotations.NullMarked;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
+import org.springframework.web.socket.WebSocketMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 import tools.jackson.databind.json.JsonMapper;
 
-import java.util.Iterator;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
+import java.util.Optional;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Component
 @NullMarked
 @RequiredArgsConstructor
 public class SocketHandler extends TextWebSocketHandler {
-    private static final String DISPLAY_LAYERS_ATTRIBUTE = "displayLayers";
+    private static final String TYPE_DISPLAY_LAYERS = "displayLayers";
+    private static final String TYPE_SUBSCRIBE = "subscribe";
 
-    private final Set<WebSocketSession> sessions = ConcurrentHashMap.newKeySet();
+    private final Map<String, SessionChannel> sessions = new ConcurrentHashMap<>();
     private final JsonMapper objectMapper;
+    private final ExecutorService sendExecutor = new ThreadPoolExecutor(
+            BroadcastConstants.SEND_EXECUTOR_THREADS,
+            BroadcastConstants.SEND_EXECUTOR_THREADS,
+            0L,
+            TimeUnit.MILLISECONDS,
+            new ArrayBlockingQueue<>(BroadcastConstants.SEND_EXECUTOR_QUEUE_CAPACITY),
+            new WebSocketThreadFactory(),
+            new ThreadPoolExecutor.DiscardOldestPolicy()
+    );
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
-        session.getAttributes().put(DISPLAY_LAYERS_ATTRIBUTE, DisplayLayersDto.off());
-        sessions.add(session);
+        sessions.put(session.getId(), new SessionChannel(session));
     }
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
-        sessions.remove(session);
+        removeSession(session);
     }
 
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) {
         try {
             Map<?, ?> payload = objectMapper.readValue(message.getPayload(), Map.class);
-            if (!"displayLayers".equals(payload.get("type"))) {
+            String type = String.valueOf(payload.get("type"));
+            if (!TYPE_DISPLAY_LAYERS.equals(type) && !TYPE_SUBSCRIBE.equals(type)) {
                 return;
             }
 
-            session.getAttributes().put(
-                    DISPLAY_LAYERS_ATTRIBUTE,
-                    new DisplayLayersDto(
-                            Boolean.TRUE.equals(payload.get("opacityMap")),
-                            Boolean.TRUE.equals(payload.get("lightDirection")),
-                            Boolean.TRUE.equals(payload.get("quadtree")),
-                            Boolean.TRUE.equals(payload.get("cellDirections")),
-                            selectedCellId(payload.get("selectedCellId")),
-                            String.valueOf(payload.get("selectedCellMode") == null ? "general" : payload.get("selectedCellMode"))
-                    )
-            );
+            channelOf(session).ifPresent(channel -> channel.updateSubscription(
+                    displayLayersFrom(payload),
+                    viewportFrom(payload)
+            ));
         } catch (Exception ignored) {
             // UI state messages are optional. Invalid payloads must not close the simulation socket.
         }
     }
 
-    public void broadcastWorld(Function<DisplayLayersDto, TextMessage> messageFactory) {
-        broadcast(session -> messageFactory.apply(displayLayersOf(session)));
+    public boolean hasOpenSessions() {
+        removeClosedSessions();
+        return sessions.values().stream().anyMatch(SessionChannel::isOpen);
     }
 
-    public void broadcastToAll(TextMessage message) {
-        broadcast(session -> message);
+    public Map<RenderGroupKey, List<SessionChannel>> renderGroups() {
+        return openChannels().stream()
+                .collect(Collectors.groupingBy(channel -> new RenderGroupKey(
+                        channel.displayLayers().renderKey(),
+                        channel.viewport().bucketed(BroadcastConstants.VIEWPORT_GROUP_BUCKET_WORLD_UNITS)
+                )));
     }
 
-    private void broadcast(Function<WebSocketSession, TextMessage> messageFactory) {
-        Iterator<WebSocketSession> iterator = sessions.iterator();
+    public Map<DisplayLayersDto, List<SessionChannel>> lightingGroups() {
+        return openChannels().stream()
+                .collect(Collectors.groupingBy(channel -> channel.displayLayers().lightingKey()));
+    }
 
-        while (iterator.hasNext()) {
-            WebSocketSession session = iterator.next();
+    public Map<DisplayLayersDto, List<SessionChannel>> selectedCellGroups() {
+        Map<DisplayLayersDto, List<SessionChannel>> groups = new HashMap<>();
+        for (SessionChannel channel : openChannels()) {
+            DisplayLayersDto displayLayers = channel.displayLayers();
+            if (!displayLayers.hasSelectedCell()) {
+                continue;
+            }
+            groups.computeIfAbsent(displayLayers.selectedCellKey(), ignored -> new ArrayList<>()).add(channel);
+        }
+        return groups;
+    }
 
-            try {
-                if (!session.isOpen()) {
-                    iterator.remove();
-                    continue;
-                }
+    public void broadcastToAll(WebSocketMessage<?> message) {
+        broadcastToAll(BroadcastConstants.LANE_GENERIC, message);
+    }
 
-                session.sendMessage(messageFactory.apply(session));
-            } catch (Exception e) {
-                closeSession(session);
-                iterator.remove();
+    public void broadcastToAll(String lane, WebSocketMessage<?> message) {
+        for (SessionChannel channel : openChannels()) {
+            channel.offer(lane, message);
+        }
+    }
+
+    public <K> void broadcastGrouped(
+            String lane,
+            Map<K, List<SessionChannel>> groups,
+            Function<K, WebSocketMessage<?>> messageFactory
+    ) {
+        for (Map.Entry<K, List<SessionChannel>> entry : groups.entrySet()) {
+            WebSocketMessage<?> message = messageFactory.apply(entry.getKey());
+            for (SessionChannel channel : entry.getValue()) {
+                channel.offer(lane, message);
             }
         }
+    }
+
+    private List<SessionChannel> openChannels() {
+        removeClosedSessions();
+        return sessions.values().stream()
+                .filter(SessionChannel::isOpen)
+                .toList();
+    }
+
+    private Optional<SessionChannel> channelOf(WebSocketSession session) {
+        SessionChannel channel = sessions.get(session.getId());
+        if (channel != null && channel.isOpen()) {
+            return Optional.of(channel);
+        }
+        return Optional.empty();
+    }
+
+    private void removeSession(WebSocketSession session) {
+        SessionChannel removed = sessions.remove(session.getId());
+        if (removed != null) {
+            removed.closeQuietly();
+        }
+    }
+
+    private void removeClosedSessions() {
+        sessions.entrySet().removeIf(entry -> {
+            boolean closed = !entry.getValue().isOpen();
+            if (closed) {
+                entry.getValue().closeQuietly();
+            }
+            return closed;
+        });
+    }
+
+    private DisplayLayersDto displayLayersFrom(Map<?, ?> payload) {
+        return new DisplayLayersDto(
+                Boolean.TRUE.equals(payload.get("opacityMap")),
+                Boolean.TRUE.equals(payload.get("directedLightMap")),
+                Boolean.TRUE.equals(payload.get("scatteredLightMap")),
+                Boolean.TRUE.equals(payload.get("lightDirection")),
+                Boolean.TRUE.equals(payload.get("quadtree")),
+                Boolean.TRUE.equals(payload.get("cellDirections")),
+                selectedCellId(payload.get("selectedCellId")),
+                String.valueOf(payload.get("selectedCellMode") == null ? "general" : payload.get("selectedCellMode"))
+        ).normalized();
+    }
+
+    private ClientViewport viewportFrom(Map<?, ?> payload) {
+        Object viewport = payload.get("viewport");
+        if (!(viewport instanceof Map<?, ?> viewportMap)) {
+            return ClientViewport.FULL_WORLD;
+        }
+
+        return new ClientViewport(
+                number(viewportMap.get("minX"), Double.NEGATIVE_INFINITY),
+                number(viewportMap.get("minY"), Double.NEGATIVE_INFINITY),
+                number(viewportMap.get("maxX"), Double.POSITIVE_INFINITY),
+                number(viewportMap.get("maxY"), Double.POSITIVE_INFINITY),
+                number(viewportMap.get("margin"), BroadcastConstants.VIEWPORT_MARGIN_WORLD_UNITS)
+        ).normalized(BroadcastConstants.VIEWPORT_MARGIN_WORLD_UNITS);
+    }
+
+    private double number(Object value, double fallback) {
+        if (value instanceof Number number) {
+            return number.doubleValue();
+        }
+        if (value instanceof String text && !text.isBlank()) {
+            try {
+                return Double.parseDouble(text);
+            } catch (NumberFormatException ignored) {
+                return fallback;
+            }
+        }
+        return fallback;
     }
 
     private Long selectedCellId(Object value) {
@@ -102,17 +216,110 @@ public class SocketHandler extends TextWebSocketHandler {
         return null;
     }
 
-    private DisplayLayersDto displayLayersOf(WebSocketSession session) {
-        Object value = session.getAttributes().get(DISPLAY_LAYERS_ATTRIBUTE);
-        return value instanceof DisplayLayersDto displayLayers ? displayLayers : DisplayLayersDto.off();
+    public final class SessionChannel {
+        private final WebSocketSession session;
+        private final Map<String, WebSocketMessage<?>> pendingByLane = new ConcurrentHashMap<>();
+        private final AtomicBoolean sending = new AtomicBoolean(false);
+        private final AtomicInteger skippedSends = new AtomicInteger(0);
+        private final AtomicInteger droppedFrames = new AtomicInteger(0);
+        private volatile DisplayLayersDto displayLayers = DisplayLayersDto.off();
+        private volatile ClientViewport viewport = ClientViewport.FULL_WORLD;
+
+        private SessionChannel(WebSocketSession session) {
+            this.session = session;
+        }
+
+        public DisplayLayersDto displayLayers() {
+            return displayLayers;
+        }
+
+        public ClientViewport viewport() {
+            return viewport;
+        }
+
+        public int droppedFrames() {
+            return droppedFrames.get();
+        }
+
+        private void updateSubscription(DisplayLayersDto displayLayers, ClientViewport viewport) {
+            this.displayLayers = displayLayers == null ? DisplayLayersDto.off() : displayLayers.normalized();
+            this.viewport = viewport == null ? ClientViewport.FULL_WORLD : viewport.normalized(BroadcastConstants.VIEWPORT_MARGIN_WORLD_UNITS);
+        }
+
+        private boolean isOpen() {
+            return session.isOpen();
+        }
+
+        private void offer(String lane, WebSocketMessage<?> message) {
+            if (!isOpen()) {
+                closeQuietly();
+                return;
+            }
+
+            String safeLane = lane == null ? BroadcastConstants.LANE_GENERIC : lane;
+            WebSocketMessage<?> replaced = pendingByLane.put(safeLane, message);
+            if (replaced != null) {
+                droppedFrames.incrementAndGet();
+            }
+
+            if (!sending.compareAndSet(false, true)) {
+                if (skippedSends.incrementAndGet() > BroadcastConstants.MAX_SKIPPED_SENDS_BEFORE_CLOSE) {
+                    closeQuietly();
+                }
+                return;
+            }
+
+            sendExecutor.execute(this::drainLatest);
+        }
+
+        private void drainLatest() {
+            try {
+                while (isOpen()) {
+                    WebSocketMessage<?> message = pollNextMessage();
+                    if (message == null) {
+                        return;
+                    }
+                    session.sendMessage(message);
+                    skippedSends.set(0);
+                }
+            } catch (IOException | RuntimeException ignored) {
+                closeQuietly();
+            } finally {
+                sending.set(false);
+                if (!pendingByLane.isEmpty() && isOpen() && sending.compareAndSet(false, true)) {
+                    sendExecutor.execute(this::drainLatest);
+                }
+            }
+        }
+
+        private WebSocketMessage<?> pollNextMessage() {
+            for (String lane : BroadcastConstants.SEND_LANE_PRIORITY) {
+                WebSocketMessage<?> message = pendingByLane.remove(lane);
+                if (message != null) {
+                    return message;
+                }
+            }
+            return null;
+        }
+
+        private void closeQuietly() {
+            try {
+                if (session.isOpen()) {
+                    session.close();
+                }
+            } catch (Exception ignored) {
+            }
+        }
     }
 
-    private void closeSession(WebSocketSession session) {
-        try {
-            session.close();
-        } catch (Exception ignored) {
+    private static final class WebSocketThreadFactory implements ThreadFactory {
+        private final AtomicInteger index = new AtomicInteger();
+
+        @Override
+        public Thread newThread(Runnable runnable) {
+            Thread thread = new Thread(runnable, "biolab-ws-send-" + index.incrementAndGet());
+            thread.setDaemon(true);
+            return thread;
         }
     }
 }
-
-

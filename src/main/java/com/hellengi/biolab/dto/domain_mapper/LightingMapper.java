@@ -40,7 +40,7 @@ public class LightingMapper {
         int width = (int) Math.ceil(config.getTubeDiameter() / (double) gridStep);
         int height = (int) Math.ceil(config.getTubeDiameter() / (double) gridStep);
         double[] lightMap = lighting.buildLightMap(config.getTubeDiameter(), config.getTubeDiameter(), gridStep);
-        return toDto(world, lightMap, gridStep, width, height, DisplayLayersDto.off());
+        return toDto(world, lightMap, gridStep, width, height, DisplayLayersDto.off(), true, false);
     }
 
     public LightingDto toDto(
@@ -51,18 +51,44 @@ public class LightingMapper {
             int height,
             DisplayLayersDto displayLayers
     ) {
+        return toDto(world, lightMap, gridStep, width, height, displayLayers, true, true);
+    }
+
+    public LightingDto toMetadataDto(
+            SimulationWorld world,
+            int gridStep,
+            int width,
+            int height
+    ) {
+        return toDto(world, null, gridStep, width, height, DisplayLayersDto.off(), false, false);
+    }
+
+    public LightingDto toDto(
+            SimulationWorld world,
+            double[] lightMap,
+            int gridStep,
+            int width,
+            int height,
+            DisplayLayersDto displayLayers,
+            boolean includeBaseLightMap,
+            boolean includeDebugMaps
+    ) {
         double centerX = config.worldCenterX();
         double centerY = config.worldCenterY();
         List<LightSourceDto> lightSources = world.getLightSources().stream()
                 .map(source -> toDto(source, centerX, centerY))
                 .toList();
 
-        DisplayLayersDto layers = displayLayers != null ? displayLayers : DisplayLayersDto.off();
-        double[] opacityMap = layers.opacityMap() ? lighting.getOpacityMap() : null;
-        double[] lightDirectionArrows = layers.lightDirection()
-                ? buildLightDirectionArrows(world, lightMap, gridStep, width, height)
+        DisplayLayersDto layers = displayLayers != null ? displayLayers.normalized() : DisplayLayersDto.off();
+        double[] opacityMap = includeDebugMaps && layers.opacityMap() ? lighting.getOpacityMap() : null;
+        double[] directedLightMap = includeDebugMaps && (layers.directedLightMap() || layers.lightDirection())
+                ? lighting.getDirectedLightMap()
+                : null;
+        double[] scatteredLightMap = includeDebugMaps && layers.scatteredLightMap() ? lighting.getScatteredLightMap() : null;
+        double[] lightDirectionArrows = includeDebugMaps && layers.lightDirection()
+                ? buildLightDirectionArrows(world, directedLightMap, gridStep, width, height)
                 : new double[0];
-        List<QuadtreeNodeDto> quadtreeNodes = layers.quadtree() ? buildQuadtreeNodes(world) : List.of();
+        List<QuadtreeNodeDto> quadtreeNodes = includeDebugMaps && layers.quadtree() ? buildQuadtreeNodes(world) : List.of();
 
         return new LightingDto(
                 world.getGlobalLight().getValue(),
@@ -71,7 +97,9 @@ public class LightingMapper {
                 gridStep,
                 width,
                 height,
-                lightMap,
+                includeBaseLightMap ? lightMap : null,
+                includeDebugMaps && layers.directedLightMap() ? directedLightMap : null,
+                scatteredLightMap,
                 opacityMap,
                 lightDirectionArrows,
                 quadtreeNodes
@@ -85,8 +113,7 @@ public class LightingMapper {
             int cols,
             int rows
     ) {
-        boolean hasLocalSources = !world.getLightSources().isEmpty()
-                || world.getCells().stream().anyMatch(cell -> cell.getFluorescenceBrightness() > LIGHT_DIRECTION_MIN_LOCAL_LIGHT);
+        boolean hasLocalSources = !world.getLightSources().isEmpty();
         if (!hasLocalSources || lightMap == null || lightMap.length == 0) {
             return new double[0];
         }
@@ -214,7 +241,5 @@ public class LightingMapper {
         );
     }
 }
-
-
 
 

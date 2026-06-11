@@ -1,3 +1,4 @@
+
 /**
  * Shared renderer for informational values with formula tooltips.
  * Used by Cell Selection and Cell Creation panels.
@@ -86,4 +87,19 @@ export function setTooltipValue(element, value, tooltipText) {
     updateTooltipValue(element._tooltipValue, value, tooltipText);
 }
 
+export function setTooltipPairValue(element, leftValue, leftTooltipText, rightValue, rightTooltipText) {
+    if (!element) return;
 
+    if (!element._tooltipPair) {
+        clearElement(element);
+        const left = appendTooltipValue(element, leftValue, leftTooltipText);
+        appendSeparator(element);
+        const right = appendTooltipValue(element, rightValue, rightTooltipText);
+        element._tooltipPair = {left, right};
+        element._tooltipValue = null;
+        return;
+    }
+
+    updateTooltipValue(element._tooltipPair.left, leftValue, leftTooltipText);
+    updateTooltipValue(element._tooltipPair.right, rightValue, rightTooltipText);
+}

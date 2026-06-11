@@ -1,4 +1,3 @@
-
 package com.hellengi.biolab.util;
 
 import com.hellengi.biolab.domain.model.Genome;
@@ -19,8 +18,8 @@ public final class GenomeCodec {
                 + pack(genome.getCytosolArea())
                 + pack(genome.getCytosolDensity())
                 + pack(genome.getElasticity())
-                + pack(genome.isGfpEnabled() ? 1.0 : 0.0)
-                + pack(genome.getGfp())
+                + pack(genome.isBioluminescenceEnabled() ? 1.0 : 0.0)
+                + pack(genome.getBioluminescence())
                 + pack(genome.isMelaninEnabled() ? 1.0 : 0.0)
                 + pack(genome.getMelaninPercent())
                 + pack(genome.isChloroplastEnabled() ? 1.0 : 0.0)
@@ -52,4 +51,3 @@ public final class GenomeCodec {
         return "0".repeat(GENE_WIDTH - encoded.length()) + encoded;
     }
 }
-

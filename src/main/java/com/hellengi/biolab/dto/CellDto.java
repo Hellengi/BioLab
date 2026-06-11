@@ -1,3 +1,4 @@
+
 package com.hellengi.biolab.dto;
 
 import java.util.List;
@@ -10,6 +11,7 @@ public record CellDto(
         double vy,
         double angularVelocity,
         double energy,
+        Double maxEnergy,
         double radius,
         double nucleusOffsetX,
         double nucleusOffsetY,
@@ -21,6 +23,7 @@ public record CellDto(
         long lifetimeTicks,
         double localLight,
         double mass,
+        Double dryMass,
         double density,
         Double opacity,
         double nucleusDamage,

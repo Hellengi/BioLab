@@ -94,10 +94,10 @@ export function render(ctx, state) {
 
     clipTube(ctx, worldSize);
 
-    const opticalDensityLayerEnabled = hasOpticalDensityLayer(state);
+    const diagnosticLayerEnabled = hasDiagnosticGridLayer(state);
 
     drawBackground(ctx, state.world.lighting, {
-        opticalDensityMode: opticalDensityLayerEnabled,
+        opticalDensityMode: false,
         worldWidth: worldSize,
         worldHeight: worldSize,
     });
@@ -108,13 +108,13 @@ export function render(ctx, state) {
 
     for (const food of state.world.foods) {
         if (food.capturedByCellId == null && isCircleVisible(food, visibleBounds, 8)) {
-            drawFood(ctx, food, state.world.lighting, opticalDensityLayerEnabled);
+            drawFood(ctx, food, state.world.lighting, diagnosticLayerEnabled);
         }
     }
 
-    // Light & Density view already visualizes cells through the optical-density map.
-    // Do not draw the cell bodies over it, otherwise the actual density layer is harder to read.
-    if (!opticalDensityLayerEnabled) {
+    // Diagnostic grid layers visualize cells/light fields as square maps.
+    // Do not draw cell bodies over them, otherwise the maps are harder to read.
+    if (!diagnosticLayerEnabled) {
         const capturedFoods = buildCapturedFoodSlotMap(state.world.foods);
         for (const cell of state.world.cells) {
             if (cell.dead || !isCircleVisible(cell, visibleBounds, 24)) continue;
@@ -151,8 +151,8 @@ export function render(ctx, state) {
     drawTubeBorder(ctx, worldSize);
 
     // Selection ring is an interaction overlay, so it stays visible even when
-    // Light & Density view hides the cell bodies.
-    drawSelectedCellOverlay(ctx, state, opticalDensityLayerEnabled);
+    // diagnostic grid layers hide the cell bodies.
+    drawSelectedCellOverlay(ctx, state, diagnosticLayerEnabled);
     ctx.restore();
 }
 
@@ -454,18 +454,18 @@ function midpoint(a, b) {
     };
 }
 
-function drawSelectedCellOverlay(ctx, state, opticalDensityLayerEnabled) {
+function drawSelectedCellOverlay(ctx, state, diagnosticLayerEnabled) {
     if (!state.selectedCellId) return;
 
     const selectedCell = state.cellById.get(state.selectedCellId);
     if (!selectedCell) return;
 
-    drawSelectedCellOutline(ctx, selectedCell, state.world?.lighting, opticalDensityLayerEnabled);
+    drawSelectedCellOutline(ctx, selectedCell, state.world?.lighting, diagnosticLayerEnabled);
 }
 
-function drawSelectedCellOutline(ctx, selectedCell, lighting, opticalDensityLayerEnabled) {
+function drawSelectedCellOutline(ctx, selectedCell, lighting, diagnosticLayerEnabled) {
     const radius = selectedCell.radius + SELECTED_CELL_RING.padding;
-    const strokeColor = calculateSelectionStrokeColor(selectedCell, radius, lighting, opticalDensityLayerEnabled);
+    const strokeColor = calculateSelectionStrokeColor(selectedCell, radius, lighting, diagnosticLayerEnabled);
     const circumference = Math.PI * 2 * radius;
     const segmentCount = Math.max(
         SELECTED_CELL_RING.minSegments,
@@ -491,8 +491,8 @@ function drawSelectedCellOutline(ctx, selectedCell, lighting, opticalDensityLaye
     ctx.restore();
 }
 
-function calculateSelectionStrokeColor(selectedCell, radius, lighting, opticalDensityLayerEnabled) {
-    const grayscale = estimateSelectionBackgroundBrightness(selectedCell, radius, lighting, opticalDensityLayerEnabled);
+function calculateSelectionStrokeColor(selectedCell, radius, lighting, diagnosticLayerEnabled) {
+    const grayscale = estimateSelectionBackgroundBrightness(selectedCell, radius, lighting, diagnosticLayerEnabled);
 
     if (grayscale <= SELECTED_CELL_RING.darkBackgroundThreshold) {
         return selectionStrokeColor(SELECTED_CELL_RING.lightStrokeVar);
@@ -512,7 +512,7 @@ function selectionStrokeColor(varName) {
     return selectionStrokeColorCache.get(varName);
 }
 
-function estimateSelectionBackgroundBrightness(selectedCell, radius, lighting, opticalDensityLayerEnabled) {
+function estimateSelectionBackgroundBrightness(selectedCell, radius, lighting, diagnosticLayerEnabled) {
     const samples = [
         [selectedCell.x, selectedCell.y - radius],
         [selectedCell.x + radius, selectedCell.y],
@@ -524,17 +524,17 @@ function estimateSelectionBackgroundBrightness(selectedCell, radius, lighting, o
     let count = 0;
 
     for (const [x, y] of samples) {
-        sum += estimateBackgroundBrightnessAt(x, y, lighting, opticalDensityLayerEnabled);
+        sum += estimateBackgroundBrightnessAt(x, y, lighting, diagnosticLayerEnabled);
         count++;
     }
 
     return count > 0 ? sum / count : 255;
 }
 
-function estimateBackgroundBrightnessAt(x, y, lighting, opticalDensityLayerEnabled) {
+function estimateBackgroundBrightnessAt(x, y, lighting, diagnosticLayerEnabled) {
     const light = sampleLightingGrid(lighting?.lightMap, lighting, x, y, lighting?.globalLight ?? 0.75);
 
-    if (!opticalDensityLayerEnabled) {
+    if (!diagnosticLayerEnabled) {
         return backgroundBrightness(light);
     }
 
@@ -614,29 +614,12 @@ function mixRgb(from, to, t) {
     };
 }
 
-function hasOpticalDensityLayer(state) {
-    const lighting = state.world?.lighting;
-
-    return Boolean(
-        state.displayLayers?.opacityMap
-        && Array.isArray(lighting?.opacityMap)
-        && lighting.opacityMap.length > 0
-    );
+function hasDiagnosticGridLayer(state) {
+    const layers = state.displayLayers ?? {};
+    return Boolean(layers.opacityMap || layers.directedLightMap || layers.scatteredLightMap);
 }
 
 function clamp(value, min, max) {
     if (!Number.isFinite(value)) return min;
     return Math.max(min, Math.min(max, value));
 }
-
-
-
-
-
-
-
-
-
-
-
-

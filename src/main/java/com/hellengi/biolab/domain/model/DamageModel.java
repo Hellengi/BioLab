@@ -3,6 +3,7 @@ package com.hellengi.biolab.domain.model;
 import com.hellengi.biolab.config.YamlConfig;
 
 import static com.hellengi.biolab.util.Utils.clamp01;
+import static com.hellengi.biolab.util.Utils.finiteOrZero;
 
 /**
  * Shared rules for organelle damage effects.
@@ -16,11 +17,11 @@ public final class DamageModel {
     }
 
     public static double performance(double damage) {
-        return Math.exp(-Math.max(0.0, finite(damage)));
+        return Math.exp(-Math.max(0.0, finiteOrZero(damage)));
     }
 
     public static double inheritedDamage(double parentDamage, YamlConfig.CellProperties config) {
-        return clamp01(finite(parentDamage) * Math.max(0.0, config.getDivDamageTransferFactor()));
+        return clamp01(finiteOrZero(parentDamage) * Math.max(0.0, config.getDivDamageTransferFactor()));
     }
 
     public static double leakDamageRate(double damage, double threshold, double factor) {
@@ -28,15 +29,12 @@ public final class DamageModel {
     }
 
     public static double leakDamageRate(double damage, double threshold, double factor, double multiplier) {
-        double leak = Math.max(0.0, finite(damage) - Math.max(0.0, finite(threshold)));
+        double leak = Math.max(0.0, finiteOrZero(damage) - Math.max(0.0, finiteOrZero(threshold)));
         if (leak <= 0.0) return 0.0;
-        return Math.max(0.0, finite(factor))
-                * Math.max(0.0, finite(multiplier))
+        return Math.max(0.0, finiteOrZero(factor))
+                * Math.max(0.0, finiteOrZero(multiplier))
                 * leak
                 * (1.0 + leak);
     }
 
-    public static double finite(double value) {
-        return Double.isFinite(value) ? value : 0.0;
-    }
 }

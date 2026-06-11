@@ -1,7 +1,7 @@
-
 package com.hellengi.biolab.dto.mapper;
 
 import com.hellengi.biolab.config.YamlConfig;
+import com.hellengi.biolab.dto.GenomeDto;
 import com.hellengi.biolab.util.ControlScale;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -10,6 +10,38 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class GenomeDefaults {
     private final YamlConfig config;
+
+
+    public GenomeValues normalize(GenomeDto dto) {
+        if (dto == null) {
+            throw new IllegalArgumentException("Genome must not be null");
+        }
+        return new GenomeValues(
+                dto.divisionThreshold(),
+                dto.divisionImpulse(),
+                dto.divisionAngle(),
+                cytosolArea(dto.cytosolArea()),
+                cytosolDensity(dto.cytosolDensity()),
+                dto.bioluminescenceEnabled(),
+                bioluminescence(dto.bioluminescence()),
+                elasticity(dto.elasticity()),
+                dto.melaninEnabled(),
+                melaninPercent(dto.melaninPercent()),
+                dto.chloroplastEnabled(),
+                chloroplastAmount(dto.chloroplastAmount()),
+                chlorophyll(dto.chlorophyll()),
+                carotenoids(dto.carotenoids()),
+                dto.lysosomeEnabled(),
+                lysosomeAmount(dto.lysosomeAmount()),
+                lysosomeEnzymeActivity(dto.lysosomeEnzymeActivity()),
+                dto.flagellumEnabled(),
+                flagellumCount(dto.flagellumCount()),
+                flagellumLength(dto.flagellumLength()),
+                flagellumMotorPower(dto.flagellumMotorPower()),
+                flagellumPairSpreadAngle(dto.flagellumPairSpreadAngle()),
+                flagellumSteeringAsymmetry(dto.flagellumSteeringAsymmetry())
+        );
+    }
 
     public double cytosolArea(Double value) {
         double raw = value != null ? value : config.getGenome().getCytosolArea().getInitial();
@@ -26,9 +58,9 @@ public class GenomeDefaults {
         return clamp(raw, config.getGenome().getElasticity());
     }
 
-    public double gfp(Double value) {
-        double raw = value != null ? value : config.getGenome().getGfp().getInitial();
-        return clamp(raw, config.getGenome().getGfp());
+    public double bioluminescence(Double value) {
+        double raw = value != null ? value : config.getGenome().getBioluminescence().getInitial();
+        return clamp(raw, config.getGenome().getBioluminescence());
     }
 
     public double melaninPercent(Double value) {
@@ -91,4 +123,3 @@ public class GenomeDefaults {
         return ControlScale.roundToStep(value, control);
     }
 }
-

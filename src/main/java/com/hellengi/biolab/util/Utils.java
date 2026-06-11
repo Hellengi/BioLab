@@ -1,5 +1,7 @@
 package com.hellengi.biolab.util;
 
+import java.util.List;
+
 public final class Utils {
     private Utils() {}
 
@@ -18,6 +20,19 @@ public final class Utils {
 
     public static double percent01(double value) {
         return clamp01(value / 100.0);
+    }
+
+    public static double finiteOrZero(double value) {
+        return Double.isFinite(value) ? value : 0.0;
+    }
+
+    public static double smoothstep(double value) {
+        double t = clamp01(value);
+        return t * t * (3.0 - 2.0 * t);
+    }
+
+    public static <T> List<T> safeList(List<T> list) {
+        return list == null ? List.of() : list;
     }
 
     public static double wrapDegrees(double angle) {
@@ -52,7 +67,3 @@ public final class Utils {
 
     public record Velocity(double vx, double vy) {}
 }
-
-
-
-

@@ -1,3 +1,4 @@
+
 package com.hellengi.biolab.domain.model.organelle;
 
 import com.hellengi.biolab.config.YamlConfig;
@@ -50,7 +51,7 @@ public class ChloroplastsOrganelle implements Organelle {
     }
 
     public double totalMass(YamlConfig.CellProperties config) {
-        return activeAmount() * config.getChloroplastMassFactor();
+        return totalArea(config) * config.getChloroplastDensityFactor();
     }
 
     public double totalArea(YamlConfig.CellProperties config) {
@@ -162,12 +163,3 @@ public class ChloroplastsOrganelle implements Organelle {
         return totalArea(config);
     }
 }
-
-
-
-
-
-
-
-
-

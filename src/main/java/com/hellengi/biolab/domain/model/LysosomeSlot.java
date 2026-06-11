@@ -1,9 +1,9 @@
-
 package com.hellengi.biolab.domain.model;
 
 import lombok.Getter;
 import lombok.Setter;
 import static com.hellengi.biolab.util.Utils.clamp01;
+import static com.hellengi.biolab.util.Utils.finiteOrZero;
 
 @Getter
 @Setter
@@ -84,17 +84,17 @@ public class LysosomeSlot {
 
 
     public void setLayout(double x, double y, double radius, double rotation) {
-        this.layoutX = finite(x);
-        this.layoutY = finite(y);
-        this.layoutRadius = Math.max(0.0, finite(radius));
-        this.layoutRotation = finite(rotation);
+        this.layoutX = finiteOrZero(x);
+        this.layoutY = finiteOrZero(y);
+        this.layoutRadius = Math.max(0.0, finiteOrZero(radius));
+        this.layoutRotation = finiteOrZero(rotation);
     }
 
     public void setTargetLayout(double x, double y, double radius, double rotation) {
-        this.targetLayoutX = finite(x);
-        this.targetLayoutY = finite(y);
-        this.targetLayoutRadius = Math.max(0.0, finite(radius));
-        this.targetLayoutRotation = finite(rotation);
+        this.targetLayoutX = finiteOrZero(x);
+        this.targetLayoutY = finiteOrZero(y);
+        this.targetLayoutRadius = Math.max(0.0, finiteOrZero(radius));
+        this.targetLayoutRotation = finiteOrZero(rotation);
     }
 
     public void addDamage(double value) {
@@ -106,18 +106,18 @@ public class LysosomeSlot {
     }
 
     public void rememberDigestionRates(double energyProductionRate, double energyCostRate, double damageRate) {
-        this.lastEnergyProductionRate = Math.max(0.0, finite(energyProductionRate));
+        this.lastEnergyProductionRate = Math.max(0.0, finiteOrZero(energyProductionRate));
         addEnergyCostRate(energyCostRate);
-        this.lastDamageRate = Math.max(0.0, finite(damageRate));
+        this.lastDamageRate = Math.max(0.0, finiteOrZero(damageRate));
     }
 
     public void addEnergyCostRate(double energyCostRate) {
-        this.lastEnergyCostRate = Math.max(0.0, this.lastEnergyCostRate + Math.max(0.0, finite(energyCostRate)));
+        this.lastEnergyCostRate = Math.max(0.0, this.lastEnergyCostRate + Math.max(0.0, finiteOrZero(energyCostRate)));
     }
 
     public void rememberRepairRates(double repairRate, double repairEnergyCostRate) {
-        this.lastRepairRate = Math.max(0.0, finite(repairRate));
-        this.lastRepairEnergyCostRate = Math.max(0.0, finite(repairEnergyCostRate));
+        this.lastRepairRate = Math.max(0.0, finiteOrZero(repairRate));
+        this.lastRepairEnergyCostRate = Math.max(0.0, finiteOrZero(repairEnergyCostRate));
     }
 
     public void clearRates() {
@@ -137,13 +137,4 @@ public class LysosomeSlot {
         foodRadius = 0.0;
     }
 
-    private double finite(double value) {
-        return Double.isFinite(value) ? value : 0.0;
-    }
 }
-
-
-
-
-
-

@@ -1,3 +1,4 @@
+
 package com.hellengi.biolab.domain.model.organelle;
 
 import com.hellengi.biolab.config.YamlConfig;
@@ -32,7 +33,7 @@ public class LysosomeOrganelle implements Organelle {
     }
 
     public double totalMass(YamlConfig.CellProperties config) {
-        return activeAmount() * config.getLysosomeMassFactor();
+        return totalArea(config) * config.getLysosomeDensityFactor();
     }
 
     public double totalArea(YamlConfig.CellProperties config) {
@@ -78,7 +79,3 @@ public class LysosomeOrganelle implements Organelle {
         return totalArea(config);
     }
 }
-
-
-
-

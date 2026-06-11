@@ -12,9 +12,12 @@ public class SimulationClock {
     private static final long NANOS_PER_MILLISECOND = 1_000_000L;
 
     /**
-     * Between 0.1x and 10x the simulation changes real TPS.
-     * Outside this range TPS stays fixed and tickScale changes instead.
+     * Set to true to restore the legacy mode where speed changes real TPS between
+     * 0.1x and 10x, and only the remaining factor is applied through tickScale.
+     * The current mode keeps real TPS fixed and applies every time-scale change
+     * through tickScale.
      */
+    private static final boolean SCALE_REAL_TPS_WITH_SPEED = false;
     private static final double MIN_REAL_TPS_SPEED = 0.1;
     private static final double MAX_REAL_TPS_SPEED = 10.0;
 
@@ -94,6 +97,9 @@ public class SimulationClock {
     }
 
     private double calculateRealTpsScale(double speedFactor) {
+        if (!SCALE_REAL_TPS_WITH_SPEED) {
+            return 1.0;
+        }
         return Math.max(MIN_REAL_TPS_SPEED, Math.min(MAX_REAL_TPS_SPEED, speedFactor));
     }
 
@@ -119,5 +125,3 @@ public class SimulationClock {
         }
     }
 }
-
-

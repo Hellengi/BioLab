@@ -1,4 +1,3 @@
-
 function requireEl(id) {
     const el = document.getElementById(id);
     if (!el) throw new Error(`Required DOM element not found: #${id}`);
@@ -91,6 +90,8 @@ export function bindDom() {
     dom.cursorReadoutDisplay = optionalEl("lightProbeDisplay");
 
     dom.opacityLayerToggle = optionalEl("opacityLayerToggle");
+    dom.directedLightLayerToggle = optionalEl("directedLightLayerToggle");
+    dom.scatteredLightLayerToggle = optionalEl("scatteredLightLayerToggle");
     dom.lightDirectionLayerToggle = optionalEl("lightDirectionLayerToggle");
     dom.quadtreeLayerToggle = optionalEl("quadtreeLayerToggle");
     dom.cellDirectionsLayerToggle = optionalEl("cellDirectionsLayerToggle");
@@ -106,7 +107,7 @@ export function bindDom() {
     dom.selectedCellDivisionImpulse = optionalEl("selectedCellDivisionImpulse");
     dom.selectedCellDivisionAngle = optionalEl("selectedCellDivisionAngle");
     dom.selectedCellElasticity = optionalEl("selectedCellElasticity");
-    dom.selectedCellGfp = optionalEl("selectedCellGfp");
+    dom.selectedCellBioluminescence = optionalEl("selectedCellBioluminescence");
     dom.selectedCellOpacity = optionalEl("selectedCellOpacity");
     dom.selectedCellMembraneOpacity = optionalEl("selectedCellMembraneOpacity");
     dom.selectedCellDamage = optionalEl("selectedCellDamage");
@@ -165,9 +166,9 @@ export function bindDom() {
     dom.createElasticitySlider = optionalEl("createElasticitySlider");
     dom.createElasticityInput = optionalEl("createElasticityInput");
 
-    dom.gfpEnabled = optionalEl("gfpEnabled");
-    dom.createGfpSlider = optionalEl("createGfpSlider");
-    dom.createGfpInput = optionalEl("createGfpInput");
+    dom.bioluminescenceEnabled = optionalEl("bioluminescenceEnabled");
+    dom.createBioluminescenceSlider = optionalEl("createBioluminescenceSlider");
+    dom.createBioluminescenceInput = optionalEl("createBioluminescenceInput");
 
     dom.melaninEnabled = optionalEl("melaninEnabled");
     dom.createMelaninPercentSlider = optionalEl("createMelaninPercentSlider");
@@ -185,7 +186,7 @@ export function bindDom() {
     dom.createStartNucleusDamageInput = optionalEl("createStartNucleusDamageInput");
     dom.createStartCytosolDamageSlider = optionalEl("createStartCytosolDamageSlider");
     dom.createStartCytosolDamageInput = optionalEl("createStartCytosolDamageInput");
-    dom.createCytosolGfpCost = optionalEl("createCytosolGfpCost");
+    dom.createCytosolBioluminescenceCost = optionalEl("createCytosolBioluminescenceCost");
     dom.createMembraneOpacity = optionalEl("createMembraneOpacity");
     dom.createMembraneTransmittance = optionalEl("createMembraneTransmittance");
     dom.createChloroplastLightCapture = optionalEl("createChloroplastLightCapture");
@@ -270,13 +271,3 @@ export function bindDom() {
     dom.loadCellDeleteBtn = optionalEl("loadCellDeleteBtn");
     dom.loadCellConfirmBtn = optionalEl("loadCellConfirmBtn");
 }
-
-
-
-
-
-
-
-
-
-

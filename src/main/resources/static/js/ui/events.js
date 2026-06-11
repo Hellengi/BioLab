@@ -1,5 +1,3 @@
-
-
 import { dom } from "./dom.js";
 import { bindSettingsForm, resetSettings } from "./tabs/settings.js";
 import {
@@ -36,8 +34,6 @@ import {
     handleCreatePreviewClick,
     handleCreatePreviewPointerLeave,
     handleCreatePreviewPointerMove,
-    handleCreatePreviewWheel,
-    handleSelectedPreviewWheel,
     handleSelectedPreviewClick,
     handleSelectedPreviewPointerLeave,
     handleSelectedPreviewPointerMove,
@@ -137,6 +133,8 @@ function bindSettingsTabEvents() {
 function bindDisplayLayerEvents() {
     const buttons = [
         dom.opacityLayerToggle,
+        dom.directedLightLayerToggle,
+        dom.scatteredLightLayerToggle,
         dom.lightDirectionLayerToggle,
         dom.quadtreeLayerToggle,
         dom.cellDirectionsLayerToggle,
@@ -184,7 +182,7 @@ function bindPreviewLayerEvents() {
             sync();
             if (selectedLayerButton) {
                 const selectedCell = state.cellById?.get(state.selectedCellId);
-                if (selectedCell && state.selectedStrain) drawSelectedCellPreview(selectedCell, state.selectedStrain);
+                if (selectedCell) drawSelectedCellPreview(selectedCell, state.selectedStrain);
             } else {
                 drawCreateCellPreview();
             }
@@ -196,12 +194,10 @@ function bindPreviewLightEvents() {
     dom.selectedCellPreviewCanvas?.addEventListener("pointermove", handleSelectedPreviewPointerMove);
     dom.selectedCellPreviewCanvas?.addEventListener("pointerleave", handleSelectedPreviewPointerLeave);
     dom.selectedCellPreviewCanvas?.addEventListener("click", handleSelectedPreviewClick);
-    dom.selectedCellPreviewCanvas?.addEventListener("wheel", handleSelectedPreviewWheel, { passive: false });
 
     dom.createCellPreviewCanvas?.addEventListener("pointermove", handleCreatePreviewPointerMove);
     dom.createCellPreviewCanvas?.addEventListener("pointerleave", handleCreatePreviewPointerLeave);
     dom.createCellPreviewCanvas?.addEventListener("click", handleCreatePreviewClick);
-    dom.createCellPreviewCanvas?.addEventListener("wheel", handleCreatePreviewWheel, { passive: false });
 }
 
 // ── Панель выбранной клетки ───────────────────────────────────────────────────
@@ -424,3 +420,5 @@ function bindSidebarToggle() {
         }
     });
 }
+
+

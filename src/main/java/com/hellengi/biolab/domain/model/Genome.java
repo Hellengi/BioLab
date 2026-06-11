@@ -1,4 +1,3 @@
-
 package com.hellengi.biolab.domain.model;
 
 import com.hellengi.biolab.domain.model.organelle.ChloroplastsOrganelle;
@@ -30,8 +29,8 @@ public class Genome {
             double divisionAngle,
             double cytosolArea,
             double cytosolDensity,
-            boolean gfpEnabled,
-            double gfp,
+            boolean bioluminescenceEnabled,
+            double bioluminescence,
             double elasticity,
             boolean melaninEnabled,
             double melaninPercent,
@@ -51,7 +50,7 @@ public class Genome {
     ) {
         this(
                 new NucleusOrganelle(divisionThreshold, divisionImpulse, divisionAngle),
-                new CytosolOrganelle(cytosolArea, cytosolDensity, gfpEnabled, gfp),
+                new CytosolOrganelle(cytosolArea, cytosolDensity, bioluminescenceEnabled, bioluminescence),
                 new MembraneOrganelle(elasticity, melaninEnabled, melaninPercent),
                 new ChloroplastsOrganelle(chloroplastEnabled, chloroplastAmount, chlorophyll, carotenoids),
                 new LysosomeOrganelle(lysosomeEnabled, lysosomeAmount, lysosomeEnzymeActivity),
@@ -116,11 +115,11 @@ public class Genome {
     public double getCytosolDensity() { return cytosol.getDensity(); }
     public void setCytosolDensity(double value) { cytosol.setDensity(value); }
 
-    public boolean isGfpEnabled() { return cytosol.isGfpEnabled(); }
-    public void setGfpEnabled(boolean value) { cytosol.setGfpEnabled(value); }
+    public boolean isBioluminescenceEnabled() { return cytosol.isBioluminescenceEnabled(); }
+    public void setBioluminescenceEnabled(boolean value) { cytosol.setBioluminescenceEnabled(value); }
 
-    public double getGfp() { return cytosol.getGfp(); }
-    public void setGfp(double value) { cytosol.setGfp(value); }
+    public double getBioluminescence() { return cytosol.getBioluminescence(); }
+    public void setBioluminescence(double value) { cytosol.setBioluminescence(value); }
 
     public double getMaxEnergy() { return cytosol.maxEnergy(); }
 
@@ -173,8 +172,3 @@ public class Genome {
     public double getFlagellumSteeringAsymmetry() { return flagella.getSteeringAsymmetry(); }
     public void setFlagellumSteeringAsymmetry(double value) { flagella.setSteeringAsymmetry(value); }
 }
-
-
-
-
-

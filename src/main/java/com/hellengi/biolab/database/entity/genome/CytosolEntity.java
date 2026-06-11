@@ -20,12 +20,8 @@ public class CytosolEntity {
     private double density;
 
     @Column(nullable = false)
-    private boolean gfpEnabled;
+    private boolean bioluminescenceEnabled;
 
     @Column(nullable = false)
-    private double gfp;
+    private double bioluminescence;
 }
-
-
-
-

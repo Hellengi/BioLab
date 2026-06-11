@@ -1,3 +1,4 @@
+
 package com.hellengi.biolab.domain.model;
 
 import com.hellengi.biolab.config.YamlConfig;
@@ -24,16 +25,21 @@ import static com.hellengi.biolab.util.Utils.EPSILON;
 import static com.hellengi.biolab.util.Utils.clamp01;
 import static com.hellengi.biolab.util.Utils.avoidZero;
 import static com.hellengi.biolab.util.Utils.wrapDegrees;
+import static com.hellengi.biolab.util.Utils.finiteOrZero;
 
 @Setter
 @Getter
 public class Cell {
     private static final int MAX_EVENTS = 20;
     private static final int MAX_LYSOSOME_LAYOUT_ATTEMPTS = 10;
+    private static final int INTERNAL_LAYOUT_PBD_ITERATIONS = 2;
     private static final double LYSOSOME_LAYOUT_SMOOTHING = 1.10;
     private static final double NUCLEUS_LAYOUT_SMOOTHING = 0.82;
     private static final double LYSOSOME_FOOD_RADIUS_FACTOR = 1.38;
     private static final double LYSOSOME_MAX_RADIUS_FACTOR = 0.28;
+    private static final double INTERNAL_LAYOUT_RELAXATION = 0.82;
+    private static final double NUCLEUS_LAYOUT_INVERSE_MASS = 0.42;
+    private static final double LYSOSOME_LAYOUT_INVERSE_MASS = 1.0;
 
 
     private final long id;
@@ -54,6 +60,7 @@ public class Cell {
     private boolean alive = true;
     private double lifetimeTicks = 0.0;
     private double mass = EPSILON;
+    private double dryMass = EPSILON;
 
     private double nucleusDamage = 0.0;
     /** Cytosol damage. Kept as cellDamage in DTOs for minimal API churn. */
@@ -102,9 +109,28 @@ public class Cell {
     }
 
     public void move(double tickScale) {
-        this.x += this.vx * tickScale;
-        this.y += this.vy * tickScale;
-        this.directionAngle = wrapDegrees(this.directionAngle + Math.toDegrees(this.angularVelocity * tickScale));
+        moveWithVelocityVerlet(tickScale, vx, vy, angularVelocity);
+    }
+
+    public void moveWithVelocityVerlet(
+            double tickScale,
+            double previousVx,
+            double previousVy,
+            double previousAngularVelocity
+    ) {
+        double dt = Math.max(0.0, tickScale);
+        if (dt <= 0.0) {
+            return;
+        }
+
+        // Velocity Verlet/trapezoidal position step: forces update velocity first,
+        // then position uses the mean of the previous and current velocities.
+        // This keeps the existing force model intact while avoiding the systematic
+        // overshoot of pure semi-implicit Euler for gravity/flagella acceleration.
+        this.x += 0.5 * (finiteOrZero(previousVx) + vx) * dt;
+        this.y += 0.5 * (finiteOrZero(previousVy) + vy) * dt;
+        this.directionAngle = wrapDegrees(this.directionAngle
+                + Math.toDegrees(0.5 * (finiteOrZero(previousAngularVelocity) + angularVelocity) * dt));
     }
 
     public void addLifetimeTicks(double ticks) {
@@ -126,7 +152,16 @@ public class Cell {
     }
 
     public void setMass() {
-        mass = getMass();
+        dryMass = calculateDryMass();
+        mass = dryMass + getReserveMass();
+    }
+
+    /**
+     * Mass carried by stored energy/reserves. Structural mass is calculated
+     * separately as dry mass; total live mass is dryMass + reserveMass.
+     */
+    public double getReserveMass() {
+        return Math.max(0.0, energy) * Math.max(0.0, config.getCell().getEnergyToMassFactor());
     }
 
     public void setGenome(Genome genome) {
@@ -392,10 +427,25 @@ public class Cell {
         if (!isAlive()) {
             return mass;
         }
-        return getOrganelles().stream()
+        return getDryMass() + getReserveMass();
+    }
+
+    public double getDryMass() {
+        if (!isAlive()) {
+            return Math.max(EPSILON, dryMass);
+        }
+        return calculateDryMass();
+    }
+
+    private double calculateDryMass() {
+        if (genome == null) {
+            return EPSILON;
+        }
+        double structuralMass = getOrganelles().stream()
                 .filter(Organelle::present)
                 .mapToDouble(organelle -> organelle.mass(this, config.getCell()))
                 .sum();
+        return Math.max(EPSILON, structuralMass);
     }
 
     public double getDensity() {
@@ -569,6 +619,14 @@ public class Cell {
         return getFlagellumCapacity();
     }
 
+    public double getFlagellumTotalMass() {
+        return flagella().totalMass(config.getCell());
+    }
+
+    public double getFlagellumTotalArea() {
+        return flagella().totalArea(config.getCell());
+    }
+
     public FlagellumSlot getFlagellumSlot(int index) {
         if (index < 0 || index >= flagellumSlots.size()) return null;
         return flagellumSlots.get(index);
@@ -663,12 +721,22 @@ public class Cell {
         return membrane().lightTransmittance(config.getCell());
     }
 
-    public double getFluorescenceBrightness() {
+    public double getBioluminescenceBrightness() {
         if (!isAlive() || genome == null) {
             return 0.0;
         }
-        return getGfp01()
-                * Math.max(0.0, config.getLight().getCellFluorescenceMaxBrightness())
+        double expression = getBioluminescence01();
+        if (expression <= 0.0) {
+            return 0.0;
+        }
+
+        double energyCostRate = cytosol().bioluminescenceEnergyConsumption(config.getCell());
+        double energyLimitedLight = energyCostRate
+                * Math.max(0.0, config.getLight().getBioluminescenceEnergyToLightFactor());
+        double expressionCap = expression * Math.max(0.0, config.getLight().getCellBioluminescenceMaxBrightness());
+
+        return Math.min(expressionCap, energyLimitedLight)
+                * clamp01(lastEnergyAvailability)
                 * getMembraneLightTransmittance();
     }
 
@@ -727,8 +795,8 @@ public class Cell {
         return genome != null && lysosomes().present() && !lysosomeSlots.isEmpty();
     }
 
-    public double getGfp01() {
-        return genome != null ? cytosol().gfp01() : 0.0;
+    public double getBioluminescence01() {
+        return genome != null ? cytosol().bioluminescence01() : 0.0;
     }
 
     public double getMelanin01() {
@@ -821,6 +889,8 @@ public class Cell {
                     slot.getLayoutRotation() + (slot.getTargetLayoutRotation() - slot.getLayoutRotation()) * lyAlpha
             );
         }
+
+        applyInternalLayoutPbd();
     }
 
     public boolean hasInternalLayoutInitialized() {
@@ -863,6 +933,7 @@ public class Cell {
 
         if (missingLayout || !signature.equals(internalLayoutSignature)) {
             applyInternalLayoutTarget(solveInternalLayout(), signature, true);
+            applyInternalLayoutPbd();
         }
     }
 
@@ -949,7 +1020,7 @@ public class Cell {
         }
         cellRadius = predictedCellRadiusWith(lysosomeRadii);
         double nucleusRadius = Math.max(0.0, cellRadius * 0.28);
-        double margin = Math.max(0.22, cellRadius * 0.028);
+        double margin = internalLayoutMargin(cellRadius);
 
         InternalLayout best = null;
         double bestScore = Double.POSITIVE_INFINITY;
@@ -1113,12 +1184,143 @@ public class Cell {
         return clamp01(1.0 - Math.exp(-Math.max(0.0, smoothing) * tickScale));
     }
 
+    private void applyInternalLayoutPbd() {
+        if (lysosomeSlots.isEmpty()) {
+            return;
+        }
+
+        double cellRadius = Math.max(config.getCell().getBaseRadius(), getRadius());
+        double margin = internalLayoutMargin(cellRadius);
+        List<LayoutBody> bodies = new ArrayList<>(lysosomeSlots.size() + 1);
+        LayoutBody nucleus = new LayoutBody(
+                null,
+                nucleusLayoutX,
+                nucleusLayoutY,
+                getNucleusRadius(),
+                NUCLEUS_LAYOUT_INVERSE_MASS
+        );
+        bodies.add(nucleus);
+        for (LysosomeSlot slot : lysosomeSlots) {
+            if (!slot.hasLayout()) {
+                continue;
+            }
+            bodies.add(new LayoutBody(
+                    slot,
+                    slot.getLayoutX(),
+                    slot.getLayoutY(),
+                    Math.max(0.0, slot.getLayoutRadius()),
+                    LYSOSOME_LAYOUT_INVERSE_MASS
+            ));
+        }
+
+        for (int iteration = 0; iteration < INTERNAL_LAYOUT_PBD_ITERATIONS; iteration++) {
+            for (LayoutBody body : bodies) {
+                projectInsideCell(body, cellRadius, margin);
+            }
+
+            for (int i = 0; i < bodies.size(); i++) {
+                LayoutBody first = bodies.get(i);
+                for (int j = i + 1; j < bodies.size(); j++) {
+                    separateLayoutBodies(first, bodies.get(j), margin);
+                }
+            }
+
+            for (LayoutBody body : bodies) {
+                projectInsideCell(body, cellRadius, margin);
+            }
+        }
+
+        nucleusLayoutX = finiteOrZero(nucleus.x);
+        nucleusLayoutY = finiteOrZero(nucleus.y);
+        for (LayoutBody body : bodies) {
+            if (body.slot == null) {
+                continue;
+            }
+            body.slot.setLayout(body.x, body.y, body.slot.getLayoutRadius(), body.slot.getLayoutRotation());
+        }
+    }
+
+    private double internalLayoutMargin(double cellRadius) {
+        return Math.max(0.22, cellRadius * 0.028);
+    }
+
+    private void projectInsideCell(LayoutBody body, double cellRadius, double margin) {
+        if (body.r <= 0.0) {
+            return;
+        }
+        double maxDistance = Math.max(0.0, cellRadius - body.r - margin);
+        double distance = Math.hypot(body.x, body.y);
+        if (distance <= maxDistance || distance <= EPSILON) {
+            return;
+        }
+        body.x = body.x / distance * maxDistance;
+        body.y = body.y / distance * maxDistance;
+    }
+
+    private void separateLayoutBodies(LayoutBody first, LayoutBody second, double margin) {
+        if (first.r <= 0.0 || second.r <= 0.0) {
+            return;
+        }
+        double minDistance = first.r + second.r + margin;
+        double dx = second.x - first.x;
+        double dy = second.y - first.y;
+        double distanceSquared = dx * dx + dy * dy;
+        if (distanceSquared >= minDistance * minDistance) {
+            return;
+        }
+
+        double distance = Math.sqrt(Math.max(distanceSquared, EPSILON));
+        if (distance <= EPSILON * 2.0) {
+            double angle = hash01(id + 8291, first.salt() * 31 + second.salt()) * Math.PI * 2.0;
+            dx = Math.cos(angle);
+            dy = Math.sin(angle);
+            distance = 1.0;
+        }
+
+        double totalInverseMass = first.inverseMass + second.inverseMass;
+        if (totalInverseMass <= EPSILON) {
+            return;
+        }
+
+        double correction = (minDistance - distance) * INTERNAL_LAYOUT_RELAXATION;
+        double nx = dx / distance;
+        double ny = dy / distance;
+        double firstShare = first.inverseMass / totalInverseMass;
+        double secondShare = second.inverseMass / totalInverseMass;
+
+        first.x -= nx * correction * firstShare;
+        first.y -= ny * correction * firstShare;
+        second.x += nx * correction * secondShare;
+        second.y += ny * correction * secondShare;
+    }
+
+
     private static double hash01(long seed, int salt) {
         int x = ((int) Math.floor((double) seed) * 374761393) ^ (salt * 668265263);
         x ^= (x >>> 13);
         x *= 1274126177;
         x ^= (x >>> 16);
         return Integer.toUnsignedLong(x) / 4294967296.0;
+    }
+
+    private static final class LayoutBody {
+        private final LysosomeSlot slot;
+        private double x;
+        private double y;
+        private final double r;
+        private final double inverseMass;
+
+        private LayoutBody(LysosomeSlot slot, double x, double y, double r, double inverseMass) {
+            this.slot = slot;
+            this.x = Double.isFinite(x) ? x : 0.0;
+            this.y = Double.isFinite(y) ? y : 0.0;
+            this.r = Math.max(0.0, Double.isFinite(r) ? r : 0.0);
+            this.inverseMass = Math.max(0.0, Double.isFinite(inverseMass) ? inverseMass : 0.0);
+        }
+
+        private int salt() {
+            return slot == null ? -1 : slot.getIndex();
+        }
     }
 
     private record LayoutCircle(double x, double y, double r, double rotation) {
@@ -1149,8 +1351,3 @@ public class Cell {
     private record InternalLayout(double nucleusX, double nucleusY, LayoutCircle[] lysosomes, double score) {
     }
 }
-
-
-
-
-

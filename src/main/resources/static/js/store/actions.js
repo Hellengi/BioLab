@@ -98,6 +98,9 @@ export async function handleSimulationReset() {
 
 /** Сбрасывает клиентское состояние (без обращения к серверу). */
 export function resetClientState() {
+    state.world = null;
+    state.cellById = new Map();
+    state.selectedCellDetailsById = new Map();
     state.prevDeadCellsById = new Map();
     state.deadCellDisappearEffects = [];
     state.cellDraft = null;
@@ -121,6 +124,8 @@ export async function togglePause() {
     updateStats();
     render(dom.ctx, state);
 }
+
+
 
 
 

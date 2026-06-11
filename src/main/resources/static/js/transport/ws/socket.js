@@ -1,10 +1,20 @@
 import { refreshSelection } from "../../ui/tabs/selection.js";
-import { state, setWorld, setMetrics, resetMetrics } from "../../store/state.js";
+import {
+    state,
+    setRenderFrame,
+    setLightingFrame,
+    setCellDetails,
+    setMetrics,
+    resetMetrics,
+} from "../../store/state.js";
 import { updateStats } from "../../store/actions.js";
-import { getCanvasCameraState } from "../../ui/panels/canvas-camera.js";
+import { getCanvasCameraState, getVisibleWorldBounds } from "../../ui/panels/canvas-camera.js";
+import { decodeBinaryRenderFrame } from "./binary-render-frame.js";
 
 let socket = null;
-let pendingWorldMessage = null;
+let pendingRenderFrame = null;
+let pendingLightingFrame = null;
+let pendingCellDetails = null;
 let pendingMetricsMessage = null;
 let socketFlushScheduled = false;
 let lastDisplayLayersPayload = "";
@@ -12,6 +22,14 @@ let lastStatsRefreshMs = 0;
 let selectionRefreshDeferred = false;
 
 const STATS_REFRESH_INTERVAL_MS = 120;
+const VIEWPORT_SUBSCRIPTION_MARGIN = 128;
+const SERVER_MESSAGE_TYPES = Object.freeze({
+    world: "world",
+    renderFrame: "renderFrame",
+    lightingFrame: "lightingFrame",
+    cellDetails: "cellDetails",
+    metrics: "metrics",
+});
 
 function scheduleSocketFlush() {
     if (socketFlushScheduled) {
@@ -24,14 +42,33 @@ function scheduleSocketFlush() {
 function flushSocketMessages() {
     socketFlushScheduled = false;
 
-    const world = pendingWorldMessage;
+    const renderFrame = pendingRenderFrame;
+    const lightingFrame = pendingLightingFrame;
+    const cellDetails = pendingCellDetails;
     const metrics = pendingMetricsMessage;
-    pendingWorldMessage = null;
+    pendingRenderFrame = null;
+    pendingLightingFrame = null;
+    pendingCellDetails = null;
     pendingMetricsMessage = null;
 
-    if (world) {
-        setWorld(world);
+    let selectionNeedsRefresh = false;
 
+    if (renderFrame) {
+        setRenderFrame(renderFrame);
+        selectionNeedsRefresh = true;
+    }
+    if (lightingFrame) {
+        setLightingFrame(lightingFrame);
+    }
+    if (cellDetails) {
+        setCellDetails(cellDetails);
+        selectionNeedsRefresh = true;
+    }
+    if (metrics) {
+        setMetrics(metrics);
+    }
+
+    if (selectionNeedsRefresh) {
         if (isCameraInteractionActive()) {
             selectionRefreshDeferred = true;
         } else {
@@ -39,15 +76,12 @@ function flushSocketMessages() {
             selectionRefreshDeferred = false;
         }
     }
-    if (metrics) {
-        setMetrics(metrics);
-    }
 
-    if (world || metrics) {
+    if (renderFrame || lightingFrame || cellDetails || metrics) {
         updateStatsThrottled();
     }
 
-    if (pendingWorldMessage || pendingMetricsMessage) {
+    if (pendingRenderFrame || pendingLightingFrame || pendingCellDetails || pendingMetricsMessage) {
         scheduleSocketFlush();
     }
 }
@@ -55,24 +89,46 @@ function flushSocketMessages() {
 export function connectSocket() {
     const protocol = window.location.protocol === "https:" ? "wss" : "ws";
     socket = new WebSocket(`${protocol}://${window.location.host}/ws/simulation`);
+    socket.binaryType = "arraybuffer";
     socket.onopen = () => {
         console.log("WebSocket connected");
         lastDisplayLayersPayload = "";
         sendDisplayLayers({ force: true });
     };
     socket.onmessage = (event) => {
-        const message = JSON.parse(event.data);
-        if (message.type === "world") {
-            pendingWorldMessage = message;
-            scheduleSocketFlush();
+        let message;
+        if (event.data instanceof ArrayBuffer) {
+            message = decodeBinaryRenderFrame(event.data);
+        } else {
+            message = JSON.parse(event.data);
         }
-        else if (message.type === "metrics") {
-            pendingMetricsMessage = message;
-            scheduleSocketFlush();
+
+        switch (message.type) {
+            case SERVER_MESSAGE_TYPES.world:
+            case SERVER_MESSAGE_TYPES.renderFrame:
+                pendingRenderFrame = message;
+                scheduleSocketFlush();
+                break;
+            case SERVER_MESSAGE_TYPES.lightingFrame:
+                pendingLightingFrame = message;
+                scheduleSocketFlush();
+                break;
+            case SERVER_MESSAGE_TYPES.cellDetails:
+                pendingCellDetails = message;
+                scheduleSocketFlush();
+                break;
+            case SERVER_MESSAGE_TYPES.metrics:
+                pendingMetricsMessage = message;
+                scheduleSocketFlush();
+                break;
+            default:
+                break;
         }
     };
     socket.onclose = () => {
-        pendingWorldMessage = null;
+        pendingRenderFrame = null;
+        pendingLightingFrame = null;
+        pendingCellDetails = null;
         pendingMetricsMessage = null;
         resetMetrics();
         lastDisplayLayersPayload = "";
@@ -91,10 +147,11 @@ export function sendDisplayLayers({ force = false } = {}) {
     }
 
     const payload = JSON.stringify({
-        type: "displayLayers",
+        type: "subscribe",
         ...state.displayLayers,
         selectedCellId: state.selectedCellId ?? null,
         selectedCellMode: state.selectedPreviewMode ?? "general",
+        viewport: currentViewportPayload(),
     });
 
     if (!force && payload === lastDisplayLayersPayload) {
@@ -123,7 +180,18 @@ function isCameraInteractionActive() {
         return false;
     }
 }
-
-
-
+function currentViewportPayload() {
+    try {
+        const bounds = getVisibleWorldBounds(VIEWPORT_SUBSCRIPTION_MARGIN);
+        return {
+            minX: bounds.minX,
+            minY: bounds.minY,
+            maxX: bounds.maxX,
+            maxY: bounds.maxY,
+            margin: VIEWPORT_SUBSCRIPTION_MARGIN,
+        };
+    } catch (ignored) {
+        return null;
+    }
+}
 

@@ -1,3 +1,4 @@
+
 package com.hellengi.biolab.domain.model.organelle;
 
 import com.hellengi.biolab.config.YamlConfig;
@@ -63,7 +64,7 @@ public class MembraneOrganelle implements Organelle {
 
     @Override
     public double mass(Cell cell, YamlConfig.CellProperties config) {
-        return cell.getMembraneLength() * config.getMembraneMassFactor() * (1.0 + melanin01());
+        return area(cell, config) * config.getMembraneDensityFactor() * (1.0 + melanin01());
     }
 
     @Override
@@ -71,7 +72,3 @@ public class MembraneOrganelle implements Organelle {
         return cell.getMembraneLength() * config.getMembraneAreaFactor();
     }
 }
-
-
-
-

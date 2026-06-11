@@ -4,9 +4,12 @@ export const state = {
     selectedCellId: null,
     selectedStrain: null,
     cellDraft: null,
+    cellDraftPreview: null,
+    cellDraftPreviewSignature: "",
     placeMode: false,
     settingsDraft: null,
     cellById: new Map(),
+    selectedCellDetailsById: new Map(),
     prevDeadCellsById: new Map(),
     deadCellDisappearEffects: [],
     previewLayerCount: 3,
@@ -24,6 +27,8 @@ export const state = {
 
     displayLayers: {
         opacityMap: false,
+        directedLightMap: false,
+        scatteredLightMap: false,
         lightDirection: false,
         quadtree: false,
         cellDirections: false,
@@ -81,14 +86,153 @@ export function findCellAt(x, y) {
 }
 
 export function setWorld(dto) {
+    // Backward-compatible entry point for REST / full world payloads.
+    setRenderFrame(dto);
+}
+
+export function setRenderFrame(dto) {
     const previousCellIndex = state.cellById;
     const previousSelectedCell = state.selectedCellId
         ? (previousCellIndex.get(state.selectedCellId) ?? null)
         : null;
 
-    state.world = dto;
-    rebuildCellIndex();
+    const previousLighting = state.world?.lighting ?? null;
+    const cells = (dto.cells ?? []).map(cell => mergeRenderCellWithDetails(cell));
 
+    state.world = {
+        ...dto,
+        type: dto.type ?? "renderFrame",
+        cells,
+        foods: dto.foods ?? [],
+        lighting: mergeLighting(previousLighting, dto.lighting),
+    };
+
+    applyTpsUpdate(dto.tps);
+
+    rebuildCellIndex();
+    updateSelectedCellContinuity(previousSelectedCell);
+}
+
+export function setLightingFrame(dto) {
+    if (!dto?.lighting) return;
+    if (!state.world) {
+        state.world = {
+            type: "lightingFrame",
+            tick: dto.tick ?? 0,
+            time: dto.time ?? 0,
+            foodSpawnProgress: 0,
+            tubeDiameter: state.config?.tubeDiameter ?? 0,
+            cells: [],
+            foods: [],
+            lighting: dto.lighting,
+        };
+        return;
+    }
+
+    state.world = {
+        ...state.world,
+        tick: dto.tick ?? state.world.tick,
+        time: dto.time ?? state.world.time,
+        lighting: mergeLighting(state.world.lighting, dto.lighting),
+    };
+}
+
+export function setCellDetails(dto) {
+    const cellId = dto?.cellId ?? dto?.cell?.id ?? null;
+    if (cellId == null) return;
+
+    if (dto.cell == null) {
+        state.selectedCellDetailsById.delete(cellId);
+        rebuildCellIndex();
+        return;
+    }
+
+    state.selectedCellDetailsById.set(cellId, dto.cell);
+    if (state.world?.cells) {
+        state.world = {
+            ...state.world,
+            cells: state.world.cells.map(cell => cell.id === cellId ? mergeRenderCellWithDetails(cell) : cell),
+        };
+        rebuildCellIndex();
+    }
+}
+
+export function setMetrics(dto) {
+    applyTpsUpdate(dto?.tps);
+}
+
+export function resetMetrics() {
+    state.tps = 0;
+}
+
+function rebuildCellIndex() {
+    state.cellById = new Map(
+        (state.world?.cells ?? []).map(cell => [cell.id, cell])
+    );
+}
+
+function mergeRenderCellWithDetails(renderCell) {
+    const details = state.selectedCellDetailsById.get(renderCell.id);
+    if (!details) return renderCell;
+
+    return {
+        ...details,
+        ...renderCell,
+        genome: details.genome,
+        events: details.events,
+        motion: details.motion,
+        lysosomeSlots: mergeSlots(renderCell.lysosomeSlots, details.lysosomeSlots),
+        flagellumSlots: mergeSlots(renderCell.flagellumSlots, details.flagellumSlots),
+    };
+}
+
+function mergeSlots(renderSlots, detailSlots) {
+    if (!Array.isArray(renderSlots)) return Array.isArray(detailSlots) ? detailSlots : [];
+    if (!Array.isArray(detailSlots) || detailSlots.length === 0) return renderSlots;
+
+    const detailsByIndex = new Map(detailSlots.map(slot => [slot.index, slot]));
+    return renderSlots.map(renderSlot => ({
+        ...(detailsByIndex.get(renderSlot.index) ?? {}),
+        ...renderSlot,
+    }));
+}
+
+function mergeLighting(previous, incoming) {
+    if (!incoming) return previous ?? null;
+    if (!previous) return incoming;
+
+    const compatible = previous.gridWidth === incoming.gridWidth
+        && previous.gridHeight === incoming.gridHeight
+        && previous.gridStep === incoming.gridStep;
+
+    return {
+        ...previous,
+        ...incoming,
+        lightMap: definedMap(incoming.lightMap) ?? (compatible ? previous.lightMap : incoming.lightMap),
+        directedLightMap: definedMap(incoming.directedLightMap) ?? (compatible ? previous.directedLightMap : incoming.directedLightMap),
+        scatteredLightMap: definedMap(incoming.scatteredLightMap) ?? (compatible ? previous.scatteredLightMap : incoming.scatteredLightMap),
+        opacityMap: definedMap(incoming.opacityMap) ?? (compatible ? previous.opacityMap : incoming.opacityMap),
+        lightDirectionArrows: definedMap(incoming.lightDirectionArrows) ?? (compatible ? previous.lightDirectionArrows : incoming.lightDirectionArrows),
+        quadtreeNodes: Array.isArray(incoming.quadtreeNodes) && incoming.quadtreeNodes.length > 0
+            ? incoming.quadtreeNodes
+            : (compatible ? previous.quadtreeNodes : incoming.quadtreeNodes),
+    };
+}
+
+function definedMap(value) {
+    return Array.isArray(value) && value.length > 0 ? value : null;
+}
+
+function applyTpsUpdate(value) {
+    if (value == null) return;
+
+    const tps = Number(value);
+    if (Number.isFinite(tps)) {
+        state.tps = tps;
+    }
+}
+
+function updateSelectedCellContinuity(previousSelectedCell) {
     if (!state.selectedCellId || !previousSelectedCell) {
         _clearExpiredSelectedPreviewNotice();
         return;
@@ -112,20 +256,6 @@ export function setWorld(dto) {
     }
 
     _clearExpiredSelectedPreviewNotice();
-}
-
-export function setMetrics(dto) {
-    state.tps = dto.tps ?? 0;
-}
-
-export function resetMetrics(dto) {
-    state.tps = 0;
-}
-
-function rebuildCellIndex() {
-    state.cellById = new Map(
-        (state.world?.cells ?? []).map(cell => [cell.id, cell])
-    );
 }
 
 function _findDividedSuccessor(previousCell, cells) {
@@ -195,10 +325,4 @@ function _clearExpiredSelectedPreviewNotice() {
         state.selectedPreviewNotice = null;
     }
 }
-
-
-
-
-
-
 

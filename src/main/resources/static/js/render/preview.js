@@ -1,18 +1,18 @@
 import {preparePreviewCanvas} from "../core/utils.js";
-import {drawInternalGfpGlow} from "./gfp.js";
+import {drawInternalBioluminescenceGlow} from "./bioluminescence.js";
 import {drawBiologyCell} from "./cell-renderer.js";
 import {buildSlotIndex, radialOrganelleLayouts} from "./organelle-layout.js";
 import {hash01} from "./render-utils.js";
 import {t} from "../localization/localization.js";
 import {dom} from "../ui/dom.js";
 import {setCreateInfoScope, setSelectedInfoScope, state} from "../store/state.js";
+import {energyConsumptionFor, energyProductionFor, formatOrganelleEnergy} from "../core/energy-info.js";
 
 const PREVIEW_RADIUS = 42;
 const PREVIEW_RADIUS_EXPANDED = 58;
 
 const CREATE_PREVIEW_ZOOM_TIME_CONSTANT_MS = 78;
 const CREATE_PREVIEW_ZOOM_STOP_EPS = 0.002;
-const CREATE_PREVIEW_WHEEL_SPEED = 0.00135;
 const CREATE_PREVIEW_PADDING = 12;
 const CREATE_PREVIEW_FLAGELLUM_MAX_LENGTH_FACTOR = 4.0;
 
@@ -22,6 +22,18 @@ const _createPreviewZoom = {
     animationId: 0,
     initialized: false,
     lockedToFit: false,
+    fitRadius: null,
+    fitCx: null,
+    fitCy: null,
+    fitTargetRadius: null,
+    fitTargetCx: null,
+    fitTargetCy: null,
+    lastFitScope: null,
+    lastScope: null,
+    normalBodyRadius: null,
+    normalTargetBodyRadius: null,
+    displayBodyRadius: null,
+    displayTargetBodyRadius: null,
 };
 const _selectedPreviewZoom = {
     level: 1.0,
@@ -29,6 +41,18 @@ const _selectedPreviewZoom = {
     animationId: 0,
     initialized: false,
     lockedToFit: false,
+    fitRadius: null,
+    fitCx: null,
+    fitCy: null,
+    fitTargetRadius: null,
+    fitTargetCx: null,
+    fitTargetCy: null,
+    lastFitScope: null,
+    lastScope: null,
+    normalBodyRadius: null,
+    normalTargetBodyRadius: null,
+    displayBodyRadius: null,
+    displayTargetBodyRadius: null,
 };
 const PREVIEW_MIN_LIGHT = 0.38;
 const PREVIEW_LAYER_MIN = 1;
@@ -54,7 +78,6 @@ const ENERGY_COLOR_RATE_SCALE = 0.50;
 const ENERGY_COLOR_DEAD_ZONE = 0.004;
 const PREVIEW_EMPTY_LYSOSOME_RADIUS_FACTOR = 0.112;
 const PREVIEW_LYSOSOME_AREA_FACTOR = 4.7;
-const PREVIEW_START_ENERGY_AREA = 160.0;
 const PREVIEW_CYTOSOL_TEXTURE = Object.freeze({
     granules: 14,
     alpha: 0.060,
@@ -169,29 +192,6 @@ export function handleSelectedPreviewClick(event) {
     }
 }
 
-export function handleCreatePreviewWheel(event) {
-    _handlePreviewWheel("create", event);
-}
-
-export function handleSelectedPreviewWheel(event) {
-    _handlePreviewWheel("selected", event);
-}
-
-function _handlePreviewWheel(kind, event) {
-    const zoom = kind === "selected" ? _selectedPreviewZoom : _createPreviewZoom;
-    const hasContent = kind === "selected" ? Boolean(state.selectedCellId != null) : Boolean(state.cellDraft);
-    if (!hasContent) return;
-    event.preventDefault();
-    event.stopPropagation();
-    const delta = _normalizedWheelDelta(event);
-    const base = zoom.animationId ? zoom.target : zoom.level;
-    const next = _clamp01(base - delta * CREATE_PREVIEW_WHEEL_SPEED);
-    zoom.target = next;
-    zoom.lockedToFit = next <= CREATE_PREVIEW_ZOOM_STOP_EPS;
-    zoom.initialized = true;
-    _animatePreviewZoom(kind);
-}
-
 export function handleCreatePreviewClick(event) {
     const hit = _hitAt("create", event);
     if (hit?.kind === "organelle") {
@@ -213,7 +213,10 @@ function _handlePreviewPointer(kind, event) {
     const canvas = kind === "selected" ? dom.selectedCellPreviewCanvas : dom.createCellPreviewCanvas;
     if (!canvas) return;
     const point = _canvasPoint(canvas, event);
-    const center = _canvasCenter(canvas);
+    const layout = kind === "selected"
+        ? _currentSelectedPreviewLayout(_previewLogicalWidth(canvas), _previewLogicalHeight(canvas), state.cellById?.get?.(state.selectedCellId))
+        : _currentCreatePreviewLayout(_previewLogicalWidth(canvas), _previewLogicalHeight(canvas));
+    const center = {x: layout.cx, y: layout.cy};
     const dist = Math.hypot(point.x - center.x, point.y - center.y);
 
     let cursorChanged = false;
@@ -302,7 +305,7 @@ function _requestPreviewDraw(kind) {
         _selectedPreviewRaf = requestAnimationFrame(() => {
             _selectedPreviewRaf = 0;
             const cell = state.cellById?.get(state.selectedCellId);
-            if (cell && state.selectedStrain) drawSelectedCellPreview(cell, state.selectedStrain);
+            if (cell) drawSelectedCellPreview(cell, state.selectedStrain);
         });
         return;
     }
@@ -325,13 +328,6 @@ function _canvasPoint(canvas, event) {
     return {
         x: event.clientX - rect.left,
         y: event.clientY - rect.top,
-    };
-}
-
-function _canvasCenter(canvas) {
-    return {
-        x: _previewLogicalWidth(canvas) / 2,
-        y: _previewLogicalHeight(canvas) / 2,
     };
 }
 
@@ -437,18 +433,21 @@ export function drawSelectedCellPreview(worldCell, strain) {
     _selectedHitTargets = [];
 
     const {width, height} = prepared;
-    const cx = width / 2;
-    const cy = height / 2;
+    let cx = width / 2;
+    let cy = height / 2;
 
-    if (!worldCell || !strain) {
+    if (!worldCell) {
         _syncSelectedPreviewNoticeIndicator(null);
         return;
     }
 
     const mode = state.selectedPreviewMode ?? "general";
-    const visual = worldCell?.visual ?? _previewVisualFromGenome(strain?.genome ?? {});
+    const visual = worldCell?.visual ?? _previewVisualFromGenome(strain?.genome ?? worldCell?.genome ?? {});
     _syncSelectedPreviewZoomAuto(width, height, worldCell);
-    const previewRadius = _currentSelectedPreviewRadius(width, height, worldCell);
+    const previewLayout = _currentSelectedPreviewLayout(width, height, worldCell);
+    cx = previewLayout.cx;
+    cy = previewLayout.cy;
+    const previewRadius = previewLayout.radius;
 
     if (mode === "forces") {
         _drawForcesMode(dom.selectedCellPreviewCtx, worldCell, visual, cx, cy);
@@ -595,48 +594,9 @@ function _singleOrganelleRepairRate(cell, id) {
     return cell?.cellRepairRate ?? 0;
 }
 
-function _energyProductionFor(cell, scope) {
-    const photosynthesis = Math.max(0, Number(cell.energyProduction) || 0);
-    const digestion = Math.max(0, Number(cell.digestionEnergyProduction) || 0);
-    if (scope === "lysosome") {
-        const slotProduction = _sum(_lysosomeSlots(cell).map(slot => Number(slot.energyProductionRate ?? 0)));
-        return Math.max(slotProduction, digestion);
-    }
-    if (scope === "chloroplast") return photosynthesis;
-    return scope === "general" ? photosynthesis + digestion : 0;
-}
-
-function _energyConsumptionFor(cell, scope) {
-    const total = Math.max(0, Number(cell.energyConsumption) || 0);
-    const repair = Math.max(0, Number(cell.repairEnergyCostRate) || 0);
-    const base = Math.max(0, total - repair);
-    if (scope === "nucleus" || scope === "nucleoid") return base * 0.13;
-    if (scope === "membrane") return base * 0.18;
-    if (scope === "chloroplast") return base * 0.24;
-    if (scope === "lysosome") {
-        const slots = _lysosomeSlots(cell);
-        const slotEnergyCost = _sum(slots.map(slot => Number(slot.energyCostRate ?? 0)));
-        const slotRepairCost = _sum(slots.map(slot => Number(slot.repairEnergyCostRate ?? 0)));
-        if (slots.length > 0) {
-            return slotEnergyCost + slotRepairCost;
-        }
-        return Math.max(0, Number(cell.digestionEnergyCostRate) || 0)
-            + Math.max(0, Number(cell.lysosomeRepairEnergyCostRate) || 0);
-    }
-    if (scope === "flagellum") {
-        const slots = Array.isArray(cell?.flagellumSlots) ? cell.flagellumSlots : [];
-        if (slots.length > 0) {
-            return _sum(slots.map(slot => Number(slot.energyCostRate ?? 0) + Number(slot.repairEnergyCostRate ?? 0)));
-        }
-        return Math.max(0, Number(cell?.flagellumEnergyCostRate ?? 0) || 0) + Math.max(0, Number(cell?.flagellumRepairEnergyCostRate ?? 0) || 0);
-    }
-    if (scope === "cytosol") return base * 0.43 + repair;
-    return total;
-}
-
 function _energyBalanceFor(cell, scope) {
-    const production = Math.max(0, Number(_energyProductionFor(cell, scope)) || 0);
-    const consumption = Math.max(0, Number(_energyConsumptionFor(cell, scope)) || 0);
+    const production = Math.max(0, Number(energyProductionFor(cell, scope)) || 0);
+    const consumption = Math.max(0, Number(energyConsumptionFor(cell, scope)) || 0);
     const net = production - consumption;
     if (Math.abs(net) <= ENERGY_COLOR_DEAD_ZONE) {
         return 0.0;
@@ -786,10 +746,6 @@ function _lysosomeSlots(cell) {
     return Array.isArray(cell?.lysosomeSlots) ? cell.lysosomeSlots : [];
 }
 
-function _sum(values) {
-    return (values ?? []).reduce((total, value) => total + Math.max(0, Number(value) || 0), 0);
-}
-
 function _range(values) {
     const finite = (values ?? []).map(Number).filter(Number.isFinite);
     if (!finite.length) return {min: 0, max: 0};
@@ -809,7 +765,7 @@ function _organelleTooltip(id, cell) {
     if (!cell) return title;
 
     if (state.selectedPreviewMode === "energy") {
-        return `${title}<div>${t("Production: {value}", { value: _fmt(_energyProductionFor(cell, id)) })}</div><div>${t("Consumption: {value}", { value: _fmt(_energyConsumptionFor(cell, id)) })}</div>`;
+        return `${title}<div>${t("Production: {value}", { value: formatOrganelleEnergy(cell, id, "production", _fmt) })}</div><div>${t("Consumption: {value}", { value: formatOrganelleEnergy(cell, id, "consumption", _fmt) })}</div>`;
     }
 
     if (state.selectedPreviewMode === "health") {
@@ -1107,7 +1063,8 @@ function _drawPreviewOrganelleExternalShadow(ctx, x, y, radius, visual, opacity)
     const shadowAngle = _lightAngle(visual);
     const rawGradient = Number(visual?.lightGradient);
     const strength = Number.isFinite(rawGradient) ? _clamp01(Math.max(0, rawGradient) * 4.85) : 0.0;
-    const alpha = 0.70 * strength * _clamp01(opacity);
+    const lightingOpacity = _clamp01(Math.max(_clamp01(opacity), 0.62));
+    const alpha = 0.92 * strength * lightingOpacity;
     if (alpha <= 0.001 || !Number.isFinite(shadowAngle)) return;
     ctx.save();
     ctx.beginPath();
@@ -1115,7 +1072,7 @@ function _drawPreviewOrganelleExternalShadow(ctx, x, y, radius, visual, opacity)
     ctx.clip();
     ctx.translate(x, y);
     ctx.rotate(shadowAngle);
-    _drawPreviewSoftCellSideShadow(ctx, radius, alpha, strength * _clamp01(opacity));
+    _drawPreviewSoftCellSideShadow(ctx, radius, alpha, strength * lightingOpacity);
     ctx.restore();
 }
 
@@ -1200,13 +1157,13 @@ function _fillPreviewEllipse(ctx, x, y, sx, sy, rotation, color, alpha) {
     ctx.restore();
 }
 
-function _drawPreviewGfpGlowRgb(ctx, cx, cy, radius, color, gfp, baseAlpha) {
-    drawInternalGfpGlow(ctx, {
+function _drawPreviewBioluminescenceGlowRgb(ctx, cx, cy, radius, color, bioluminescence, baseAlpha) {
+    drawInternalBioluminescenceGlow(ctx, {
         x: cx,
         y: cy,
         radius,
         color: color ?? {r: 83, g: 255, b: 139},
-        expression: gfp,
+        expression: bioluminescence,
         baseAlpha,
         rgba: _rgba,
     });
@@ -1250,18 +1207,19 @@ function _drawPreviewExternalLight(ctx, cx, cy, radius, visual, cursorLight, opt
     const highlightAngle = cursorAngle ?? _highlightAngle(visual);
 
     const shadowStrength = Number.isFinite(Number(visual?.lightGradient))
-        ? _clamp01(Math.max(0, Number(visual.lightGradient)) * 4.85)
-        : (cursorAngle == null ? 0.0 : 0.42);
+        ? _clamp01(Math.max(0, Number(visual.lightGradient)) * 5.35)
+        : (cursorAngle == null ? 0.0 : 0.50);
     const highlightStrength = Number.isFinite(Number(visual?.highlightStrength))
         ? _clamp01(Math.max(0, Number(visual.highlightStrength)))
-        : (cursorAngle == null ? 0.0 : 0.58);
+        : (cursorAngle == null ? 0.0 : 0.64);
     const highlightClarity = Number.isFinite(Number(visual?.highlightClarity))
         ? _clamp01(Number(visual.highlightClarity))
         : 1.0;
-    const opacity = _clamp01(cellOpacity);
+    const baseOpacity = _clamp01(cellOpacity);
+    const lightingOpacity = _clamp01(Math.max(baseOpacity, cursorAngle == null ? 0.68 : 0.76));
 
-    const shadowAlpha = 0.70 * shadowStrength * opacity;
-    const highlightAlpha = 0.68 * highlightStrength * opacity;
+    const shadowAlpha = 0.92 * shadowStrength * lightingOpacity;
+    const highlightAlpha = 0.84 * highlightStrength * lightingOpacity;
     if (shadowAlpha <= 0.001 && highlightAlpha <= 0.001) return;
 
     ctx.save();
@@ -1273,7 +1231,7 @@ function _drawPreviewExternalLight(ctx, cx, cy, radius, visual, cursorLight, opt
     if (showShadow && shadowAlpha > 0.001 && Number.isFinite(shadowAngle)) {
         ctx.save();
         ctx.rotate(shadowAngle);
-        _drawPreviewSoftCellSideShadow(ctx, radius, shadowAlpha, shadowStrength * opacity);
+        _drawPreviewSoftCellSideShadow(ctx, radius, shadowAlpha, shadowStrength * lightingOpacity);
         ctx.restore();
     }
 
@@ -1284,7 +1242,7 @@ function _drawPreviewExternalLight(ctx, cx, cy, radius, visual, cursorLight, opt
             ctx,
             radius,
             highlightAlpha,
-            highlightStrength * opacity,
+            highlightStrength * lightingOpacity,
             highlightClarity
         );
         ctx.restore();
@@ -1294,8 +1252,8 @@ function _drawPreviewExternalLight(ctx, cx, cy, radius, visual, cursorLight, opt
 }
 
 function _drawPreviewSoftCellSideShadow(ctx, radius, alpha, strength) {
-    const edgeAlpha = _clamp01(Math.max(alpha * 0.50, 0.50 * strength));
-    const midAlpha = _clamp01(0.34 * strength);
+    const edgeAlpha = _clamp01(Math.max(alpha * 0.58, 0.58 * strength));
+    const midAlpha = _clamp01(0.42 * strength);
     if (edgeAlpha <= 0.001 && midAlpha <= 0.001) return;
 
     ctx.save();
@@ -1316,7 +1274,7 @@ function _drawPreviewSoftCellHighlightCrescent(ctx, radius, alpha, strength, cla
     const crispness = _clamp01(clarity);
     const softness = 1.0 - crispness;
     const mainAlpha = _clamp01(alpha * (0.82 + 0.18 * crispness));
-    const coreAlpha = _clamp01(0.38 * strength * (0.44 + 0.56 * crispness));
+    const coreAlpha = _clamp01(0.52 * strength * (0.44 + 0.56 * crispness));
     if (mainAlpha <= 0.001 && coreAlpha <= 0.001) return;
 
     const outerRadius = radius * (0.80 + softness * 0.14);
@@ -1850,12 +1808,12 @@ function _previewVisualFromGenome(genome, draft = null) {
     const flagellumCount = flagellumEnabled ? Math.max(0, Math.min(2, Math.round(genome?.flagellumCount ?? 1))) : 0;
     const lysosomeEnzyme = _clamp01((genome?.lysosomeEnzymeActivity ?? 0) / 100);
     const melanin = melaninEnabled ? _clamp01((genome?.melaninPercent ?? 0) / 100) : 0;
-    const gfp = genome?.gfpEnabled ? _clamp01((genome?.gfp ?? 0) / 100) : 0;
+    const bioluminescence = genome?.bioluminescenceEnabled ? _clamp01((genome?.bioluminescence ?? 0) / 100) : 0;
     const cellDamage = _clamp01(draft?.startCytosolDamage ?? 0);
     const cpDamage = chloroplastEnabled ? _clamp01(draft?.startCpDamage ?? 0) : 0;
     const cpArea = amount * 4;
     const lysosomeArea = lysosomeAmount * PREVIEW_LYSOSOME_AREA_FACTOR;
-    const previewCellArea = Math.max(1, 18 + Math.max(0, genome?.cytosolArea ?? 0) * 0.58 + PREVIEW_START_ENERGY_AREA + lysosomeArea);
+    const previewCellArea = Math.max(1, _draftCellAreaFromGenome(genome));
     const coverage = _clamp01(cpArea / previewCellArea);
     const lysosomeCoverage = _clamp01(lysosomeArea / previewCellArea);
     const pigmentDepth = coverage * (2.4 * chlor + 0.42 * carot);
@@ -1896,8 +1854,8 @@ function _previewVisualFromGenome(genome, draft = null) {
         lysosomeGlowStrength: 0,
         flagellumColor: {...membraneColor, opacity: flagellumEnabled ? 1.0 : 0},
         flagellumCount,
-        gfpColor: {r: 83, g: 255, b: 139},
-        gfpExpression: gfp,
+        bioluminescenceColor: {r: 83, g: 255, b: 139},
+        bioluminescenceExpression: bioluminescence,
     };
 }
 
@@ -1907,11 +1865,14 @@ export function drawCreateCellPreview() {
     _createHitTargets = [];
     const ctx = dom.createCellPreviewCtx;
     const {width, height} = prepared;
-    const cx = width / 2;
-    const cy = height / 2;
+    let cx = width / 2;
+    let cy = height / 2;
     const visual = _previewVisualFromGenome(state.cellDraft.genome, state.cellDraft);
     _syncCreatePreviewZoomAuto(width, height);
-    const previewRadius = _currentCreatePreviewRadius(width, height);
+    const previewLayout = _currentCreatePreviewLayout(width, height);
+    cx = previewLayout.cx;
+    cy = previewLayout.cy;
+    const previewRadius = previewLayout.radius;
     _drawPreviewBiologyCell(ctx, cx, cy, previewRadius, visual, null, selectedPreviewLayerCount(), _createPreviewCursor, _createHitTargets, _createHover, "general");
 
     const scope = String(state.createInfoScope ?? "general").toLowerCase();
@@ -1935,43 +1896,75 @@ export function drawCreateCellPreview() {
 
 function _syncCreatePreviewZoomAuto(width, height) {
     const genome = state.cellDraft?.genome ?? {};
-    _syncPreviewZoomAuto("create", width, height, genome);
+    _syncPreviewZoomAuto("create", width, height, genome, null);
 }
 
 function _syncSelectedPreviewZoomAuto(width, height, cell) {
     const genome = cell?.genome ?? state.selectedStrain?.genome ?? {};
-    _syncPreviewZoomAuto("selected", width, height, genome);
+    _syncPreviewZoomAuto("selected", width, height, genome, cell);
 }
 
-function _syncPreviewZoomAuto(kind, width, height, genome) {
+function _syncPreviewZoomAuto(kind, width, height, genome, cell = null) {
     const zoom = kind === "selected" ? _selectedPreviewZoom : _createPreviewZoom;
     const scope = kind === "selected"
         ? String(state.selectedInfoScope ?? "general").toLowerCase()
         : String(state.createInfoScope ?? "general").toLowerCase();
-    const flagellumVisible = Boolean(genome?.flagellumEnabled) && Math.round(Number(genome?.flagellumCount ?? 0)) > 0;
-    const wantsFit = scope === "flagellum" && flagellumVisible;
+    const normalizedScope = scope === "nucleoid" ? "nucleus" : scope;
+    const scopeChanged = zoom.lastScope !== normalizedScope;
+    const bodyRadius = _previewBodyRadiusForScale(genome, cell);
+    const wasFitting = zoom.lockedToFit || zoom.target === 0.0 || zoom.level < 1.0 - CREATE_PREVIEW_ZOOM_STOP_EPS;
+    const flagellumVisible = previewFlagellumCount(genome, cell) > 0;
+    const wantsFit = normalizedScope === "flagellum" && flagellumVisible;
 
     if (!zoom.initialized) {
         zoom.initialized = true;
         zoom.level = wantsFit ? 0.0 : 1.0;
         zoom.target = zoom.level;
         zoom.lockedToFit = wantsFit;
-        return;
-    }
-
-    if (wantsFit) {
-        if (zoom.lockedToFit) {
-            zoom.target = 0.0;
-            if (!zoom.animationId && Math.abs(zoom.level) > CREATE_PREVIEW_ZOOM_STOP_EPS) {
-                _animatePreviewZoom(kind);
-            }
+        zoom.lastScope = normalizedScope;
+        zoom.lastFitScope = wantsFit ? normalizedScope : null;
+        _setPreviewNormalBodyRadiusCurrent(zoom, bodyRadius);
+        _setPreviewDisplayBodyRadiusCurrent(zoom, bodyRadius);
+        if (wantsFit) {
+            _setPreviewZoomFitCurrent(zoom, _previewFitLayout(width, height, genome, cell));
         }
         return;
     }
 
-    if (zoom.target !== 1.0 || zoom.level < 1.0 - CREATE_PREVIEW_ZOOM_STOP_EPS) {
-        zoom.target = 1.0;
-        zoom.lockedToFit = false;
+    _ensurePreviewNormalBodyRadius(zoom, bodyRadius);
+    _setPreviewDisplayBodyRadiusTarget(zoom, bodyRadius);
+
+    if (scopeChanged) {
+        // A new organelle/general tab must restore its default scale, but it is
+        // still a visual transition. We animate the baseline body radius instead
+        // of replacing it immediately, so area changes made in the previous tab
+        // do not snap on tab switch.
+        _setPreviewNormalBodyRadiusTarget(zoom, bodyRadius);
+        zoom.lastScope = normalizedScope;
+    }
+
+    if (wantsFit) {
+        const fit = _previewFitLayout(width, height, genome, cell);
+        _setPreviewZoomFitTarget(zoom, fit);
+        zoom.lockedToFit = true;
+        zoom.lastFitScope = normalizedScope;
+        zoom.target = 0.0;
+        if (_previewZoomNeedsAnimation(zoom)) {
+            _animatePreviewZoom(kind);
+        }
+        return;
+    }
+
+    if (wasFitting && !scopeChanged) {
+        // Turning flagella off while the Flagellum tab is still selected should
+        // also return to the normal default scale through the same smooth path
+        // used by tab switches.
+        _setPreviewNormalBodyRadiusTarget(zoom, bodyRadius);
+    }
+    zoom.lockedToFit = false;
+    zoom.lastFitScope = null;
+    zoom.target = 1.0;
+    if (_previewZoomNeedsAnimation(zoom)) {
         _animatePreviewZoom(kind);
     }
 }
@@ -1979,29 +1972,380 @@ function _syncPreviewZoomAuto(kind, width, height, genome) {
 function _currentCreatePreviewBodyRadius(canvas) {
     const width = _previewLogicalWidth(canvas);
     const height = _previewLogicalHeight(canvas);
-    return _currentCreatePreviewRadius(width, height);
+    return _currentCreatePreviewLayout(width, height).radius;
 }
 
-function _currentCreatePreviewRadius(width, height) {
-    return _currentPreviewRadius(width, height, state.cellDraft?.genome ?? {}, _createPreviewZoom);
+function _currentCreatePreviewLayout(width, height) {
+    return _currentPreviewLayout(width, height, state.cellDraft?.genome ?? {}, _createPreviewZoom, null);
 }
 
-function _currentSelectedPreviewRadius(width, height, cell) {
-    return _currentPreviewRadius(width, height, cell?.genome ?? state.selectedStrain?.genome ?? {}, _selectedPreviewZoom);
+function _currentSelectedPreviewLayout(width, height, cell) {
+    return _currentPreviewLayout(width, height, cell?.genome ?? state.selectedStrain?.genome ?? {}, _selectedPreviewZoom, cell);
 }
 
-function _currentPreviewRadius(width, height, genome, zoom) {
-    const minRadius = _previewFitRadius(width, height, genome);
+function _currentPreviewLayout(width, height, genome, zoom, cell = null) {
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const normalRadius = _normalPreviewScaledRadius(width, height, genome, cell, zoom);
     const zoomT = _smoothstep(_clamp01(zoom.level));
-    return minRadius + (PREVIEW_RADIUS_EXPANDED - minRadius) * zoomT;
+    const hasAnimatedFit = Number.isFinite(Number(zoom.fitRadius));
+    const needsFitLayout = zoom.lockedToFit || zoom.target === 0.0 || zoom.level < 1.0 - CREATE_PREVIEW_ZOOM_STOP_EPS || hasAnimatedFit;
+    const fit = needsFitLayout && !hasAnimatedFit ? _previewFitLayout(width, height, genome, cell) : null;
+    const fitRadius = hasAnimatedFit
+        ? Math.max(8, Number(zoom.fitRadius))
+        : (fit?.radius ?? normalRadius);
+    const fitCenter = Number.isFinite(Number(zoom.fitCx)) && Number.isFinite(Number(zoom.fitCy))
+        ? {cx: Number(zoom.fitCx), cy: Number(zoom.fitCy)}
+        : (fit ? {cx: fit.cx, cy: fit.cy} : {cx: centerX, cy: centerY});
+
+    return {
+        cx: fitCenter.cx + (centerX - fitCenter.cx) * zoomT,
+        cy: fitCenter.cy + (centerY - fitCenter.cy) * zoomT,
+        radius: fitRadius + (normalRadius - fitRadius) * zoomT,
+    };
 }
 
-function _previewFitRadius(width, height, genome) {
-    const flagellumVisible = Boolean(genome?.flagellumEnabled) && Math.round(Number(genome?.flagellumCount ?? 0)) > 0;
-    const lengthFactor = _flagellumLengthFactorFromGenome(genome);
-    const extentFactor = flagellumVisible ? 1.0 + lengthFactor + 0.35 : 1.0;
-    const available = Math.max(8, Math.min(Number(width) || 1, Number(height) || 1) * 0.5 - CREATE_PREVIEW_PADDING);
-    return Math.min(PREVIEW_RADIUS_EXPANDED, Math.max(8, available / extentFactor));
+function _normalPreviewScaledRadius(width, height, genome, cell, zoom) {
+    const normalRadius = _normalPreviewRadius(width, height);
+    const desiredBodyRadius = _previewBodyRadiusForScale(genome, cell);
+    const bodyRadius = Number.isFinite(Number(zoom?.displayBodyRadius)) && Number(zoom.displayBodyRadius) > 0
+        ? Number(zoom.displayBodyRadius)
+        : desiredBodyRadius;
+    const baseline = Number.isFinite(Number(zoom?.normalBodyRadius)) && Number(zoom.normalBodyRadius) > 0
+        ? Number(zoom.normalBodyRadius)
+        : bodyRadius;
+    return Math.max(4, normalRadius * bodyRadius / Math.max(1.0e-6, baseline));
+}
+
+function _createPreviewMetricsForCurrentDraft(options = {}) {
+    const metrics = state.cellDraftPreview;
+    if (!metrics || !state.cellDraft || !state.cellDraftPreviewSignature) return null;
+    const exact = state.cellDraftPreviewSignature === _previewDraftSignature(state.cellDraft);
+    return exact || options.allowStale ? metrics : null;
+}
+
+function _previewDraftSignature(draft) {
+    const genome = draft?.genome ?? {};
+    return JSON.stringify({
+        genome,
+        startNucleusDamage: draft?.startNucleusDamage ?? 0,
+        startCytosolDamage: draft?.startCytosolDamage ?? 0,
+        startCpDamage: draft?.startCpDamage ?? 0,
+        startMembraneDamage: draft?.startMembraneDamage ?? 0,
+        startLysosomeDamage: draft?.startLysosomeDamage ?? 0,
+        startFlagellumDamage: draft?.startFlagellumDamage ?? 0,
+    });
+}
+
+function _previewBodyRadiusForScale(genome = {}, cell = null) {
+    const liveRadius = Number(cell?.radius);
+    if (Number.isFinite(liveRadius) && liveRadius > 0) return liveRadius;
+    return _draftBodyRadiusFromGenome(genome);
+}
+
+function _draftBodyRadiusFromGenome(genome = {}) {
+    const metrics = _createPreviewMetricsForCurrentDraft({allowStale: true});
+    const metricRadius = Number(metrics?.radius);
+    if (Number.isFinite(metricRadius) && metricRadius > 0) return metricRadius;
+
+    const baseRadius = Math.max(1.0, Number(state.config?.cellBaseRadius) || 6.0);
+    return Math.max(baseRadius, Math.sqrt(_draftCellAreaFromGenome(genome) / Math.PI));
+}
+
+function _draftCellAreaFromGenome(genome = {}) {
+    const metrics = _createPreviewMetricsForCurrentDraft({allowStale: true});
+    const metricArea = Number(metrics?.cellArea);
+    if (Number.isFinite(metricArea) && metricArea > 0) return metricArea;
+
+    const cytosolArea = Math.max(0, Number(genome?.cytosolArea ?? 0) || 0) * 0.58;
+    const chloroplastArea = Boolean(genome?.chloroplastEnabled)
+        ? Math.max(0, Math.round(Number(genome?.chloroplastAmount ?? 0) || 0)) * 4.0
+        : 0.0;
+    const lysosomeArea = Boolean(genome?.lysosomeEnabled)
+        ? Math.max(0, Math.round(Number(genome?.lysosomeAmount ?? 0) || 0)) * PREVIEW_LYSOSOME_AREA_FACTOR
+        : 0.0;
+    const energyArea = Math.max(0, Number(state.config?.cellRadiusScale) || 4.0) * 40.0;
+    return Math.max(1.0e-6, 18.0 + energyArea + cytosolArea + chloroplastArea + lysosomeArea);
+}
+
+function _previewFitLayout(width, height, genome, cell = null) {
+    const bounds = _flagellumBoundsForPreview(genome, cell);
+    const normalRadius = _normalPreviewRadius(width, height);
+    const marginX = _normalPreviewMargin(width, normalRadius);
+    const marginY = _normalPreviewMargin(height, normalRadius);
+    const availableWidth = Math.max(16, Number(width) - marginX * 2);
+    const availableHeight = Math.max(16, Number(height) - marginY * 2);
+    const boundsWidth = Math.max(0.001, bounds.maxX - bounds.minX);
+    const boundsHeight = Math.max(0.001, bounds.maxY - bounds.minY);
+    const radius = Math.min(normalRadius, Math.max(8, Math.min(availableWidth / boundsWidth, availableHeight / boundsHeight)));
+    const center = _previewFitCenter(width, height, bounds, radius);
+    return {radius, ...center, bounds};
+}
+
+function _previewFitCenter(width, height, bounds, radius) {
+    const normalRadius = _normalPreviewRadius(width, height);
+    const marginX = _normalPreviewMargin(width, normalRadius);
+    const marginY = _normalPreviewMargin(height, normalRadius);
+    const minX = marginX - bounds.minX * radius;
+    const maxX = Number(width) - marginX - bounds.maxX * radius;
+    const minY = marginY - bounds.minY * radius;
+    const maxY = Number(height) - marginY - bounds.maxY * radius;
+
+    return {
+        cx: minX <= maxX ? (minX + maxX) / 2 : (Number(width) - (bounds.minX + bounds.maxX) * radius) / 2,
+        cy: minY <= maxY ? (minY + maxY) / 2 : (Number(height) - (bounds.minY + bounds.maxY) * radius) / 2,
+    };
+}
+
+function _normalPreviewRadius(width, height) {
+    const maxByCanvas = Math.min(Number(width) || 1, Number(height) || 1) * 0.5 - CREATE_PREVIEW_PADDING;
+    return Math.max(8, Math.min(PREVIEW_RADIUS_EXPANDED, maxByCanvas > 0 ? maxByCanvas : PREVIEW_RADIUS_EXPANDED));
+}
+
+function _normalPreviewMargin(size, normalRadius) {
+    const margin = (Number(size) || 1) * 0.5 - Math.max(0, Number(normalRadius) || PREVIEW_RADIUS_EXPANDED);
+    return Math.max(CREATE_PREVIEW_PADDING, margin);
+}
+
+function _flagellumBoundsForPreview(genome = {}, cell = null) {
+    const bounds = {minX: -1, minY: -1, maxX: 1, maxY: 1};
+    if (previewFlagellumCount(genome, cell) <= 0) {
+        return bounds;
+    }
+
+    const slots = _flagellumSlotsForPreviewBounds(genome, cell);
+    for (const slot of slots) {
+        const baseX = Number(slot.baseX) || 0;
+        const baseY = Number(slot.baseY) || 0;
+        const dirX = Number(slot.directionX) || 0;
+        const dirY = Number(slot.directionY) || -1;
+        const dirLen = Math.hypot(dirX, dirY) || 1;
+        const tailX = -dirX / dirLen;
+        const tailY = -dirY / dirLen;
+        const normalX = -tailY;
+        const normalY = tailX;
+        const length = Math.max(0, Number(slot.length) || _flagellumLengthFactorFromGenome(genome));
+        const thickness = Math.max(0.01, Number(slot.thickness ?? 0.08) || 0.08);
+        const rootWidth = thickness * 1.10;
+        const tipWidth = Math.max(0.006, thickness * 0.06);
+        const motor01 = _clamp01(Number(slot?.motorPower ?? genome?.flagellumMotorPower ?? 30) / 100);
+        const beatDrive = Math.sqrt(motor01);
+        const maxAmp = length * 0.19
+            * Math.pow(motor01, 0.72)
+            * (0.24 + 0.76 * beatDrive)
+            * (0.86 + 0.05 * motor01);
+
+        for (const t of [0, 0.16, 0.35, 0.58, 0.80, 1.0]) {
+            const x = baseX + tailX * length * t;
+            const y = baseY + tailY * length * t;
+            const widthAtT = _flagellumWidthFactorAt(t, rootWidth, tipWidth);
+            const distalGain = _smoothstep((t - 0.16) / Math.max(1.0e-6, 1.0 - 0.16));
+            const envelope = Math.sin(t * Math.PI * 0.92) * (0.10 + 0.90 * distalGain);
+            const lateral = Math.max(widthAtT, Math.max(0, envelope) * maxAmp);
+            const longitudinal = t >= 0.999 ? tipWidth : (t <= 0.001 ? rootWidth * 0.42 : widthAtT * 0.25);
+            _expandOrientedBounds(bounds, x, y, normalX, normalY, lateral, tailX, tailY, longitudinal);
+        }
+    }
+
+    return bounds;
+}
+
+function _flagellumSlotsForPreviewBounds(genome = {}, cell = null) {
+    const sourceRadius = Math.max(1.0e-6, Number(cell?.radius) || 1);
+    const liveSlots = Array.isArray(cell?.flagellumSlots) ? cell.flagellumSlots : [];
+    if (liveSlots.length > 0) {
+        return liveSlots.map((slot, index) => {
+            const baseX = Number(slot?.baseX);
+            const baseY = Number(slot?.baseY);
+            const length = Number(slot?.length);
+            const thickness = Number(slot?.thickness);
+            return {
+                baseX: Number.isFinite(baseX) ? baseX / sourceRadius : 0,
+                baseY: Number.isFinite(baseY) ? baseY / sourceRadius : 1,
+                directionX: Number(slot?.directionX ?? 0) || 0,
+                directionY: Number(slot?.directionY ?? -1) || -1,
+                length: Number.isFinite(length) ? length / sourceRadius : _flagellumLengthFactorFromGenome(genome),
+                thickness: Number.isFinite(thickness) ? thickness / sourceRadius : _flagellumThicknessFactorFromGenome(genome),
+                index,
+            };
+        });
+    }
+
+    const count = Math.max(0, Math.min(2, previewFlagellumCount(genome, cell)));
+    const directionAngle = Number(cell?.directionAngle ?? 0) || 0;
+    const forward = (directionAngle - 90) * Math.PI / 180;
+    const rearPlacement = Math.PI;
+    const spread = _effectiveFlagellumPairSpreadRadians(genome);
+    const steering = _clamp(Number(genome?.flagellumSteeringAsymmetry ?? 0) / 100, -1, 1);
+    const length = _flagellumLengthFactorFromGenome(genome);
+    const thickness = _flagellumThicknessFactorFromGenome(genome);
+    const slots = [];
+
+    for (let i = 0; i < count; i++) {
+        const side = count > 1 ? (i === 0 ? -1 : 1) : 0;
+        const relative = count > 1 ? rearPlacement + side * spread * 0.5 : rearPlacement;
+        const attachment = forward + relative;
+        const thrust = count > 1 ? forward : forward + steering * 28 * Math.PI / 180;
+        slots.push({
+            index: i,
+            baseX: Math.cos(attachment),
+            baseY: Math.sin(attachment),
+            directionX: Math.cos(thrust),
+            directionY: Math.sin(thrust),
+            length,
+            thickness,
+        });
+    }
+
+    return slots;
+}
+
+function _expandBounds(bounds, x, y) {
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+    bounds.minX = Math.min(bounds.minX, x);
+    bounds.minY = Math.min(bounds.minY, y);
+    bounds.maxX = Math.max(bounds.maxX, x);
+    bounds.maxY = Math.max(bounds.maxY, y);
+}
+function _expandOrientedBounds(bounds, x, y, normalX, normalY, lateral, tailX, tailY, longitudinal) {
+    const lat = Math.max(0, Number(lateral) || 0);
+    const long = Math.max(0, Number(longitudinal) || 0);
+    for (const sx of [-1, 1]) {
+        for (const sy of [-1, 1]) {
+            _expandBounds(
+                bounds,
+                x + normalX * lat * sx + tailX * long * sy,
+                y + normalY * lat * sx + tailY * long * sy
+            );
+        }
+    }
+}
+
+function _flagellumWidthFactorAt(t, rootWidth, tipWidth) {
+    const clamped = _clamp01(t);
+    return tipWidth + (rootWidth - tipWidth) * Math.pow(1.0 - clamped, 2.30);
+}
+
+
+function _flagellumThicknessFactorFromGenome(genome = {}) {
+    const length = _flagellumLengthFactorFromGenome(genome);
+    const t = _clamp01((length - 1.0) / 3.0);
+    const thickness = 0.112 - (0.112 - 0.050) * Math.pow(t, 0.82);
+    const pairScale = Math.round(Number(genome?.flagellumCount ?? 1)) >= 2 ? 0.92 : 1.0;
+    return thickness * pairScale;
+}
+
+function _minFlagellumPairSpreadRadians(genome = {}) {
+    const rootHalfWidthToRadius = _flagellumThicknessFactorFromGenome(genome) * 1.10;
+    return 2 * Math.asin(Math.max(0, Math.min(0.95, rootHalfWidthToRadius)));
+}
+
+function _maxFlagellumPairSpreadRadians(genome = {}) {
+    const rootHalfWidthToRadius = _flagellumThicknessFactorFromGenome(genome) * 1.10;
+    const margin = 2 * Math.asin(Math.max(0, Math.min(0.95, rootHalfWidthToRadius)));
+    return Math.max(_minFlagellumPairSpreadRadians(genome), Math.PI - margin);
+}
+
+function _effectiveFlagellumPairSpreadRadians(genome = {}) {
+    const minSpread = _minFlagellumPairSpreadRadians(genome);
+    const maxSpread = _maxFlagellumPairSpreadRadians(genome);
+    const raw = Number(genome?.flagellumPairSpreadAngle ?? 36);
+    const t = _clamp01((Number.isFinite(raw) ? raw : 36) / 180);
+    return minSpread + (maxSpread - minSpread) * t;
+}
+
+function _ensurePreviewNormalBodyRadius(zoom, bodyRadius) {
+    if (!Number.isFinite(Number(zoom.normalBodyRadius)) || Number(zoom.normalBodyRadius) <= 0) {
+        _setPreviewNormalBodyRadiusCurrent(zoom, bodyRadius);
+    } else if (!Number.isFinite(Number(zoom.normalTargetBodyRadius)) || Number(zoom.normalTargetBodyRadius) <= 0) {
+        zoom.normalTargetBodyRadius = zoom.normalBodyRadius;
+    }
+}
+
+function _setPreviewNormalBodyRadiusCurrent(zoom, bodyRadius) {
+    const radius = Math.max(1.0e-6, Number(bodyRadius) || 1.0);
+    zoom.normalBodyRadius = radius;
+    zoom.normalTargetBodyRadius = radius;
+}
+
+function _setPreviewNormalBodyRadiusTarget(zoom, bodyRadius) {
+    const radius = Math.max(1.0e-6, Number(bodyRadius) || 1.0);
+    if (!Number.isFinite(Number(zoom.normalBodyRadius)) || Number(zoom.normalBodyRadius) <= 0) {
+        zoom.normalBodyRadius = radius;
+    }
+    zoom.normalTargetBodyRadius = radius;
+}
+
+function _previewNormalBodyTargetDistance(zoom) {
+    if (!Number.isFinite(Number(zoom?.normalTargetBodyRadius))) return 0.0;
+    return Math.abs(Number(zoom.normalTargetBodyRadius) - (Number(zoom.normalBodyRadius) || 0));
+}
+
+function _setPreviewDisplayBodyRadiusCurrent(zoom, bodyRadius) {
+    const radius = Math.max(1.0e-6, Number(bodyRadius) || 1.0);
+    zoom.displayBodyRadius = radius;
+    zoom.displayTargetBodyRadius = radius;
+}
+
+function _setPreviewDisplayBodyRadiusTarget(zoom, bodyRadius) {
+    const radius = Math.max(1.0e-6, Number(bodyRadius) || 1.0);
+    if (!Number.isFinite(Number(zoom.displayBodyRadius)) || Number(zoom.displayBodyRadius) <= 0) {
+        zoom.displayBodyRadius = radius;
+    }
+    zoom.displayTargetBodyRadius = radius;
+}
+
+function _previewDisplayBodyTargetDistance(zoom) {
+    if (!Number.isFinite(Number(zoom?.displayTargetBodyRadius))) return 0.0;
+    return Math.abs(Number(zoom.displayTargetBodyRadius) - (Number(zoom.displayBodyRadius) || 0));
+}
+
+function _previewApproach(current, target, alpha) {
+    return current + (target - current) * alpha;
+}
+
+function _setPreviewZoomFitCurrent(zoom, fit) {
+    _setPreviewZoomFitTarget(zoom, fit);
+    zoom.fitRadius = Number(fit?.radius) || 8;
+    zoom.fitCx = Number(fit?.cx) || 0;
+    zoom.fitCy = Number(fit?.cy) || 0;
+}
+
+function _setPreviewZoomFitTarget(zoom, fit) {
+    zoom.fitTargetRadius = Number(fit?.radius) || 8;
+    zoom.fitTargetCx = Number(fit?.cx) || 0;
+    zoom.fitTargetCy = Number(fit?.cy) || 0;
+    if (!Number.isFinite(Number(zoom.fitRadius))) zoom.fitRadius = zoom.fitTargetRadius;
+    if (!Number.isFinite(Number(zoom.fitCx))) zoom.fitCx = zoom.fitTargetCx;
+    if (!Number.isFinite(Number(zoom.fitCy))) zoom.fitCy = zoom.fitTargetCy;
+}
+
+function _previewZoomNeedsAnimation(zoom) {
+    if (Math.abs((Number(zoom?.target) || 0) - (Number(zoom?.level) || 0)) > CREATE_PREVIEW_ZOOM_STOP_EPS) {
+        return true;
+    }
+    if (_previewFitTargetDistance(zoom) > CREATE_PREVIEW_ZOOM_STOP_EPS) return true;
+    if (_previewDisplayBodyTargetDistance(zoom) > CREATE_PREVIEW_ZOOM_STOP_EPS) return true;
+    return _previewNormalBodyTargetDistance(zoom) > CREATE_PREVIEW_ZOOM_STOP_EPS;
+}
+
+function _previewFitTargetDistance(zoom) {
+    if (!Number.isFinite(Number(zoom?.fitTargetRadius))) return 0.0;
+    return Math.max(
+        Math.abs(Number(zoom.fitTargetRadius) - (Number(zoom.fitRadius) || 0)),
+        Math.abs(Number(zoom.fitTargetCx) - (Number(zoom.fitCx) || 0)),
+        Math.abs(Number(zoom.fitTargetCy) - (Number(zoom.fitCy) || 0))
+    );
+}
+
+function _clearPreviewFitAfterNormalZoom(zoom) {
+    if (zoom.lockedToFit || zoom.target !== 1.0 || zoom.level < 1.0 - CREATE_PREVIEW_ZOOM_STOP_EPS) return;
+    zoom.fitRadius = null;
+    zoom.fitCx = null;
+    zoom.fitCy = null;
+    zoom.fitTargetRadius = null;
+    zoom.fitTargetCx = null;
+    zoom.fitTargetCy = null;
 }
 
 function _animatePreviewZoom(kind) {
@@ -2011,7 +2355,7 @@ function _animatePreviewZoom(kind) {
     const draw = () => {
         if (kind === "selected") {
             const cell = state.cellById?.get?.(state.selectedCellId);
-            if (cell && state.selectedStrain) drawSelectedCellPreview(cell, state.selectedStrain);
+            if (cell) drawSelectedCellPreview(cell, state.selectedStrain);
         } else {
             drawCreateCellPreview();
         }
@@ -2020,11 +2364,39 @@ function _animatePreviewZoom(kind) {
         const dt = Math.min(34, Math.max(1, now - lastTime));
         lastTime = now;
         const alpha = 1 - Math.exp(-dt / CREATE_PREVIEW_ZOOM_TIME_CONSTANT_MS);
-        zoom.level += (zoom.target - zoom.level) * alpha;
+        zoom.level = _previewApproach(zoom.level, zoom.target, alpha);
+        if (Number.isFinite(Number(zoom.fitTargetRadius))) {
+            zoom.fitRadius = _previewApproach(zoom.fitRadius, zoom.fitTargetRadius, alpha);
+            zoom.fitCx = _previewApproach(zoom.fitCx, zoom.fitTargetCx, alpha);
+            zoom.fitCy = _previewApproach(zoom.fitCy, zoom.fitTargetCy, alpha);
+        }
+        if (Number.isFinite(Number(zoom.normalTargetBodyRadius))) {
+            zoom.normalBodyRadius = _previewApproach(zoom.normalBodyRadius, zoom.normalTargetBodyRadius, alpha);
+        }
+        if (Number.isFinite(Number(zoom.displayTargetBodyRadius))) {
+            zoom.displayBodyRadius = _previewApproach(zoom.displayBodyRadius, zoom.displayTargetBodyRadius, alpha);
+        }
 
-        if (Math.abs(zoom.target - zoom.level) <= CREATE_PREVIEW_ZOOM_STOP_EPS) {
-            zoom.level = zoom.target;
+        const levelDone = Math.abs(zoom.target - zoom.level) <= CREATE_PREVIEW_ZOOM_STOP_EPS;
+        const fitDone = _previewFitTargetDistance(zoom) <= CREATE_PREVIEW_ZOOM_STOP_EPS;
+        const normalDone = _previewNormalBodyTargetDistance(zoom) <= CREATE_PREVIEW_ZOOM_STOP_EPS;
+        const displayDone = _previewDisplayBodyTargetDistance(zoom) <= CREATE_PREVIEW_ZOOM_STOP_EPS;
+        if (levelDone) zoom.level = zoom.target;
+        if (fitDone && Number.isFinite(Number(zoom.fitTargetRadius))) {
+            zoom.fitRadius = zoom.fitTargetRadius;
+            zoom.fitCx = zoom.fitTargetCx;
+            zoom.fitCy = zoom.fitTargetCy;
+        }
+        if (normalDone && Number.isFinite(Number(zoom.normalTargetBodyRadius))) {
+            zoom.normalBodyRadius = zoom.normalTargetBodyRadius;
+        }
+        if (displayDone && Number.isFinite(Number(zoom.displayTargetBodyRadius))) {
+            zoom.displayBodyRadius = zoom.displayTargetBodyRadius;
+        }
+
+        if (levelDone && fitDone && normalDone && displayDone) {
             zoom.animationId = 0;
+            _clearPreviewFitAfterNormalZoom(zoom);
             draw();
             return;
         }
@@ -2057,7 +2429,7 @@ function _ensurePreviewAnimationLoop() {
         let keepAnimating = false;
         if (_shouldAnimateSelectedPreview()) {
             const cell = state.cellById?.get?.(state.selectedCellId);
-            if (cell && state.selectedStrain) drawSelectedCellPreview(cell, state.selectedStrain);
+            if (cell) drawSelectedCellPreview(cell, state.selectedStrain);
             keepAnimating = true;
         }
         if (_shouldAnimateCreatePreview()) {
@@ -2096,7 +2468,7 @@ function _shouldAnimateAnyPreview() {
 
 function _shouldAnimateSelectedPreview() {
     const cell = state.cellById?.get?.(state.selectedCellId);
-    return Boolean(cell && !cell.dead && _hasActiveFlagellaCilia(cell.genome));
+    return Boolean(cell && !cell.dead && _hasActiveFlagellaForPreview(cell));
 }
 
 function _shouldAnimateCreatePreview() {
@@ -2107,6 +2479,33 @@ function _hasActiveFlagellaCilia(genome = {}) {
     return Boolean(genome?.flagellumEnabled)
         && Math.round(Number(genome?.flagellumCount ?? 0)) > 0
         && Number(genome?.flagellumMotorPower ?? 0) > 0;
+}
+
+function _hasActiveFlagellaForPreview(cell) {
+    if (!cell) return false;
+    if (_hasActiveFlagellaCilia(cell.genome ?? state.selectedStrain?.genome ?? {})) return true;
+    if (previewFlagellumCount(state.selectedStrain?.genome ?? {}, cell) <= 0) return false;
+
+    const slots = Array.isArray(cell.flagellumSlots) ? cell.flagellumSlots : [];
+    if (slots.length === 0) return true;
+    return slots.some(slot => {
+        const motorPower = Number(slot?.motorPower ?? 0);
+        const performance = Number(slot?.performance ?? 1);
+        const damage = Number(slot?.damage ?? 0);
+        return motorPower > 0 && performance > 0.001 && damage < 1.0;
+    });
+}
+
+function previewFlagellumCount(genome = {}, cell = null) {
+    if (Boolean(genome?.flagellumEnabled)) {
+        const genomeCount = Math.max(0, Math.round(Number(genome?.flagellumCount ?? 0) || 0));
+        if (genomeCount > 0) return genomeCount;
+    }
+
+    const visualCount = Math.max(0, Math.round(Number(cell?.visual?.flagellumCount ?? 0) || 0));
+    const capacity = Math.max(0, Math.round(Number(cell?.flagellumCapacity ?? 0) || 0));
+    const slotCount = Array.isArray(cell?.flagellumSlots) ? cell.flagellumSlots.length : 0;
+    return Math.max(visualCount, capacity, slotCount);
 }
 
 function _flagellumLengthFactorFromGenome(genome = {}) {
@@ -2120,13 +2519,6 @@ function _smoothstep(t) {
     const v = _clamp01(t);
     return v * v * (3.0 - 2.0 * v);
 }
-
-function _normalizedWheelDelta(event) {
-    if (event.deltaMode === WheelEvent.DOM_DELTA_LINE) return event.deltaY * 16;
-    if (event.deltaMode === WheelEvent.DOM_DELTA_PAGE) return event.deltaY * 240;
-    return event.deltaY;
-}
-
 
 function _syncSelectedPreviewNoticeIndicator(worldCell) {
     const badge = dom.selectedPreviewEventIndicator;
@@ -2487,7 +2879,5 @@ function _clamp01(value) {
     if (!Number.isFinite(Number(value))) return 0;
     return Math.max(0, Math.min(1, Number(value)));
 }
-
-
 
 

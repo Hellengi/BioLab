@@ -7,6 +7,12 @@ import com.hellengi.biolab.domain.model.FlagellumSlot;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
+import java.util.function.BiConsumer;
+import java.util.function.DoubleConsumer;
+import java.util.function.DoubleSupplier;
+import java.util.function.ToDoubleFunction;
+
 import static com.hellengi.biolab.util.Utils.EPSILON;
 import static com.hellengi.biolab.util.Utils.clamp01;
 
@@ -130,86 +136,97 @@ public class CellDamageRepair {
         }
 
         YamlConfig.CellProperties c = config.getCell();
-        double nucleusShare = Math.max(0.0, c.getCellRepairShare());
-        double cpShare = Math.max(0.0, c.getCpRepairShare());
-        double lyShare = cell.hasLysosomes() ? Math.max(0.0, c.getLysosomeRepairShare()) : 0.0;
-        double flShare = cell.hasFlagella() ? Math.max(0.0, c.getFlagellumRepairShare()) : 0.0;
-        double mbShare = Math.max(0.0, c.getMembraneRepairShare());
-        double cytosolShare = Math.max(0.0, c.getCellRepairShare());
-        double shareSum = Math.max(EPSILON, nucleusShare + cpShare + lyShare + flShare + mbShare + cytosolShare);
-        nucleusShare /= shareSum;
-        cpShare /= shareSum;
-        lyShare /= shareSum;
-        flShare /= shareSum;
-        mbShare /= shareSum;
-        cytosolShare /= shareSum;
+        RepairShares shares = repairShares(cell, c);
 
-        double nucleusRepair = Math.min(
-                cell.getNucleusDamage(),
-                Math.min(
-                        repairCapacity * nucleusShare * tickScale,
-                        cell.getEnergy() / Math.max(c.getCellRepairEnergyCost(), EPSILON)
-                )
+        RepairStep nucleus = repairScalarDamage(
+                cell,
+                cell::getNucleusDamage,
+                cell::setNucleusDamage,
+                repairCapacity * shares.nucleus() * tickScale,
+                c.getCellRepairEnergyCost()
         );
-        double nucleusRepairCost = nucleusRepair * c.getCellRepairEnergyCost();
-        cell.setNucleusDamage(Math.max(0.0, cell.getNucleusDamage() - nucleusRepair));
-        cell.setEnergy(Math.max(0.0, cell.getEnergy() - nucleusRepairCost));
-
-        double cpRepair = Math.min(
-                cell.getCpDamage(),
-                Math.min(
-                        repairCapacity * cpShare * tickScale,
-                        cell.getEnergy() / Math.max(c.getCpRepairEnergyCost(), EPSILON)
-                )
+        RepairStep cp = repairScalarDamage(
+                cell,
+                cell::getCpDamage,
+                cell::setCpDamage,
+                repairCapacity * shares.chloroplasts() * tickScale,
+                c.getCpRepairEnergyCost()
         );
-        double cpRepairCost = cpRepair * c.getCpRepairEnergyCost();
-        cell.setCpDamage(Math.max(0.0, cell.getCpDamage() - cpRepair));
-        cell.setEnergy(Math.max(0.0, cell.getEnergy() - cpRepairCost));
-
-        double lysosomeRepair = repairLysosomes(cell, repairCapacity * lyShare * tickScale, tickScale);
-        double lysosomeRepairCost = lysosomeRepair * c.getLysosomeRepairEnergyCost();
-        cell.setEnergy(Math.max(0.0, cell.getEnergy() - lysosomeRepairCost));
-
-        double flagellumRepair = repairFlagella(cell, repairCapacity * flShare * tickScale, tickScale);
-        double flagellumRepairCost = flagellumRepair * c.getFlagellumRepairEnergyCost();
-        cell.setEnergy(Math.max(0.0, cell.getEnergy() - flagellumRepairCost));
-
-        double membraneRepair = Math.min(
-                cell.getMembraneDamage(),
-                Math.min(
-                        repairCapacity * mbShare * tickScale,
-                        cell.getEnergy() / Math.max(c.getMembraneRepairEnergyCost(), EPSILON)
-                )
+        RepairStep lysosomes = repairLysosomes(cell, repairCapacity * shares.lysosomes() * tickScale, tickScale);
+        RepairStep flagella = repairFlagella(cell, repairCapacity * shares.flagella() * tickScale, tickScale);
+        RepairStep membrane = repairScalarDamage(
+                cell,
+                cell::getMembraneDamage,
+                cell::setMembraneDamage,
+                repairCapacity * shares.membrane() * tickScale,
+                c.getMembraneRepairEnergyCost()
         );
-        double membraneRepairCost = membraneRepair * c.getMembraneRepairEnergyCost();
-        cell.setMembraneDamage(Math.max(0.0, cell.getMembraneDamage() - membraneRepair));
-        cell.setEnergy(Math.max(0.0, cell.getEnergy() - membraneRepairCost));
-
-        double cytosolRepair = Math.min(
-                cell.getCellDamage(),
-                Math.min(
-                        repairCapacity * cytosolShare * tickScale,
-                        cell.getEnergy() / Math.max(c.getCellRepairEnergyCost(), EPSILON)
-                )
+        RepairStep cytosol = repairScalarDamage(
+                cell,
+                cell::getCellDamage,
+                cell::setCellDamage,
+                repairCapacity * shares.cytosol() * tickScale,
+                c.getCellRepairEnergyCost()
         );
-        double cytosolRepairCost = cytosolRepair * c.getCellRepairEnergyCost();
-        cell.setCellDamage(Math.max(0.0, cell.getCellDamage() - cytosolRepair));
-        cell.setEnergy(Math.max(0.0, cell.getEnergy() - cytosolRepairCost));
 
         return new RepairResult(
-                cpRepair / tickScale,
-                nucleusRepair / tickScale,
-                nucleusRepairCost / tickScale,
-                cytosolRepair / tickScale,
+                cp.rate(tickScale),
+                nucleus.rate(tickScale),
+                nucleus.costRate(tickScale),
+                cytosol.rate(tickScale),
                 0.0,
-                membraneRepair / tickScale,
-                membraneRepairCost / tickScale,
-                (nucleusRepairCost + cpRepairCost + lysosomeRepairCost + flagellumRepairCost + membraneRepairCost + cytosolRepairCost) / tickScale,
-                lysosomeRepair / tickScale,
-                lysosomeRepairCost / tickScale,
-                flagellumRepair / tickScale,
-                flagellumRepairCost / tickScale
+                membrane.rate(tickScale),
+                membrane.costRate(tickScale),
+                RepairStep.totalCostRate(tickScale, nucleus, cp, lysosomes, flagella, membrane, cytosol),
+                lysosomes.rate(tickScale),
+                lysosomes.costRate(tickScale),
+                flagella.rate(tickScale),
+                flagella.costRate(tickScale)
         );
+    }
+
+    private RepairShares repairShares(Cell cell, YamlConfig.CellProperties c) {
+        double nucleus = Math.max(0.0, c.getCellRepairShare());
+        double chloroplasts = Math.max(0.0, c.getCpRepairShare());
+        double lysosomes = cell.hasLysosomes() ? Math.max(0.0, c.getLysosomeRepairShare()) : 0.0;
+        double flagella = cell.hasFlagella() ? Math.max(0.0, c.getFlagellumRepairShare()) : 0.0;
+        double membrane = Math.max(0.0, c.getMembraneRepairShare());
+        double cytosol = Math.max(0.0, c.getCellRepairShare());
+        double sum = Math.max(EPSILON, nucleus + chloroplasts + lysosomes + flagella + membrane + cytosol);
+        return new RepairShares(
+                nucleus / sum,
+                chloroplasts / sum,
+                lysosomes / sum,
+                flagella / sum,
+                membrane / sum,
+                cytosol / sum
+        );
+    }
+
+    private RepairStep repairScalarDamage(
+            Cell cell,
+            DoubleSupplier damageGetter,
+            DoubleConsumer damageSetter,
+            double repairBudget,
+            double energyCostPerDamage
+    ) {
+        if (repairBudget <= 0.0 || cell.getEnergy() <= 0.0) {
+            return RepairStep.zero();
+        }
+
+        double unitCost = Math.max(energyCostPerDamage, EPSILON);
+        double amount = Math.min(
+                Math.max(0.0, damageGetter.getAsDouble()),
+                Math.min(repairBudget, cell.getEnergy() / unitCost)
+        );
+        if (amount <= 0.0) {
+            return RepairStep.zero();
+        }
+
+        double cost = amount * unitCost;
+        damageSetter.accept(Math.max(0.0, damageGetter.getAsDouble() - amount));
+        cell.setEnergy(Math.max(0.0, cell.getEnergy() - cost));
+        return new RepairStep(amount, cost);
     }
 
     private double flagellumTotalDamageRate(Cell cell) {
@@ -221,54 +238,110 @@ public class CellDamageRepair {
                 .sum();
     }
 
-    private double repairFlagella(Cell cell, double repairBudget, double tickScale) {
+    private RepairStep repairFlagella(Cell cell, double repairBudget, double tickScale) {
         YamlConfig.CellProperties c = config.getCell();
-        if (!cell.hasFlagella() || repairBudget <= 0.0 || cell.getEnergy() <= 0.0) {
-            return 0.0;
+        if (!cell.hasFlagella()) {
+            return RepairStep.zero();
         }
-
-        double energyLimitedBudget = Math.min(
+        return repairSlotDamage(
+                cell,
+                cell.getFlagellumSlots(),
                 repairBudget,
-                cell.getEnergy() / Math.max(c.getFlagellumRepairEnergyCost(), EPSILON)
+                c.getFlagellumRepairEnergyCost(),
+                tickScale,
+                FlagellumSlot::getDamage,
+                FlagellumSlot::repair,
+                (slot, step) -> slot.rememberRepairRates(step.rate(tickScale), step.costRate(tickScale))
         );
-        double remaining = energyLimitedBudget;
-        double repaired = 0.0;
-
-        for (FlagellumSlot slot : cell.getFlagellumSlots()) {
-            if (remaining <= EPSILON) break;
-            double amount = Math.min(slot.getDamage(), remaining);
-            slot.repair(amount);
-            slot.rememberRepairRates(amount / Math.max(tickScale, EPSILON), amount * c.getFlagellumRepairEnergyCost() / Math.max(tickScale, EPSILON));
-            repaired += amount;
-            remaining -= amount;
-        }
-
-        return repaired;
     }
 
-    private double repairLysosomes(Cell cell, double repairBudget, double tickScale) {
+    private RepairStep repairLysosomes(Cell cell, double repairBudget, double tickScale) {
         YamlConfig.CellProperties c = config.getCell();
-        if (!cell.hasLysosomes() || repairBudget <= 0.0 || cell.getEnergy() <= 0.0) {
-            return 0.0;
+        if (!cell.hasLysosomes()) {
+            return RepairStep.zero();
+        }
+        return repairSlotDamage(
+                cell,
+                cell.getLysosomeSlots(),
+                repairBudget,
+                c.getLysosomeRepairEnergyCost(),
+                tickScale,
+                LysosomeSlot::getDamage,
+                LysosomeSlot::repair,
+                (slot, step) -> slot.rememberRepairRates(step.rate(tickScale), step.costRate(tickScale))
+        );
+    }
+
+    private <T> RepairStep repairSlotDamage(
+            Cell cell,
+            List<T> slots,
+            double repairBudget,
+            double energyCostPerDamage,
+            double tickScale,
+            ToDoubleFunction<T> damageGetter,
+            ObjDoubleConsumer<T> repairAction,
+            BiConsumer<T, RepairStep> repairObserver
+    ) {
+        if (slots.isEmpty() || repairBudget <= 0.0 || cell.getEnergy() <= 0.0) {
+            return RepairStep.zero();
         }
 
-        double energyLimitedBudget = Math.min(
-                repairBudget,
-                cell.getEnergy() / Math.max(c.getLysosomeRepairEnergyCost(), EPSILON)
-        );
-        double remaining = energyLimitedBudget;
+        double unitCost = Math.max(energyCostPerDamage, EPSILON);
+        double remaining = Math.min(repairBudget, cell.getEnergy() / unitCost);
         double repaired = 0.0;
 
-        for (LysosomeSlot slot : cell.getLysosomeSlots()) {
+        for (T slot : slots) {
             if (remaining <= EPSILON) break;
-            double amount = Math.min(slot.getDamage(), remaining);
-            slot.repair(amount);
-            slot.rememberRepairRates(amount / Math.max(tickScale, EPSILON), amount * c.getLysosomeRepairEnergyCost() / Math.max(tickScale, EPSILON));
+            double amount = Math.min(Math.max(0.0, damageGetter.applyAsDouble(slot)), remaining);
+            if (amount <= 0.0) continue;
+
+            RepairStep step = new RepairStep(amount, amount * unitCost);
+            repairAction.accept(slot, amount);
+            repairObserver.accept(slot, step);
             repaired += amount;
             remaining -= amount;
         }
 
-        return repaired;
+        double cost = repaired * unitCost;
+        cell.setEnergy(Math.max(0.0, cell.getEnergy() - cost));
+        return new RepairStep(repaired, cost);
+    }
+
+    @FunctionalInterface
+    private interface ObjDoubleConsumer<T> {
+        void accept(T target, double value);
+    }
+
+    private record RepairShares(
+            double nucleus,
+            double chloroplasts,
+            double lysosomes,
+            double flagella,
+            double membrane,
+            double cytosol
+    ) {
+    }
+
+    private record RepairStep(double amount, double cost) {
+        static RepairStep zero() {
+            return new RepairStep(0.0, 0.0);
+        }
+
+        double rate(double tickScale) {
+            return amount / Math.max(tickScale, EPSILON);
+        }
+
+        double costRate(double tickScale) {
+            return cost / Math.max(tickScale, EPSILON);
+        }
+
+        static double totalCostRate(double tickScale, RepairStep... steps) {
+            double total = 0.0;
+            for (RepairStep step : steps) {
+                total += step.cost;
+            }
+            return total / Math.max(tickScale, EPSILON);
+        }
     }
 
     private record RepairResult(
@@ -290,14 +363,3 @@ public class CellDamageRepair {
         }
     }
 }
-
-
-
-
-
-
-
-
-
-
-

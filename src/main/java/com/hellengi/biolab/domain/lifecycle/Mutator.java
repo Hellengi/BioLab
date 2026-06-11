@@ -1,4 +1,3 @@
-
 package com.hellengi.biolab.domain.lifecycle;
 
 import com.hellengi.biolab.config.YamlConfig;
@@ -37,7 +36,7 @@ public class Mutator {
                 scaled(genome::getCytosolArea, genome::setCytosolArea, m.getCytosolArea(), g.getCytosolArea()),
                 scaled(genome::getCytosolDensity, genome::setCytosolDensity, m.getCytosolDensity(), g.getCytosolDensity()),
                 scaled(genome::getElasticity, genome::setElasticity, m.getElasticity(), g.getElasticity()),
-                scaled(genome::getGfp, genome::setGfp, m.getGfp(), g.getGfp(), genome::isGfpEnabled),
+                scaled(genome::getBioluminescence, genome::setBioluminescence, m.getBioluminescence(), g.getBioluminescence(), genome::isBioluminescenceEnabled),
                 scaled(genome::getMelaninPercent, genome::setMelaninPercent, m.getMelaninPercent(), g.getMelaninPercent(), genome::isMelaninEnabled),
                 roundedScaled(genome::getChloroplastAmount, genome::setChloroplastAmount, m.getChloroplastAmount(), g.getChloroplastAmount(), genome::isChloroplastEnabled),
                 scaled(genome::getChlorophyll, genome::setChlorophyll, m.getChlorophyll(), g.getChlorophyll(), genome::isChloroplastEnabled),
@@ -50,7 +49,7 @@ public class Mutator {
                 scaled(genome::getFlagellumSteeringAsymmetry, genome::setFlagellumSteeringAsymmetry, m.getFlagellumSteeringAsymmetry(), g.getFlagellumSteeringAsymmetry(), genome::isFlagellumEnabled)
         ).forEach(spec -> spec.apply(mutationChance));
 
-        toggle(rareChance, genome::isGfpEnabled, genome::setGfpEnabled);
+        toggle(rareChance, genome::isBioluminescenceEnabled, genome::setBioluminescenceEnabled);
         toggle(rareChance, genome::isMelaninEnabled, genome::setMelaninEnabled);
 
         toggleOptionalOrganelle(rareChance, genome::isChloroplastEnabled, genome::setChloroplastEnabled, genome::getChloroplastAmount, genome::setChloroplastAmount);
@@ -175,9 +174,3 @@ public class Mutator {
         }
     }
 }
-
-
-
-
-
-

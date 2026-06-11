@@ -10,10 +10,10 @@ public record LightingDto(
         int gridWidth,
         int gridHeight,
         double[] lightMap,
+        double[] directedLightMap,
+        double[] scatteredLightMap,
         double[] opacityMap,
         double[] lightDirectionArrows,
         List<QuadtreeNodeDto> quadtreeNodes
 ) {
 }
-
-

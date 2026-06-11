@@ -13,17 +13,21 @@ import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
 
+import static com.hellengi.biolab.util.Utils.clamp01;
+
 /**
- * Lighting system with opacity-based shadows.
+ * Lighting system with three grid-space maps:
  *
  * Pipeline:
- *   1. buildOpacityMap() rasterizes cells + turbidity into a coarse optical-density grid.
- *   2. buildLightMap() casts angular rays from every source using DDA grid traversal.
- *      This is much cheaper and visually more stable than marching a separate ray
- *      from the source to every light-map cell.
- *   3. buildLightMapFromOpacityMap() also accumulates light propagation direction
- *      maps during the same ray pass, without another source/grid traversal.
- *   4. sampleLightMap() returns per-cell irradiance by bilinear interpolation.
+ *   1. buildOpacityMap() rasterizes cells + turbidity into the optical-density grid.
+ *   2. traceDirectedLight() casts external-source rays through that grid and fills
+ *      directedLightMap plus direction vectors.
+ *   3. A configurable part of directed-light extinction is deposited into a
+ *      grid scatter budget instead of being destroyed.
+ *   4. Bioluminescent cells pay metabolic energy and deposit emitted light into
+ *      the same scatter budget.
+ *   5. Scattered light is transported by a fast conservative square-grid diffusion
+ *      pass. The total light map remains directedLightMap + scatteredLightMap.
  */
 @Component
 @RequiredArgsConstructor
@@ -31,8 +35,8 @@ public class Lighting {
 
     /**
      * Area-light sampling makes shadows soft without blurring the final light map.
-     * Because every real source is represented by several virtual sources, each
-     * virtual source can use fewer angular rays than the previous hard-shadow pass.
+     * Keep the original high ray density: performance is optimized below by
+     * merging only touched grid cells instead of lowering visual quality.
      */
     private static final int MIN_RAYS_PER_SOURCE = 360;
     private static final double RAYS_PER_GRID_EDGE_CELL = 1.25;
@@ -52,37 +56,10 @@ public class Lighting {
     private static final double SOURCE_CLAMP_EPSILON = 0.001;
     private static final double DIRECTION_EPSILON = 1.0e-9;
     private static final double EDGE_SOURCE_RADIUS_EPSILON = 0.001;
-    private static final double FLUORESCENT_SOURCE_MIN_BRIGHTNESS = 1.0e-4;
-    /**
-     * Sources up to and including 2% brightness are treated as weak sources.
-     * For runtime light sources this only changes spatial sampling: weak sources
-     * emit from one virtual point instead of the 5-point area-light shape. Ray
-     * count, falloff and attenuation stay identical to standard point sources.
-     */
-    private static final double WEAK_SOURCE_BRIGHTNESS_THRESHOLD = 0.02;
-
-    /**
-     * GFP cells are many tiny weak emitters. Tracing every occupied GFP tile with
-     * the same DDA ray fan as a bright lamp is still too expensive, even when
-     * tiles are large. GFP therefore uses a separate cheap area-source pass:
-     * cells are grouped into coarse source tiles, and each tile is evaluated as
-     * a soft radial emitter over the light grid.
-     */
-    private static final int FLUORESCENT_CLUSTER_GRID_CELLS = 32;
-
-    /**
-     * Coarse GFP tiles must not be collapsed into a hard point. This radius
-     * softens the source as an area emitter and removes bright square/centroid
-     * artifacts when one tile contains many cells.
-     */
-    private static final double FLUORESCENT_CLUSTER_SOURCE_RADIUS_FACTOR = 0.7071067811865476;
-
-    /**
-     * Limit GFP cluster evaluation to the useful radius. This keeps the direct
-     * area-source pass cheap while preserving the visually relevant falloff.
-     */
-    private static final double FLUORESCENT_TRANSPORT_RADIUS_FACTOR = 4.0;
-    private static final double FLUORESCENT_MIN_CONTRIBUTION = FLUORESCENT_SOURCE_MIN_BRIGHTNESS * 0.01;
+    private static final double BIOLUMINESCENT_SOURCE_MIN_BRIGHTNESS = 1.0e-4;
+    private static final double SCATTER_DEPOSIT_EPSILON = 1.0e-8;
+    private static final double SCATTER_DIFFUSION_SHARE = 0.34;
+    private static final double SCATTER_OPACITY_ABSORPTION = 0.045;
 
     /**
      * {offsetX, offsetY, weight}. Offsets are multiplied by
@@ -94,10 +71,6 @@ public class Lighting {
             {-1.0,  0.0, 0.16},
             { 0.0,  1.0, 0.16},
             { 0.0, -1.0, 0.16}
-    };
-
-    private static final double[][] SINGLE_POINT_LIGHT_SAMPLE = {
-            {0.0, 0.0, 1.0}
     };
 
     /**
@@ -121,6 +94,8 @@ public class Lighting {
     private Integer lastDistributedStartAngle;
 
     private double[] cachedLightMap;
+    private double[] cachedDirectedLightMap;
+    private double[] cachedScatteredLightMap;
     private double[] cachedLightDirXMap;
     private double[] cachedLightDirYMap;
     private double[] cachedOpacityMap;
@@ -128,6 +103,12 @@ public class Lighting {
     private int cachedCols;
     private int cachedRows;
     private boolean lightCacheDirty = true;
+
+    private double[] cachedMetabolicScatteredLightMap;
+    private int cachedMetabolicGridStep;
+    private int cachedMetabolicCols;
+    private int cachedMetabolicRows;
+    private boolean metabolicScatterCacheDirty = true;
 
     // -------------------------------------------------------------------------
     // Simulation tick
@@ -181,11 +162,22 @@ public class Lighting {
 
     public void invalidateLightCache() {
         lightCacheDirty = true;
+        metabolicScatterCacheDirty = true;
     }
 
     public double[] getLightMap() {
         ensureLightCache();
         return cachedLightMap;
+    }
+
+    public double[] getDirectedLightMap() {
+        ensureLightCache();
+        return cachedDirectedLightMap;
+    }
+
+    public double[] getScatteredLightMap() {
+        ensureLightCache();
+        return cachedScatteredLightMap;
     }
 
     public double[] getOpacityMap() {
@@ -224,14 +216,19 @@ public class Lighting {
         return sampleLightMap(cachedLightMap, cachedCols, cachedRows, cachedGridStep, x, y);
     }
 
-    /**
-     * Cheap per-tick irradiance for metabolism. It intentionally does not build
-     * the ray-traced light map: biology only needs a stable local light estimate,
-     * while exact shadows/highlights remain a render/DTO concern. This keeps
-     * chloroplast metabolism O(cells × lightSources) instead of forcing a full
-     * light-map rebuild from inside lifecycle processing.
-     */
     public double sampleMetabolicLightAt(double x, double y) {
+        // Critical performance path: Lifecycle calls this once per living cell on every
+        // simulation tick. Do not call ensureLightCache() here, because the visual
+        // ray-traced maps are intentionally much more expensive and are needed only
+        // for rendering/debug layers. This keeps metabolism close to the original
+        // cheap approximation while still letting bioluminescence contribute through
+        // a lightweight square-grid scattered-light cache.
+        double light = sampleFastDirectedMetabolicLightAt(x, y);
+        light += sampleFastMetabolicScatteredLightAt(x, y);
+        return Math.max(0.0, light);
+    }
+
+    private double sampleFastDirectedMetabolicLightAt(double x, double y) {
         double light = Math.max(0.0, world.getGlobalLight().getValue());
         if (world.getLightSources().isEmpty()) {
             return light;
@@ -258,7 +255,69 @@ public class Lighting {
             light += brightness * falloff * mediumTransmittance;
         }
 
-        return Math.max(0.0, light);
+        return light;
+    }
+
+    private double sampleFastMetabolicScatteredLightAt(double x, double y) {
+        ensureMetabolicScatteredLightCache();
+        if (cachedMetabolicScatteredLightMap == null || cachedMetabolicScatteredLightMap.length == 0) {
+            return 0.0;
+        }
+        return Math.max(0.0, sampleScalarMap(
+                cachedMetabolicScatteredLightMap,
+                cachedMetabolicCols,
+                cachedMetabolicRows,
+                cachedMetabolicGridStep,
+                x,
+                y
+        ));
+    }
+
+    private void ensureMetabolicScatteredLightCache() {
+        int diameter = config.getTubeDiameter();
+        int gridStep = Math.max(1, config.getLight().getGridStep());
+        int cols = (int) Math.ceil(diameter / (double) gridStep);
+        int rows = (int) Math.ceil(diameter / (double) gridStep);
+
+        boolean geometryChanged = cachedMetabolicScatteredLightMap == null
+                || cachedMetabolicGridStep != gridStep
+                || cachedMetabolicCols != cols
+                || cachedMetabolicRows != rows;
+
+        if (!metabolicScatterCacheDirty && !geometryChanged) {
+            return;
+        }
+
+        cachedMetabolicGridStep = gridStep;
+        cachedMetabolicCols = cols;
+        cachedMetabolicRows = rows;
+
+        double[] scatterDepositMap = new double[cols * rows];
+        double[] scatteredMap = new double[cols * rows];
+        double[] opacityMap = buildTurbidityOnlyOpacityMap(diameter, diameter, gridStep, cols, rows);
+
+        boolean hasBioluminescentEmission = accumulateClusteredBioluminescentEmission(
+                scatterDepositMap,
+                cols,
+                rows,
+                gridStep,
+                diameter,
+                diameter
+        );
+        if (hasBioluminescentEmission) {
+            spreadScatteredLight(scatterDepositMap, scatteredMap, opacityMap, cols, rows, gridStep);
+        }
+        cachedMetabolicScatteredLightMap = scatteredMap;
+        metabolicScatterCacheDirty = false;
+    }
+
+    private double[] buildTurbidityOnlyOpacityMap(int width, int height, int gridStep, int cols, int rows) {
+        double[] opacityMap = new double[cols * rows];
+        double turbidityPerGridCell = runtimeConfig.getTurbidityAttenuation() * Math.max(1, gridStep);
+        if (turbidityPerGridCell > 0.0) {
+            Arrays.fill(opacityMap, turbidityPerGridCell);
+        }
+        return opacityMap;
     }
 
     public LightDirectionSample sampleLightDirectionAt(double x, double y) {
@@ -275,6 +334,8 @@ public class Lighting {
         int rows = (int) Math.ceil(diameter / (double) gridStep);
 
         boolean geometryChanged = cachedLightMap == null
+                || cachedDirectedLightMap == null
+                || cachedScatteredLightMap == null
                 || cachedLightDirXMap == null
                 || cachedLightDirYMap == null
                 || cachedOpacityMap == null
@@ -299,6 +360,8 @@ public class Lighting {
                 cachedOpacityMap
         );
         cachedLightMap = result.lightMap();
+        cachedDirectedLightMap = result.directedLightMap();
+        cachedScatteredLightMap = result.scatteredLightMap();
         cachedLightDirXMap = result.dirXMap();
         cachedLightDirYMap = result.dirYMap();
         lightCacheDirty = false;
@@ -425,21 +488,19 @@ public class Lighting {
             int rows,
             double[] opacityMap
     ) {
+        double[] directedLightMap = new double[cols * rows];
+        double[] scatteredLightMap = new double[cols * rows];
+        double[] scatterDepositMap = new double[cols * rows];
         double[] lightMap = new double[cols * rows];
         double[] dirXMap = new double[cols * rows];
         double[] dirYMap = new double[cols * rows];
 
         double ambient = world.getGlobalLight().getValue();
-        Arrays.fill(lightMap, ambient);
+        Arrays.fill(directedLightMap, ambient);
 
         boolean hasRuntimeSources = !world.getLightSources().isEmpty();
-        boolean hasFluorescentCells = world.getCells().stream()
-                .anyMatch(cell -> cell.getFluorescenceBrightness() > FLUORESCENT_SOURCE_MIN_BRIGHTNESS);
-
-
-        if (!hasRuntimeSources && !hasFluorescentCells) {
-            return new LightMapBuildResult(lightMap, dirXMap, dirYMap);
-        }
+        boolean hasBioluminescentCells = world.getCells().stream()
+                .anyMatch(cell -> cell.getBioluminescenceBrightness() > BIOLUMINESCENT_SOURCE_MIN_BRIGHTNESS);
 
         double centerX = config.worldCenterX();
         double centerY = config.worldCenterY();
@@ -447,42 +508,60 @@ public class Lighting {
         double r0sq = r0 * r0;
 
         int rayCount = rayCountFor(cols, rows);
+        double scatteringAlbedo = clamp01(config.getLight().getScatteringAlbedo());
 
-        for (LightSource source : world.getLightSources()) {
-            accumulateAreaLight(
-                    lightMap,
-                    dirXMap,
-                    dirYMap,
-                    opacityMap,
+        if (hasRuntimeSources) {
+            for (LightSource source : world.getLightSources()) {
+                accumulateAreaLight(
+                        directedLightMap,
+                        dirXMap,
+                        dirYMap,
+                        scatterDepositMap,
+                        opacityMap,
+                        cols,
+                        rows,
+                        gridStep,
+                        width,
+                        height,
+                        source,
+                        centerX,
+                        centerY,
+                        r0sq,
+                        rayCount,
+                        scatteringAlbedo
+                );
+            }
+        }
+
+        if (hasBioluminescentCells) {
+            accumulateClusteredBioluminescentEmission(
+                    scatterDepositMap,
                     cols,
                     rows,
                     gridStep,
                     width,
-                    height,
-                    source,
-                    centerX,
-                    centerY,
-                    r0sq,
-                    rayCount
+                    height
             );
         }
 
-        if (hasFluorescentCells) {
-            accumulateClusteredFluorescentTransport(
-                    lightMap,
-                    dirXMap,
-                    dirYMap,
-                    opacityMap,
-                    cols,
-                    rows,
-                    gridStep,
-                    width,
-                    height,
-                    r0sq
-            );
+        if (hasScatteredLightDeposit(scatterDepositMap)) {
+            spreadScatteredLight(scatterDepositMap, scatteredLightMap, opacityMap, cols, rows, gridStep);
         }
 
-        return new LightMapBuildResult(lightMap, dirXMap, dirYMap);
+        for (int i = 0; i < lightMap.length; i++) {
+            lightMap[i] = directedLightMap[i] + scatteredLightMap[i];
+        }
+
+        return new LightMapBuildResult(lightMap, directedLightMap, scatteredLightMap, dirXMap, dirYMap);
+    }
+
+    private boolean hasScatteredLightDeposit(double[] scatterDepositMap) {
+        for (double value : scatterDepositMap) {
+            if (value > SCATTER_DEPOSIT_EPSILON) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private int rayCountFor(int cols, int rows) {
@@ -494,9 +573,10 @@ public class Lighting {
     }
 
     private void accumulateAreaLight(
-            double[] lightMap,
+            double[] directedLightMap,
             double[] dirXMap,
             double[] dirYMap,
+            double[] scatterDepositMap,
             double[] opacityMap,
             int cols,
             int rows,
@@ -507,7 +587,8 @@ public class Lighting {
             double centerX,
             double centerY,
             double r0sq,
-            int baseRayCount
+            int baseRayCount,
+            double scatteringAlbedo
     ) {
         double brightness = source.getBrightness();
         if (brightness <= 0.0) {
@@ -517,17 +598,14 @@ public class Lighting {
         double sx = source.getX(centerX);
         double sy = source.getY(centerY);
         boolean edgeSource = isEdgeSource(source);
-        boolean weakSource = isWeakSource(brightness);
 
-        double[][] samples = weakSource
-                ? SINGLE_POINT_LIGHT_SAMPLE
-                : edgeSource ? EDGE_AREA_LIGHT_SAMPLES : POINT_AREA_LIGHT_SAMPLES;
+        double[][] samples = edgeSource ? EDGE_AREA_LIGHT_SAMPLES : POINT_AREA_LIGHT_SAMPLES;
 
         double tangentX = -Math.sin(source.getAngle());
         double tangentY =  Math.cos(source.getAngle());
 
-        double pointRadius = weakSource ? 0.0 : POINT_AREA_LIGHT_RADIUS_GRID_CELLS * gridStep;
-        double edgeHalfLength = weakSource ? 0.0 : EDGE_AREA_LIGHT_HALF_LENGTH_GRID_CELLS * gridStep;
+        double pointRadius = POINT_AREA_LIGHT_RADIUS_GRID_CELLS * gridStep;
+        double edgeHalfLength = EDGE_AREA_LIGHT_HALF_LENGTH_GRID_CELLS * gridStep;
 
         int rayCount = rayCountForSource(baseRayCount, edgeSource);
         double angleSpan = edgeSource ? Math.PI : 2.0 * Math.PI;
@@ -539,6 +617,8 @@ public class Lighting {
         double[] virtualSourceMap = new double[cols * rows];
         double[] virtualDirXMap = new double[cols * rows];
         double[] virtualDirYMap = new double[cols * rows];
+        double[] virtualScatterDepositMap = new double[cols * rows];
+        TouchedGrid touched = new TouchedGrid(cols * rows);
 
         for (int sampleIndex = 0; sampleIndex < samples.length; sampleIndex++) {
             double[] sample = samples[sampleIndex];
@@ -557,10 +637,6 @@ public class Lighting {
             sampleX = clamp(sampleX, SOURCE_CLAMP_EPSILON, width  - SOURCE_CLAMP_EPSILON);
             sampleY = clamp(sampleY, SOURCE_CLAMP_EPSILON, height - SOURCE_CLAMP_EPSILON);
 
-            Arrays.fill(virtualSourceMap, 0.0);
-            Arrays.fill(virtualDirXMap, 0.0);
-            Arrays.fill(virtualDirYMap, 0.0);
-
             // A tiny per-sample phase shift reduces angular banding without any blur.
             double phaseShift = angleSpan * sampleIndex / (rayCount * samples.length);
             double sampleBrightness = brightness * sample[2];
@@ -571,6 +647,7 @@ public class Lighting {
                         virtualSourceMap,
                         virtualDirXMap,
                         virtualDirYMap,
+                        virtualScatterDepositMap,
                         opacityMap,
                         cols,
                         rows,
@@ -581,301 +658,131 @@ public class Lighting {
                         Math.sin(angle),
                         sampleBrightness,
                         r0sq,
-                        maxRayDistance
+                        maxRayDistance,
+                        scatteringAlbedo,
+                        touched
                 );
             }
 
-            for (int i = 0; i < lightMap.length; i++) {
-                lightMap[i] += virtualSourceMap[i];
-                dirXMap[i] += virtualDirXMap[i];
-                dirYMap[i] += virtualDirYMap[i];
+            for (int n = 0; n < touched.count; n++) {
+                int idx = touched.indices[n];
+                directedLightMap[idx] += virtualSourceMap[idx];
+                dirXMap[idx] += virtualDirXMap[idx];
+                dirYMap[idx] += virtualDirYMap[idx];
+                scatterDepositMap[idx] += virtualScatterDepositMap[idx];
             }
+            touched.clear(virtualSourceMap, virtualDirXMap, virtualDirYMap, virtualScatterDepositMap);
         }
     }
 
-    private void accumulateClusteredFluorescentTransport(
-            double[] lightMap,
-            double[] dirXMap,
-            double[] dirYMap,
-            double[] opacityMap,
+    private boolean accumulateClusteredBioluminescentEmission(
+            double[] scatterDepositMap,
             int cols,
             int rows,
             int gridStep,
             int width,
-            int height,
-            double r0sq
+            int height
     ) {
-        FluorescentTransportResult transported = buildClusteredFluorescentTransport(
-                opacityMap,
-                cols,
-                rows,
-                gridStep,
-                width,
-                height,
-                r0sq
-        );
-
-        for (int i = 0; i < lightMap.length; i++) {
-            double contribution = transported.lightMap()[i];
-            if (contribution <= 0.0) {
-                continue;
-            }
-
-            lightMap[i] += contribution;
-            dirXMap[i] += transported.dirXMap()[i];
-            dirYMap[i] += transported.dirYMap()[i];
-        }
-    }
-
-
-    private FluorescentTransportResult buildClusteredFluorescentTransport(
-            double[] opacityMap,
-            int cols,
-            int rows,
-            int gridStep,
-            int width,
-            int height,
-            double r0sq
-    ) {
-        double[] transportedLightMap = new double[cols * rows];
-        double[] transportedDirXMap = new double[cols * rows];
-        double[] transportedDirYMap = new double[cols * rows];
-
-        FluorescentClusterGrid clusterGrid = buildFluorescentClusterGrid(width, height, gridStep);
-        double[] opacityIntegral = buildOpacityIntegral(opacityMap, cols, rows);
-
-        for (int i = 0; i < clusterGrid.brightness().length; i++) {
-            double brightness = clusterGrid.brightness()[i];
-            if (brightness <= FLUORESCENT_SOURCE_MIN_BRIGHTNESS) {
-                continue;
-            }
-
-            double sourceX = clusterGrid.weightedX()[i] / brightness;
-            double sourceY = clusterGrid.weightedY()[i] / brightness;
-
-            accumulateFluorescentAreaSource(
-                    transportedLightMap,
-                    transportedDirXMap,
-                    transportedDirYMap,
-                    opacityIntegral,
-                    cols,
-                    rows,
-                    gridStep,
-                    width,
-                    height,
-                    sourceX,
-                    sourceY,
-                    brightness,
-                    clusterGrid.clusterStep(),
-                    r0sq
-            );
-        }
-
-        return new FluorescentTransportResult(
-                transportedLightMap,
-                transportedDirXMap,
-                transportedDirYMap
-        );
-    }
-
-    private FluorescentClusterGrid buildFluorescentClusterGrid(int width, int height, int gridStep) {
-        int clusterStep = fluorescentClusterStep(gridStep);
-        int clusterCols = Math.max(1, (int) Math.ceil(width / (double) clusterStep));
-        int clusterRows = Math.max(1, (int) Math.ceil(height / (double) clusterStep));
-        int clusterCount = clusterCols * clusterRows;
-
-        double[] clusterBrightness = new double[clusterCount];
-        double[] clusterWeightedX = new double[clusterCount];
-        double[] clusterWeightedY = new double[clusterCount];
-
+        boolean anyEmission = false;
         for (Cell cell : world.getCells()) {
             if (cell.isMarkedForRemoval()) {
                 continue;
             }
 
-            double brightness = cell.getFluorescenceBrightness();
-            if (brightness <= FLUORESCENT_SOURCE_MIN_BRIGHTNESS) {
+            double brightness = cell.getBioluminescenceBrightness();
+            if (brightness <= BIOLUMINESCENT_SOURCE_MIN_BRIGHTNESS) {
                 continue;
             }
 
-            int clusterCol = Math.max(0, Math.min(clusterCols - 1, (int) Math.floor(cell.getX() / clusterStep)));
-            int clusterRow = Math.max(0, Math.min(clusterRows - 1, (int) Math.floor(cell.getY() / clusterStep)));
-            int clusterIdx = clusterRow * clusterCols + clusterCol;
-
-            clusterBrightness[clusterIdx] += brightness;
-            clusterWeightedX[clusterIdx] += cell.getX() * brightness;
-            clusterWeightedY[clusterIdx] += cell.getY() * brightness;
+            int col = Math.max(0, Math.min(cols - 1, (int) Math.floor(cell.getX() / gridStep)));
+            int row = Math.max(0, Math.min(rows - 1, (int) Math.floor(cell.getY() / gridStep)));
+            scatterDepositMap[row * cols + col] += brightness;
+            anyEmission = true;
         }
-
-        return new FluorescentClusterGrid(
-                clusterCols,
-                clusterRows,
-                clusterStep,
-                clusterBrightness,
-                clusterWeightedX,
-                clusterWeightedY
-        );
+        return anyEmission;
     }
 
-    private void accumulateFluorescentAreaSource(
-            double[] transportedLightMap,
-            double[] transportedDirXMap,
-            double[] transportedDirYMap,
-            double[] opacityIntegral,
+    private void spreadScatteredLight(
+            double[] scatterDepositMap,
+            double[] scatteredLightMap,
+            double[] opacityMap,
             int cols,
             int rows,
-            int gridStep,
-            int width,
-            int height,
-            double sourceX,
-            double sourceY,
-            double brightness,
-            int clusterStep,
-            double r0sq
+            int gridStep
     ) {
-        sourceX = clamp(sourceX, SOURCE_CLAMP_EPSILON, width - SOURCE_CLAMP_EPSILON);
-        sourceY = clamp(sourceY, SOURCE_CLAMP_EPSILON, height - SOURCE_CLAMP_EPSILON);
+        int passes = scatteredLightDiffusionPasses();
+        double[] current = Arrays.copyOf(scatterDepositMap, scatterDepositMap.length);
+        double[] next = new double[current.length];
 
-        double sourceRadius = Math.max(gridStep, clusterStep * FLUORESCENT_CLUSTER_SOURCE_RADIUS_FACTOR);
-        double maxTransportDistance = Math.sqrt(Math.max(1.0, r0sq)) * FLUORESCENT_TRANSPORT_RADIUS_FACTOR
-                + sourceRadius;
+        for (int pass = 0; pass < passes; pass++) {
+            Arrays.fill(next, 0.0);
 
-        int colMin = Math.max(0, (int) Math.floor((sourceX - maxTransportDistance) / gridStep));
-        int colMax = Math.min(cols - 1, (int) Math.ceil((sourceX + maxTransportDistance) / gridStep));
-        int rowMin = Math.max(0, (int) Math.floor((sourceY - maxTransportDistance) / gridStep));
-        int rowMax = Math.min(rows - 1, (int) Math.ceil((sourceY + maxTransportDistance) / gridStep));
+            for (int row = 0; row < rows; row++) {
+                boolean hasNorth = row > 0;
+                boolean hasSouth = row + 1 < rows;
+                for (int col = 0; col < cols; col++) {
+                    int idx = row * cols + col;
+                    double value = current[idx];
+                    if (value <= SCATTER_DEPOSIT_EPSILON) {
+                        continue;
+                    }
 
-        for (int row = rowMin; row <= rowMax; row++) {
-            double targetY = (row + 0.5) * gridStep;
-            for (int col = colMin; col <= colMax; col++) {
-                double targetX = (col + 0.5) * gridStep;
-                double dx = targetX - sourceX;
-                double dy = targetY - sourceY;
-                double distanceSq = dx * dx + dy * dy;
-                double distance = Math.sqrt(distanceSq);
-                if (distance > maxTransportDistance) {
-                    continue;
-                }
+                    double absorption = clamp01(Math.max(0.0, opacityMap[idx]) * SCATTER_OPACITY_ABSORPTION);
+                    double afterAbsorption = value * (1.0 - absorption);
+                    double spread = afterAbsorption * SCATTER_DIFFUSION_SHARE;
+                    double retained = afterAbsorption - spread;
+                    next[idx] += retained;
 
-                // Treat a coarse GFP tile as a finite area emitter. Inside the
-                // source area the distance is zero: no artificial dark hole in
-                // the cluster center and no separate local-emission spike.
-                double effectiveDistance = Math.max(0.0, distance - sourceRadius);
-                double falloff = r0sq / (effectiveDistance * effectiveDistance + r0sq);
+                    boolean hasWest = col > 0;
+                    boolean hasEast = col + 1 < cols;
+                    int neighborCount = 0;
+                    if (hasNorth) neighborCount += hasWest && hasEast ? 3 : (hasWest || hasEast ? 2 : 1);
+                    if (hasSouth) neighborCount += hasWest && hasEast ? 3 : (hasWest || hasEast ? 2 : 1);
+                    if (hasWest) neighborCount++;
+                    if (hasEast) neighborCount++;
 
-                double opticalDepth = 0.0;
-                if (effectiveDistance > 0.0 && distance > DIRECTION_EPSILON) {
-                    double boundaryT = sourceRadius / distance;
-                    double boundaryX = sourceX + dx * boundaryT;
-                    double boundaryY = sourceY + dy * boundaryT;
-                    opticalDepth = estimateOpticalDepthByBoxAverage(
-                            opacityIntegral,
-                            cols,
-                            rows,
-                            gridStep,
-                            boundaryX,
-                            boundaryY,
-                            targetX,
-                            targetY,
-                            effectiveDistance
-                    );
-                }
+                    if (neighborCount <= 0) {
+                        next[idx] += spread;
+                        continue;
+                    }
 
-                double transmittance = Math.exp(-Math.min(MAX_OPTICAL_DEPTH, opticalDepth));
-                double contribution = brightness * falloff * transmittance;
-                if (contribution <= FLUORESCENT_MIN_CONTRIBUTION) {
-                    continue;
-                }
+                    double share = spread / neighborCount;
+                    int north = idx - cols;
+                    int south = idx + cols;
 
-                int idx = row * cols + col;
-                transportedLightMap[idx] += contribution;
-
-                if (distance > DIRECTION_EPSILON) {
-                    double invDistance = 1.0 / distance;
-                    transportedDirXMap[idx] += contribution * dx * invDistance;
-                    transportedDirYMap[idx] += contribution * dy * invDistance;
+                    if (hasNorth) {
+                        next[north] += share;
+                        if (hasWest) next[north - 1] += share;
+                        if (hasEast) next[north + 1] += share;
+                    }
+                    if (hasWest) next[idx - 1] += share;
+                    if (hasEast) next[idx + 1] += share;
+                    if (hasSouth) {
+                        next[south] += share;
+                        if (hasWest) next[south - 1] += share;
+                        if (hasEast) next[south + 1] += share;
+                    }
                 }
             }
-        }
-    }
 
-    private double[] buildOpacityIntegral(double[] opacityMap, int cols, int rows) {
-        double[] integral = new double[(cols + 1) * (rows + 1)];
-
-        for (int row = 0; row < rows; row++) {
-            double rowSum = 0.0;
-            for (int col = 0; col < cols; col++) {
-                rowSum += opacityMap[row * cols + col];
-                int dst = (row + 1) * (cols + 1) + (col + 1);
-                integral[dst] = integral[row * (cols + 1) + (col + 1)] + rowSum;
-            }
+            double[] tmp = current;
+            current = next;
+            next = tmp;
         }
 
-        return integral;
+        System.arraycopy(current, 0, scatteredLightMap, 0, scatteredLightMap.length);
     }
 
-    private double estimateOpticalDepthByBoxAverage(
-            double[] opacityIntegral,
-            int cols,
-            int rows,
-            int gridStep,
-            double sourceX,
-            double sourceY,
-            double targetX,
-            double targetY,
-            double distance
-    ) {
-        if (distance <= 0.0) {
-            return 0.0;
-        }
-
-        int colMin = Math.max(0, Math.min(cols - 1, (int) Math.floor(Math.min(sourceX, targetX) / gridStep)));
-        int colMax = Math.max(0, Math.min(cols - 1, (int) Math.floor(Math.max(sourceX, targetX) / gridStep)));
-        int rowMin = Math.max(0, Math.min(rows - 1, (int) Math.floor(Math.min(sourceY, targetY) / gridStep)));
-        int rowMax = Math.max(0, Math.min(rows - 1, (int) Math.floor(Math.max(sourceY, targetY) / gridStep)));
-
-        double opacitySum = sumIntegral(opacityIntegral, cols, colMin, rowMin, colMax, rowMax);
-        int cellCount = Math.max(1, (colMax - colMin + 1) * (rowMax - rowMin + 1));
-        double averageOpacity = opacitySum / cellCount;
-        return averageOpacity * (distance / gridStep);
+    private int scatteredLightDiffusionPasses() {
+        double radiusCells = Math.max(0.0, config.getLight().getScatteredLightRadiusGridCells());
+        return Math.max(1, Math.min(24, (int) Math.ceil(radiusCells)));
     }
-
-    private double sumIntegral(
-            double[] integral,
-            int cols,
-            int colMin,
-            int rowMin,
-            int colMax,
-            int rowMax
-    ) {
-        int stride = cols + 1;
-        int x0 = Math.max(0, colMin);
-        int y0 = Math.max(0, rowMin);
-        int x1 = Math.min(cols - 1, colMax) + 1;
-        int y1 = Math.min((integral.length / stride) - 2, rowMax) + 1;
-
-        return integral[y1 * stride + x1]
-                - integral[y0 * stride + x1]
-                - integral[y1 * stride + x0]
-                + integral[y0 * stride + x0];
-    }
-
-
-    private int fluorescentClusterStep(int gridStep) {
-        return Math.max(1, gridStep) * Math.max(1, FLUORESCENT_CLUSTER_GRID_CELLS);
-    }
-
 
     private int rayCountForSource(int baseRayCount, boolean edgeSource) {
         return edgeSource
                 ? Math.max(MIN_RAYS_PER_SOURCE / 2, baseRayCount / 2)
                 : baseRayCount;
     }
-
-    private boolean isWeakSource(double brightness) {
-        return brightness <= WEAK_SOURCE_BRIGHTNESS_THRESHOLD;
-    }
-
 
     private boolean isEdgeSource(LightSource source) {
         return Math.abs(source.getOrbitRadius() - config.worldRadius()) < EDGE_SOURCE_RADIUS_EPSILON;
@@ -885,41 +792,7 @@ public class Lighting {
             double[] sourceMap,
             double[] sourceDirXMap,
             double[] sourceDirYMap,
-            double[] opacityMap,
-            int cols,
-            int rows,
-            int gridStep,
-            double sx,
-            double sy,
-            double dirX,
-            double dirY,
-            double brightness,
-            double r0sq,
-            double maxDistance
-    ) {
-        castLightRay(
-                sourceMap,
-                sourceDirXMap,
-                sourceDirYMap,
-                opacityMap,
-                cols,
-                rows,
-                gridStep,
-                sx,
-                sy,
-                dirX,
-                dirY,
-                brightness,
-                r0sq,
-                maxDistance,
-                0.0
-        );
-    }
-
-    private void castLightRay(
-            double[] sourceMap,
-            double[] sourceDirXMap,
-            double[] sourceDirYMap,
+            double[] scatterDepositMap,
             double[] opacityMap,
             int cols,
             int rows,
@@ -931,7 +804,8 @@ public class Lighting {
             double brightness,
             double r0sq,
             double maxDistance,
-            double minContributionDistance
+            double scatteringAlbedo,
+            TouchedGrid touched
     ) {
         int col = Math.max(0, Math.min(cols - 1, (int) Math.floor(sx / gridStep)));
         int row = Math.max(0, Math.min(rows - 1, (int) Math.floor(sy / gridStep)));
@@ -975,26 +849,40 @@ public class Lighting {
                 break;
             }
 
-            double sampleT = currentT + Math.max(0.0, nextT - currentT) * 0.5;
-
+            double segmentLength = Math.max(0.0, nextT - currentT);
+            double sampleT = currentT + segmentLength * 0.5;
             int idx = row * cols + col;
 
-            if (sampleT >= minContributionDistance) {
-                double transmittance = Math.exp(-Math.min(MAX_OPTICAL_DEPTH, opticalDepth));
-                double falloff = r0sq / (sampleT * sampleT + r0sq);
-                double contribution = brightness * falloff * transmittance;
+            double transmittance = Math.exp(-Math.min(MAX_OPTICAL_DEPTH, opticalDepth));
+            double falloff = r0sq / (sampleT * sampleT + r0sq);
+            double contribution = brightness * falloff * transmittance;
 
-                // Several rays can hit the same grid cell. Keep max per source, not sum,
-                // otherwise brightness depends on ray density.
-                if (contribution > sourceMap[idx]) {
-                    sourceMap[idx] = contribution;
-                    sourceDirXMap[idx] = contribution * dirX;
-                    sourceDirYMap[idx] = contribution * dirY;
-                }
+            // Several rays can hit the same grid cell. Keep max per source, not sum,
+            // otherwise brightness depends on ray density.
+            if (contribution > sourceMap[idx]) {
+                touched.mark(idx);
+                sourceMap[idx] = contribution;
+                sourceDirXMap[idx] = contribution * dirX;
+                sourceDirYMap[idx] = contribution * dirY;
             }
 
-            double segmentLength = Math.max(0.0, nextT - currentT);
-            opticalDepth += opacityMap[idx] * (segmentLength / gridStep);
+            if (segmentLength > 0.0 && scatteringAlbedo > 0.0) {
+                double segmentDepth = Math.max(0.0, opacityMap[idx]) * (segmentLength / gridStep);
+                if (segmentDepth > 0.0) {
+                    double nextOpticalDepth = opticalDepth + segmentDepth;
+                    double nextTransmittance = Math.exp(-Math.min(MAX_OPTICAL_DEPTH, nextOpticalDepth));
+                    double lostLight = brightness * falloff * Math.max(0.0, transmittance - nextTransmittance);
+                    double scattered = lostLight * scatteringAlbedo;
+                    if (scattered > scatterDepositMap[idx]) {
+                        touched.mark(idx);
+                        scatterDepositMap[idx] = scattered;
+                    }
+                    opticalDepth = nextOpticalDepth;
+                }
+            } else {
+                opticalDepth += Math.max(0.0, opacityMap[idx]) * (segmentLength / gridStep);
+            }
+
             if (opticalDepth >= MAX_OPTICAL_DEPTH) {
                 break;
             }
@@ -1142,25 +1030,45 @@ public class Lighting {
         return Math.max(min, Math.min(max, value));
     }
 
-    private record FluorescentClusterGrid(
-            int clusterCols,
-            int clusterRows,
-            int clusterStep,
-            double[] brightness,
-            double[] weightedX,
-            double[] weightedY
-    ) {
-    }
+    private static final class TouchedGrid {
+        private final boolean[] touched;
+        private final int[] indices;
+        private int count;
 
-    private record FluorescentTransportResult(
-            double[] lightMap,
-            double[] dirXMap,
-            double[] dirYMap
-    ) {
+        private TouchedGrid(int size) {
+            this.touched = new boolean[size];
+            this.indices = new int[size];
+        }
+
+        private void mark(int idx) {
+            if (!touched[idx]) {
+                touched[idx] = true;
+                indices[count++] = idx;
+            }
+        }
+
+        private void clear(
+                double[] sourceMap,
+                double[] dirXMap,
+                double[] dirYMap,
+                double[] scatterDepositMap
+        ) {
+            for (int n = 0; n < count; n++) {
+                int idx = indices[n];
+                touched[idx] = false;
+                sourceMap[idx] = 0.0;
+                dirXMap[idx] = 0.0;
+                dirYMap[idx] = 0.0;
+                scatterDepositMap[idx] = 0.0;
+            }
+            count = 0;
+        }
     }
 
     private record LightMapBuildResult(
             double[] lightMap,
+            double[] directedLightMap,
+            double[] scatteredLightMap,
             double[] dirXMap,
             double[] dirYMap
     ) {
@@ -1172,5 +1080,3 @@ public class Lighting {
         }
     }
 }
-
-

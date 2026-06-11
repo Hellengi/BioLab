@@ -1,4 +1,4 @@
-import { drawInternalGfpGlow } from "./gfp.js";
+import { drawInternalBioluminescenceGlow } from "./bioluminescence.js";
 import { ORGANIC_BROWN_COLOR } from "./colors.js";
 import { clamp01, grayscaleRgb, hash01, organicBrownHsla, rgb, seededRandom, smoothstep } from "./render-utils.js";
 import { buildSlotIndex, radialOrganelleLayouts } from "./organelle-layout.js";
@@ -71,19 +71,27 @@ const FOOD_INNER_BODY = Object.freeze({
 });
 
 const CELL_LIGHTING_DETAIL = Object.freeze({
-    gradientScale: 4.85,
-    maxHighlightAlpha: 0.68,
-    highlightCoreAlpha: 0.44,
-    maxShadowAlpha: 0.70,
-    shadowEdgeAlpha: 0.50,
-    shadowMidAlpha: 0.34,
-    shadowReach: 0.64,
+    gradientScale: 6.15,
+    maxHighlightAlpha: 0.88,
+    highlightCoreAlpha: 0.62,
+    maxShadowAlpha: 0.94,
+    shadowEdgeAlpha: 0.68,
+    shadowMidAlpha: 0.52,
+    shadowReach: 0.72,
+    lightingOpacityFloor: 0.68,
+    cursorLightOpacityFloor: 0.78,
 });
 
 const DRAW_THRESHOLDS = Object.freeze({
     minBodyRadius: 0.15,
     minOrganelleRadius: 0.28,
     minTextureDotRadius: 0.16,
+});
+
+const FLAGELLUM_GEOMETRY_CACHE = Object.freeze({
+    angleStep: 0.002,
+    positionStep: 0.01,
+    timeStep: 1 / 90,
 });
 
 // Caches the static anatomical part of cells. The cache intentionally does not
@@ -134,7 +142,7 @@ export function drawBiologyCell(ctx, cell, options = {}) {
     const showOrganelles = options.showOrganelles !== false;
     const showMembrane = options.showMembrane !== false && (diagnosticMode || layerCount >= 2);
     const showShading = options.showShading !== false && !diagnosticMode && layerCount >= 3;
-    const showGfp = options.showGfp !== false && !diagnosticMode;
+    const showBioluminescence = options.showBioluminescence !== false && !diagnosticMode;
     const showFlagella = options.showFlagella !== false && showOrganelles;
 
     const sourceCytosolColor = visual.cytosolColor ?? visual.cellColor;
@@ -169,8 +177,10 @@ export function drawBiologyCell(ctx, cell, options = {}) {
     const hitTargets = Array.isArray(options.hitTargets) ? options.hitTargets : null;
     const activeOrganelle = normalizeOrganelleId(options.activeOrganelle);
     const activeOrganelleAlpha = clamp01(options.activeOrganelleAlpha ?? 0.0);
+    const cellTransform = buildCellLocalTransform(cell);
 
     const hasVisibleFlagella = showFlagella && Number(visual?.flagellumCount ?? (cell?.genome?.flagellumEnabled ? cell?.genome?.flagellumCount : 0) ?? 0) > 0;
+    const flagellaGeometryCache = hasVisibleFlagella ? new Map() : null;
 
     const drawExternalFlagella = (flagellaLayerOptions = {}) => drawFlagella(ctx, {
         cell,
@@ -197,6 +207,7 @@ export function drawBiologyCell(ctx, cell, options = {}) {
         grayscale,
         animationTime: Number.isFinite(Number(options.animationTime)) ? Number(options.animationTime) : 0,
         visibleBounds: options.visibleBounds ?? null,
+        geometryCache: flagellaGeometryCache,
         ...flagellaLayerOptions,
     });
 
@@ -207,7 +218,7 @@ export function drawBiologyCell(ctx, cell, options = {}) {
         activeOrganelleAlpha,
         radius,
         showCytosol,
-        showGfp,
+        showBioluminescence,
         showOrganelles,
         showMembrane,
         diagnosticMode,
@@ -226,7 +237,7 @@ export function drawBiologyCell(ctx, cell, options = {}) {
             illum,
             layerCount,
             showCytosol,
-            showGfp,
+            showBioluminescence,
             showOrganelles,
             showMembrane,
             cytosolOpacity,
@@ -246,13 +257,19 @@ export function drawBiologyCell(ctx, cell, options = {}) {
                     drawEffects: false,
                 });
             }
-            ctx.drawImage(
-                cached.canvas,
-                x - cached.center,
-                y - cached.center,
-                cached.sizeWorld,
-                cached.sizeWorld
-            );
+            drawCachedStaticCellBase(ctx, cached, x, y, cellTransform.angle);
+            if (showOrganelles && normalizedMode === "general") {
+                drawNucleoidDynamicShadow(ctx, {
+                    cell,
+                    visual,
+                    x,
+                    y,
+                    radius,
+                    scale,
+                    opacity: nucleoidOpacity,
+                    cellTransform,
+                });
+            }
             if (hasVisibleFlagella) {
                 drawExternalFlagella({
                     drawCytosolLayer: diagnosticMode,
@@ -316,13 +333,13 @@ export function drawBiologyCell(ctx, cell, options = {}) {
         }
     }
 
-    if (showGfp) {
-        drawInternalGfpGlow(ctx, {
+    if (showBioluminescence) {
+        drawInternalBioluminescenceGlow(ctx, {
             x,
             y,
             radius,
-            color: visual.gfpColor ?? {r: 83, g: 255, b: 139},
-            expression: visual.gfpExpression ?? normalizedGfp(cell),
+            color: visual.bioluminescenceColor ?? {r: 83, g: 255, b: 139},
+            expression: visual.bioluminescenceExpression ?? normalizedBioluminescence(cell),
             baseAlpha: cytosolOpacity,
             rgba: rgb,
         });
@@ -344,7 +361,8 @@ export function drawBiologyCell(ctx, cell, options = {}) {
             activeAlpha: activeOrganelleAlpha,
             labelFor,
             tooltipFor,
-            decorative: normalizedMode === "general",
+            decorative: normalizedMode === "general" && options.showOrganelleShadows !== false,
+            cellTransform,
         });
         drawLysosomes(ctx, {
             cell,
@@ -366,6 +384,7 @@ export function drawBiologyCell(ctx, cell, options = {}) {
             mode: normalizedMode,
             illum,
             preview,
+            cellTransform,
         });
         drawChloroplasts(ctx, {
             cell,
@@ -381,6 +400,7 @@ export function drawBiologyCell(ctx, cell, options = {}) {
             activeAlpha: activeOrganelleAlpha,
             labelFor,
             tooltipFor,
+            cellTransform,
         });
     }
 
@@ -432,7 +452,7 @@ function shouldUseStaticCellBaseCache(params) {
         activeOrganelleAlpha,
         radius,
         showCytosol,
-        showGfp,
+        showBioluminescence,
         showOrganelles,
         showMembrane,
         diagnosticMode,
@@ -445,7 +465,7 @@ function shouldUseStaticCellBaseCache(params) {
     if (activeOrganelle || activeOrganelleAlpha > 0.001) return false;
     if (options.cursorLight) return false;
     if (radius <= DRAW_THRESHOLDS.minBodyRadius) return false;
-    if (!showCytosol && !showGfp && !showOrganelles && !showMembrane) return false;
+    if (!showCytosol && !showBioluminescence && !showOrganelles && !showMembrane) return false;
     return true;
 }
 
@@ -474,7 +494,8 @@ function cachedStaticCellBase(ctx, cell, options, meta) {
     cacheCtx.setTransform(renderScale, 0, 0, renderScale, 0, 0);
 
     const center = sizeWorld * 0.5;
-    drawBiologyCell(cacheCtx, cell, {
+    const localCell = { ...cell, directionAngle: 0 };
+    drawBiologyCell(cacheCtx, localCell, {
         ...options,
         x: center,
         y: center,
@@ -488,6 +509,7 @@ function cachedStaticCellBase(ctx, cell, options, meta) {
         activeOrganelleAlpha: 0,
         cursorLight: null,
         showShading: false,
+        showOrganelleShadows: false,
         renderScale: 1,
     });
 
@@ -495,6 +517,38 @@ function cachedStaticCellBase(ctx, cell, options, meta) {
     staticCellBaseCache.set(key, entry);
     trimMapCache(staticCellBaseCache, STATIC_CELL_CACHE.maxEntries);
     return entry;
+}
+
+function drawCachedStaticCellBase(ctx, cached, x, y, rotation = 0) {
+    if (!cached?.canvas) return;
+
+    ctx.save();
+    ctx.translate(x, y);
+    if (Number.isFinite(rotation) && Math.abs(rotation) > 1.0e-9) {
+        ctx.rotate(rotation);
+    }
+    ctx.drawImage(
+        cached.canvas,
+        -cached.center,
+        -cached.center,
+        cached.sizeWorld,
+        cached.sizeWorld
+    );
+    ctx.restore();
+}
+
+function drawNucleoidDynamicShadow(ctx, params) {
+    const {cell, visual, x, y, radius, scale, opacity, cellTransform} = params;
+    const r = Number(cell?.nucleusRadius ?? 0) > 0 ? Number(cell.nucleusRadius) * scale : radius * 0.28;
+    if (!Number.isFinite(r) || r <= DRAW_THRESHOLDS.minOrganelleRadius || opacity <= 0.001) return;
+
+    const offset = rotateCellLocalOffset(
+        (Number(cell?.nucleusOffsetX ?? 0) || 0) * scale,
+        (Number(cell?.nucleusOffsetY ?? 0) || 0) * scale,
+        cell,
+        cellTransform
+    );
+    drawOrganelleExternalShadow(ctx, x + offset.x, y + offset.y, r, visual ?? cell?.visual, clamp01(opacity) * 0.92);
 }
 
 function renderCacheScale(value) {
@@ -520,7 +574,7 @@ function createCellRenderCanvas(width, height) {
 function staticCellBaseCacheKey(cell, options, meta) {
     const visual = meta.visual ?? {};
     return [
-        "v3",
+        "v4",
         cell?.id ?? "draft",
         meta.normalizedMode,
         meta.preview ? 1 : 0,
@@ -530,9 +584,8 @@ function staticCellBaseCacheKey(cell, options, meta) {
         q(meta.sourceRadius, STATIC_CELL_CACHE.radiusStep),
         q(meta.renderScale, STATIC_CELL_CACHE.renderScaleStep),
         q(meta.illum, STATIC_CELL_CACHE.lightStep),
-        q(cell?.directionAngle ?? 0, 1),
         bool(meta.showCytosol),
-        bool(meta.showGfp),
+        bool(meta.showBioluminescence),
         bool(meta.showOrganelles),
         bool(meta.showMembrane),
         q(meta.cytosolOpacity),
@@ -548,8 +601,8 @@ function staticCellBaseCacheKey(cell, options, meta) {
         colorSignature(visual.lysosomeColor),
         colorSignature(meta.showFlagella ? visual.flagellumColor : null),
         colorSignature(visual.nucleoidColor),
-        colorSignature(visual.gfpColor),
-        q(visual.gfpExpression ?? normalizedGfp(cell)),
+        colorSignature(visual.bioluminescenceColor),
+        q(visual.bioluminescenceExpression ?? normalizedBioluminescence(cell)),
         q(visual.chloroplastAmount ?? 0),
         q(visual.lysosomeAmount ?? 0),
         q(meta.showFlagella ? visual.flagellumCount ?? 0 : 0),
@@ -578,7 +631,7 @@ function flagellumSlotSignature(cell) {
     let result = "";
     for (let i = 0; i < slots.length; i++) {
         const slot = slots[i];
-        result += `${slot.index ?? i}:${q(slot.damage ?? 0)}:${q(slot.baseX ?? 0)}:${q(slot.baseY ?? 0)}:${q(slot.directionX ?? 0)}:${q(slot.directionY ?? 0)}|`;
+        result += `${slot.index ?? i}:${q(slot.damage ?? 0)}:${q(slot.performance ?? 0)}:${q(slot.motorPower ?? 0)}:${q(slot.force ?? 0)}:${q(slot.baseX ?? 0)}:${q(slot.baseY ?? 0)}:${q(slot.directionX ?? 0)}:${q(slot.directionY ?? 0)}:${q(slot.length ?? 0)}:${q(slot.thickness ?? 0)}|`;
     }
     return result;
 }
@@ -596,14 +649,38 @@ function lysosomeSlotSignature(cell) {
 
 function capturedFoodSignature(capturedFoods, cell) {
     if (!capturedFoods || !cell?.id) return "-";
-    const cellFoods = capturedFoods instanceof Map ? capturedFoods.get(cell.id) : capturedFoods[cell.id];
-    if (!(cellFoods instanceof Map) || cellFoods.size === 0) return "-";
+    const cellId = Number(cell.id);
+    if (!Number.isFinite(cellId)) return "-";
 
     let result = "";
-    for (const [slotIndex, food] of cellFoods) {
-        result += `${slotIndex}:${food?.id ?? "-"}:${q(food?.radius ?? 0)}:${q(food?.energy ?? 0)}:${bool(food?.insideLysosome)};`;
+    if (capturedFoods instanceof Map) {
+        const nested = capturedFoods.get(cell.id) ?? capturedFoods.get(cellId);
+        if (nested instanceof Map) {
+            for (const [slotIndex, food] of nested) {
+                result += `${slotIndex}:${capturedFoodKey(food)};`;
+            }
+            return result || "-";
+        }
+
+        const prefix = `${cellId}:`;
+        for (const [key, food] of capturedFoods) {
+            if (String(key).startsWith(prefix)) {
+                result += `${String(key).slice(prefix.length)}:${capturedFoodKey(food)};`;
+            }
+        }
+        return result || "-";
     }
-    return result;
+
+    const cellFoods = capturedFoods[cell.id] ?? capturedFoods[cellId];
+    if (!(cellFoods instanceof Map) || cellFoods.size === 0) return "-";
+    for (const [slotIndex, food] of cellFoods) {
+        result += `${slotIndex}:${capturedFoodKey(food)};`;
+    }
+    return result || "-";
+}
+
+function capturedFoodKey(food) {
+    return `${food?.id ?? "-"}:${q(food?.radius ?? 0)}:${q(food?.energy ?? 0)}:${bool(food?.insideLysosome)}:${q(food?.x ?? 0)}:${q(food?.y ?? 0)}`;
 }
 
 function q(value, step = STATIC_CELL_CACHE.valueStep) {
@@ -624,18 +701,64 @@ function trimMapCache(map, limit) {
     }
 }
 
+
+function organelleWorldPoint(cellX, cellY, localX, localY, transform) {
+    const rotated = rotateOffset(localX, localY, transform);
+    return {x: cellX + rotated.x, y: cellY + rotated.y};
+}
+
+function pushOrganelleHitTarget(hitTargets, params) {
+    if (!hitTargets) return;
+    const {id, index, labelFor, tooltipFor, x, y, radius} = params;
+    hitTargets.push({
+        type: "circle",
+        kind: "organelle",
+        id,
+        ...(index == null ? {} : {index}),
+        label: labelFor(id),
+        tooltip: tooltipFor(id),
+        x,
+        y,
+        radius,
+    });
+}
+
+function drawActiveCircleOverlay(ctx, x, y, radius, activeAlpha, hatchAlpha = 0.20) {
+    if (activeAlpha <= 0.001) return;
+    ctx.globalAlpha = 1.0;
+    fillHatchCircleDown(ctx, x, y, radius, `rgba(255,255,255,${(hatchAlpha * activeAlpha).toFixed(3)})`);
+    ctx.strokeStyle = `rgba(255,255,255,${(0.90 * activeAlpha).toFixed(3)})`;
+    ctx.lineWidth = 1.15;
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.stroke();
+}
+
+function drawActiveEllipseOverlay(ctx, x, y, radiusX, radiusY, rotation, activeAlpha, hatchAlpha = 0.18) {
+    if (activeAlpha <= 0.001) return;
+    fillHatchEllipseDown(ctx, x, y, radiusX, radiusY, rotation, `rgba(255,255,255,${(hatchAlpha * activeAlpha).toFixed(3)})`);
+    ctx.strokeStyle = `rgba(255,255,255,${(0.90 * activeAlpha).toFixed(3)})`;
+    ctx.lineWidth = 1.15;
+    ctx.beginPath();
+    ctx.ellipse(x, y, radiusX, radiusY, rotation, 0, Math.PI * 2);
+    ctx.stroke();
+}
+
 function drawNucleoid(ctx, params) {
-    const {cell, visual, x, y, radius, scale, color, opacity, hitTargets, active, activeAlpha, labelFor, tooltipFor, decorative} = params;
+    const {cell, visual, x, y, radius, scale, color, opacity, hitTargets, active, activeAlpha, labelFor, tooltipFor, decorative, cellTransform} = params;
     const r = Number(cell?.nucleusRadius ?? 0) > 0 ? Number(cell.nucleusRadius) * scale : radius * 0.28;
     if (!Number.isFinite(r) || r <= DRAW_THRESHOLDS.minOrganelleRadius || opacity <= 0.001) return;
 
-    const offset = rotateCellLocalOffset(
+    const transform = cellTransform ?? buildCellLocalTransform(cell);
+    const point = organelleWorldPoint(
+        x,
+        y,
         (Number(cell?.nucleusOffsetX ?? 0) || 0) * scale,
         (Number(cell?.nucleusOffsetY ?? 0) || 0) * scale,
-        cell
+        transform
     );
-    const nx = x + offset.x;
-    const ny = y + offset.y;
+    const nx = point.x;
+    const ny = point.y;
     const alpha = clamp01(opacity) * (active ? 1.0 : 0.92);
 
     ctx.save();
@@ -647,31 +770,14 @@ function drawNucleoid(ctx, params) {
     if (decorative) {
         drawOrganelleExternalShadow(ctx, nx, ny, r, visual ?? cell?.visual, alpha);
     }
-    if (active && activeAlpha > 0.001) {
-        ctx.globalAlpha = 1.0;
-        fillHatchCircleDown(ctx, nx, ny, r, `rgba(255,255,255,${(0.20 * activeAlpha).toFixed(3)})`);
-        ctx.strokeStyle = `rgba(255,255,255,${(0.90 * activeAlpha).toFixed(3)})`;
-        ctx.lineWidth = 1.15;
-        ctx.beginPath();
-        ctx.arc(nx, ny, r, 0, Math.PI * 2);
-        ctx.stroke();
-    }
+    if (active) drawActiveCircleOverlay(ctx, nx, ny, r, activeAlpha);
     ctx.restore();
 
-    hitTargets?.push({
-        type: "circle",
-        kind: "organelle",
-        id: "nucleus",
-        label: labelFor("nucleus"),
-        tooltip: tooltipFor("nucleus"),
-        x: nx,
-        y: ny,
-        radius: r + 4,
-    });
+    pushOrganelleHitTarget(hitTargets, {id: "nucleus", labelFor, tooltipFor, x: nx, y: ny, radius: r + 4});
 }
 
 function drawChloroplasts(ctx, params) {
-    const {cell, x, y, radius, color, opacity, amount, hitTargets, active, activeAlpha, labelFor, tooltipFor} = params;
+    const {cell, x, y, radius, color, opacity, amount, hitTargets, active, activeAlpha, labelFor, tooltipFor, cellTransform} = params;
     const count = Math.max(0, Math.round(amount ?? 0));
     const visibleCount = Math.min(count, 24);
     const organelleRadius = radius * 0.11;
@@ -679,7 +785,7 @@ function drawChloroplasts(ctx, params) {
 
     const seed = seedFor(cell, {chloroplastAmount: count}, false, count * 97 + 17);
     const fillColor = color ?? {r:170,g:174,b:126};
-    const cellRotation = cellRotationRadians(cell);
+    const transform = cellTransform ?? buildCellLocalTransform(cell);
 
     ctx.save();
     ctx.fillStyle = rgb(fillColor, opacity);
@@ -688,12 +794,12 @@ function drawChloroplasts(ctx, params) {
 
     for (let i = 0; i < visibleCount; i++) {
         const layout = chloroplastLayout(seed, i, radius, visibleCount);
-        const rotated = rotateOffset(layout.x, layout.y, cellRotation);
-        const px = x + rotated.x;
-        const py = y + rotated.y;
+        const point = organelleWorldPoint(x, y, layout.x, layout.y, transform);
+        const px = point.x;
+        const py = point.y;
         const sx = organelleRadius * 1.34;
         const sy = organelleRadius * layout.normalScale;
-        const rotation = layout.rotation + cellRotation;
+        const rotation = layout.rotation + transform.angle;
 
         ctx.save();
         ctx.translate(px, py);
@@ -702,36 +808,21 @@ function drawChloroplasts(ctx, params) {
         ctx.ellipse(0, 0, sx, sy, 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
-        if (active && activeAlpha > 0.001) {
-            fillHatchEllipseDown(ctx, 0, 0, sx, sy, 0, `rgba(255,255,255,${(0.18 * activeAlpha).toFixed(3)})`);
-            ctx.strokeStyle = `rgba(255,255,255,${(0.90 * activeAlpha).toFixed(3)})`;
-            ctx.lineWidth = 1.15;
-            ctx.beginPath();
-            ctx.ellipse(0, 0, sx, sy, 0, 0, Math.PI * 2);
-            ctx.stroke();
+        if (active) {
+            drawActiveEllipseOverlay(ctx, 0, 0, sx, sy, 0, activeAlpha);
             ctx.strokeStyle = rgb(darkenRgb(fillColor, 34), opacity * 0.55);
             ctx.lineWidth = Math.max(0.25, Math.min(0.55, radius * 0.01));
         }
         ctx.restore();
 
-        hitTargets?.push({
-            type: "circle",
-            kind: "organelle",
-            id: "chloroplast",
-            index: i,
-            label: labelFor("chloroplast"),
-            tooltip: tooltipFor("chloroplast"),
-            x: px,
-            y: py,
-            radius: Math.max(4, sx),
-        });
+        pushOrganelleHitTarget(hitTargets, {id: "chloroplast", index: i, labelFor, tooltipFor, x: px, y: py, radius: Math.max(4, sx)});
     }
 
     ctx.restore();
 }
 
 function drawLysosomes(ctx, params) {
-    const {cell, x, y, radius, scale, color, opacity, amount, capturedFoods, hitTargets, active, activeAlpha, labelFor, tooltipFor, mode, illum, preview} = params;
+    const {cell, x, y, radius, scale, color, opacity, amount, capturedFoods, hitTargets, active, activeAlpha, labelFor, tooltipFor, mode, illum, preview, cellTransform} = params;
     const count = Math.max(0, Math.round(amount ?? 0));
     const visibleCount = Math.min(count, 6);
     if (visibleCount <= 0 || opacity <= 0.001) return;
@@ -742,7 +833,7 @@ function drawLysosomes(ctx, params) {
     const slotIndex = buildSlotIndex(slots);
     const normalizedMode = String(mode ?? "general").toLowerCase();
     const shouldDrawCapturedFood = normalizedMode !== "health";
-    const cellRotation = cellRotationRadians(cell);
+    const transform = cellTransform ?? buildCellLocalTransform(cell);
     let fallbackLayouts = null;
 
     ctx.save();
@@ -756,11 +847,11 @@ function drawLysosomes(ctx, params) {
         layout ??= {x: 0, y: 0, r: radius * 0.12, rotation: 0};
         if (!Number.isFinite(layout.r) || layout.r <= DRAW_THRESHOLDS.minOrganelleRadius) continue;
 
-        const rotated = rotateOffset(layout.x, layout.y, cellRotation);
-        const px = x + rotated.x;
-        const py = y + rotated.y;
+        const point = organelleWorldPoint(x, y, layout.x, layout.y, transform);
+        const px = point.x;
+        const py = point.y;
         const r = layout.r;
-        const layoutRotation = layout.rotation + cellRotation;
+        const layoutRotation = layout.rotation + transform.angle;
 
         if (normalizedMode === "general") {
             fillLysosomeRadial(ctx, px, py, r, layoutRotation, fillColor, opacity * (active ? 1.0 : 0.88));
@@ -768,17 +859,12 @@ function drawLysosomes(ctx, params) {
             fillEllipse(ctx, px, py, r * 1.05, r * 0.92, layoutRotation, fillColor, opacity * (active ? 1.0 : 0.88));
         }
 
-        if (active && activeAlpha > 0.001) {
-            fillHatchEllipseDown(ctx, px, py, r * 1.05, r * 0.92, layoutRotation, `rgba(255,255,255,${(0.18 * activeAlpha).toFixed(3)})`);
-            ctx.strokeStyle = `rgba(255,255,255,${(0.90 * activeAlpha).toFixed(3)})`;
-            ctx.lineWidth = 1.15;
-        } else {
-            ctx.strokeStyle = rgb(darkenRgb(fillColor, 26), opacity * 0.62);
-            ctx.lineWidth = Math.max(0.25, Math.min(0.55, radius * 0.01));
-        }
+        ctx.strokeStyle = rgb(darkenRgb(fillColor, 26), opacity * 0.62);
+        ctx.lineWidth = Math.max(0.25, Math.min(0.55, radius * 0.01));
         ctx.beginPath();
         ctx.ellipse(px, py, r * 1.05, r * 0.92, layoutRotation, 0, Math.PI * 2);
         ctx.stroke();
+        if (active) drawActiveEllipseOverlay(ctx, px, py, r * 1.05, r * 0.92, layoutRotation, activeAlpha);
 
         if (shouldDrawCapturedFood && slot?.occupied) {
             const capturedFood = capturedFoodForSlot(cell, capturedFoods, i);
@@ -790,17 +876,7 @@ function drawLysosomes(ctx, params) {
             }
         }
 
-        hitTargets?.push({
-            type: "circle",
-            kind: "organelle",
-            id: "lysosome",
-            index: i,
-            label: labelFor("lysosome"),
-            tooltip: tooltipFor("lysosome"),
-            x: px,
-            y: py,
-            radius: Math.max(4, r * 1.8),
-        });
+        pushOrganelleHitTarget(hitTargets, {id: "lysosome", index: i, labelFor, tooltipFor, x: px, y: py, radius: Math.max(4, r * 1.8)});
     }
     ctx.restore();
 }
@@ -813,7 +889,6 @@ function drawFlagella(ctx, params) {
         x,
         y,
         radius,
-        scale,
         color,
         opacity,
         amount,
@@ -823,13 +898,11 @@ function drawFlagella(ctx, params) {
         labelFor,
         tooltipFor,
         renderScale = 1,
-        animationTime = 0,
         mode = "general",
         showMembrane = true,
         showShading = false,
         illum = 1.0,
         grayscale = false,
-        visibleBounds = null,
         drawCytosolLayer = true,
         drawMembraneLayer = showMembrane,
         drawEffects = true,
@@ -843,12 +916,99 @@ function drawFlagella(ctx, params) {
     const diagnosticColor = color ?? membraneColor ?? COLORLESS_MEMBRANE_COLOR;
     const cytosolLayerAlpha = layerAlpha(visual.cytosolColor?.opacity ?? visual.cellColor?.opacity ?? cell?.opacity ?? 0.1);
     const membraneLayerAlpha = showMembrane ? 1.0 : 0;
-    const slots = flagellumSlotsForRender(cell, count, radius, scale);
     const screenScale = Math.max(1.0, Number(renderScale) || 1.0);
+    const geometry = flagellumGeometryForRender(params, count, screenScale);
+    if (geometry.length === 0) return;
 
     ctx.save();
     ctx.lineCap = "butt";
     ctx.lineJoin = "round";
+
+    for (const item of geometry) {
+        const effectiveFlagellumAlpha = clamp01(item.visibleAlpha * opacity);
+
+        if (diagnosticMode) {
+            if (drawCytosolLayer || drawMembraneLayer) {
+                ctx.fillStyle = rgb(diagnosticColor, effectiveFlagellumAlpha);
+                fillFlagellumPath(ctx, item.bodyPath);
+            }
+        } else {
+            if (effectiveFlagellumAlpha > 0.001) {
+                if (drawCytosolLayer) {
+                    ctx.save();
+                    clipOutsideCell(ctx, x, y, item.clipRadius);
+                    ctx.fillStyle = rgb(cytosolColor, clamp01(cytosolLayerAlpha * effectiveFlagellumAlpha));
+                    fillFlagellumPath(ctx, item.bodyPath);
+                    ctx.restore();
+                }
+                if (drawMembraneLayer && showMembrane) {
+                    ctx.save();
+                    clipOutsideCell(ctx, x, y, item.clipRadius);
+                    ctx.fillStyle = rgb(membraneColor, clamp01(membraneLayerAlpha * effectiveFlagellumAlpha));
+                    fillFlagellumPath(ctx, item.bodyPath);
+                    ctx.restore();
+                }
+            }
+            if (drawEffects && showShading) {
+                drawFlagellumShadowLayer(ctx, item.bodyPath, x, y, radius, visual, item.visibleAlpha, Math.max(cytosolLayerAlpha, membraneLayerAlpha) * effectiveFlagellumAlpha);
+            }
+            if (drawEffects && cell?.dead) {
+                drawDeadFlagellumFilterLayer(ctx, item.bodyPath, cell, illum, grayscale);
+            }
+        }
+
+        if (drawEffects && active && activeAlpha > 0.001) {
+            ctx.save();
+            ctx.strokeStyle = `rgba(255,255,255,${(0.90 * activeAlpha).toFixed(3)})`;
+            ctx.lineWidth = 1.15 / screenScale;
+            ctx.stroke(item.bodyPath);
+            ctx.restore();
+        }
+
+        if (drawEffects) hitTargets?.push({
+            type: "segment",
+            kind: "organelle",
+            id: "flagellum",
+            index: item.slot.index ?? 0,
+            label: labelFor("flagellum"),
+            tooltip: tooltipFor("flagellum"),
+            x1: item.bx,
+            y1: item.by,
+            x2: item.bx + item.tailX * item.length,
+            y2: item.by + item.tailY * item.length,
+            hitRadius: Math.max(4, item.rootWidth * 1.6),
+        });
+    }
+
+    ctx.restore();
+}
+
+function flagellumGeometryForRender(params, count, screenScale) {
+    const geometryCache = params.geometryCache;
+    const key = geometryCache ? flagellumGeometryCacheKey(params, count, screenScale) : null;
+    if (key && geometryCache.has(key)) {
+        return geometryCache.get(key);
+    }
+
+    const geometry = buildFlagellumGeometry(params, count, screenScale);
+    if (key) {
+        geometryCache.set(key, geometry);
+    }
+    return geometry;
+}
+
+function buildFlagellumGeometry(params, count, screenScale) {
+    const {
+        cell,
+        x,
+        y,
+        radius,
+        scale,
+        animationTime = 0,
+        visibleBounds = null,
+    } = params;
+    const slots = flagellumSlotsForRender(cell, count, radius, scale);
+    const geometry = [];
 
     for (const slot of slots) {
         const damage = clamp01(slot.damage ?? 0);
@@ -891,9 +1051,9 @@ function drawFlagella(ctx, params) {
         if (visibleBounds && !flagellumSegmentVisible(bx, by, bx + tailX * length, by + tailY * length, visibleBounds, Math.max(rootWidth, amp) + 2 / screenScale)) {
             continue;
         }
+
         const points = [];
         const pointCount = FLAGELLUM_VISUAL.pointCount;
-
         for (let p = 0; p <= pointCount; p++) {
             const t = p / pointCount;
             const wavePhase = t * Math.PI * (FLAGELLUM_VISUAL.envelopeWaveCycles + FLAGELLUM_VISUAL.envelopeWaveCycleSpread * strokeAsymmetry) + phase;
@@ -911,63 +1071,40 @@ function drawFlagella(ctx, params) {
             });
         }
 
-        const bodyPath = flagellumOutlinePath(points, normalX, normalY, x, y, radius);
-        const effectiveFlagellumAlpha = clamp01(visibleAlpha * opacity);
-
-        if (diagnosticMode) {
-            if (drawCytosolLayer || drawMembraneLayer) {
-                ctx.fillStyle = rgb(diagnosticColor, effectiveFlagellumAlpha);
-                fillFlagellumPath(ctx, bodyPath);
-            }
-        } else {
-            if (effectiveFlagellumAlpha > 0.001) {
-                if (drawCytosolLayer) {
-                    ctx.save();
-                    clipOutsideCell(ctx, x, y, clipRadius);
-                    ctx.fillStyle = rgb(cytosolColor, clamp01(cytosolLayerAlpha * effectiveFlagellumAlpha));
-                    fillFlagellumPath(ctx, bodyPath);
-                    ctx.restore();
-                }
-                if (drawMembraneLayer && showMembrane) {
-                    ctx.save();
-                    clipOutsideCell(ctx, x, y, clipRadius);
-                    ctx.fillStyle = rgb(membraneColor, clamp01(membraneLayerAlpha * effectiveFlagellumAlpha));
-                    fillFlagellumPath(ctx, bodyPath);
-                    ctx.restore();
-                }
-            }
-            if (drawEffects && showShading) {
-                drawFlagellumShadowLayer(ctx, bodyPath, x, y, radius, visual, visibleAlpha, Math.max(cytosolLayerAlpha, membraneLayerAlpha) * effectiveFlagellumAlpha);
-            }
-            if (drawEffects && cell?.dead) {
-                drawDeadFlagellumFilterLayer(ctx, bodyPath, cell, illum, grayscale);
-            }
-        }
-
-        if (drawEffects && active && activeAlpha > 0.001) {
-            ctx.save();
-            ctx.strokeStyle = `rgba(255,255,255,${(0.90 * activeAlpha).toFixed(3)})`;
-            ctx.lineWidth = 1.15 / screenScale;
-            ctx.stroke(bodyPath);
-            ctx.restore();
-        }
-
-        if (drawEffects) hitTargets?.push({
-            type: "segment",
-            kind: "organelle",
-            id: "flagellum",
-            index: slot.index ?? 0,
-            label: labelFor("flagellum"),
-            tooltip: tooltipFor("flagellum"),
-            x1: bx,
-            y1: by,
-            x2: bx + tailX * length,
-            y2: by + tailY * length,
-            hitRadius: Math.max(4, rootWidth * 1.6),
+        geometry.push({
+            slot,
+            visibleAlpha,
+            bx,
+            by,
+            tailX,
+            tailY,
+            length,
+            rootWidth,
+            clipRadius,
+            bodyPath: flagellumOutlinePath(points, normalX, normalY, x, y, radius),
         });
     }
 
-    ctx.restore();
+    return geometry;
+}
+
+function flagellumGeometryCacheKey(params, count, screenScale) {
+    const {cell, x, y, radius, scale, animationTime = 0, visibleBounds = null} = params;
+    const bounds = visibleBounds
+        ? `${q(visibleBounds.minX, 1)}:${q(visibleBounds.minY, 1)}:${q(visibleBounds.maxX, 1)}:${q(visibleBounds.maxY, 1)}`
+        : "-";
+    return [
+        q(x, FLAGELLUM_GEOMETRY_CACHE.positionStep),
+        q(y, FLAGELLUM_GEOMETRY_CACHE.positionStep),
+        q(radius, FLAGELLUM_GEOMETRY_CACHE.positionStep),
+        q(scale, 0.0005),
+        q(animationTime, FLAGELLUM_GEOMETRY_CACHE.timeStep),
+        q(screenScale, 0.05),
+        count,
+        q(cell?.directionAngle ?? 0, FLAGELLUM_GEOMETRY_CACHE.angleStep),
+        flagellumSlotSignature(cell),
+        bounds,
+    ].join("|");
 }
 
 function flagellumSegmentVisible(x1, y1, x2, y2, bounds, padding = 0) {
@@ -1314,6 +1451,7 @@ function flagellumSlotsForRender(cell, count, radius, scale) {
             directionY: dirValid ? rawDirY : base.directionY,
             length: Number(slot.length ?? base.length ?? 0) * (Number(slot.length) ? scale : 1),
             thickness: Number(slot.thickness ?? base.thickness ?? 0) * (Number(slot.thickness) ? scale : 1),
+            force: Number.isFinite(Number(slot.force)) ? Math.max(0, Number(slot.force)) : base.force,
         };
     });
 }
@@ -1506,9 +1644,13 @@ function drawCellLightCrescents(ctx, params) {
         ? clamp01(Number(visual.highlightClarity))
         : 1.0;
 
-    const opacity = clamp01(cellOpacity);
-    const shadowAlpha = CELL_LIGHTING_DETAIL.maxShadowAlpha * shadowStrength * opacity;
-    const highlightAlpha = CELL_LIGHTING_DETAIL.maxHighlightAlpha * highlightStrength * opacity;
+    const baseOpacity = clamp01(cellOpacity);
+    const lightingOpacity = clamp01(Math.max(
+        baseOpacity,
+        cursorAngle == null ? CELL_LIGHTING_DETAIL.lightingOpacityFloor : CELL_LIGHTING_DETAIL.cursorLightOpacityFloor
+    ));
+    const shadowAlpha = CELL_LIGHTING_DETAIL.maxShadowAlpha * shadowStrength * lightingOpacity;
+    const highlightAlpha = CELL_LIGHTING_DETAIL.maxHighlightAlpha * highlightStrength * lightingOpacity;
     if (shadowAlpha <= 0.001 && highlightAlpha <= 0.001) return;
 
     ctx.save();
@@ -1520,14 +1662,14 @@ function drawCellLightCrescents(ctx, params) {
     if (shadowAlpha > 0.001 && Number.isFinite(shadowAngle)) {
         ctx.save();
         ctx.rotate(shadowAngle);
-        drawSoftCellSideShadow(ctx, radius, shadowAlpha, shadowStrength * opacity);
+        drawSoftCellSideShadow(ctx, radius, shadowAlpha, shadowStrength * lightingOpacity);
         ctx.restore();
     }
 
     if (highlightAlpha > 0.001 && Number.isFinite(highlightAngle)) {
         ctx.save();
         ctx.rotate(highlightAngle);
-        drawSoftCellHighlightCrescent(ctx, radius, highlightAlpha, highlightStrength * opacity, highlightClarity);
+        drawSoftCellHighlightCrescent(ctx, radius, highlightAlpha, highlightStrength * lightingOpacity, highlightClarity);
         ctx.restore();
     }
 
@@ -1538,7 +1680,8 @@ function drawOrganelleExternalShadow(ctx, x, y, radius, visual, opacity) {
     const angle = radiansFromDegrees(visual?.lightDirectionAngle);
     const rawGradient = Number(visual?.lightGradient);
     const strength = Number.isFinite(rawGradient) ? clamp01(Math.max(0, rawGradient) * CELL_LIGHTING_DETAIL.gradientScale) : 0.0;
-    const alpha = CELL_LIGHTING_DETAIL.maxShadowAlpha * strength * clamp01(opacity);
+    const lightingOpacity = clamp01(Math.max(clamp01(opacity), CELL_LIGHTING_DETAIL.lightingOpacityFloor));
+    const alpha = CELL_LIGHTING_DETAIL.maxShadowAlpha * strength * lightingOpacity;
     if (alpha <= 0.001 || !Number.isFinite(angle)) return;
 
     ctx.save();
@@ -1547,7 +1690,7 @@ function drawOrganelleExternalShadow(ctx, x, y, radius, visual, opacity) {
     ctx.clip();
     ctx.translate(x, y);
     ctx.rotate(angle);
-    drawSoftCellSideShadow(ctx, radius, alpha, strength * clamp01(opacity));
+    drawSoftCellSideShadow(ctx, radius, alpha, strength * lightingOpacity);
     ctx.restore();
 }
 
@@ -1875,24 +2018,33 @@ function capturedFoodForSlot(cell, capturedFoods, index) {
 }
 
 
-function rotateCellLocalOffset(offsetX, offsetY, cell) {
-    return rotateOffset(offsetX, offsetY, cellRotationRadians(cell));
+function rotateCellLocalOffset(offsetX, offsetY, cell, transform = null) {
+    return rotateOffset(offsetX, offsetY, transform ?? buildCellLocalTransform(cell));
 }
 
 function cellRotationRadians(cell) {
-    const degrees = Number(cell?.directionAngle ?? 0);
-    return Number.isFinite(degrees) ? degrees * Math.PI / 180 : 0.0;
+    return buildCellLocalTransform(cell).angle;
 }
 
-function rotateOffset(offsetX, offsetY, angle) {
-    if (!Number.isFinite(angle) || Math.abs(angle) <= 1.0e-12) {
+function buildCellLocalTransform(cell) {
+    const degrees = Number(cell?.directionAngle ?? 0);
+    const angle = Number.isFinite(degrees) ? degrees * Math.PI / 180 : 0.0;
+    if (Math.abs(angle) <= 1.0e-12) {
+        return {angle: 0.0, cos: 1.0, sin: 0.0};
+    }
+    return {angle, cos: Math.cos(angle), sin: Math.sin(angle)};
+}
+
+function rotateOffset(offsetX, offsetY, angleOrTransform) {
+    const transform = typeof angleOrTransform === "number"
+        ? (Number.isFinite(angleOrTransform) ? {angle: angleOrTransform, cos: Math.cos(angleOrTransform), sin: Math.sin(angleOrTransform)} : null)
+        : angleOrTransform;
+    if (!transform || Math.abs(transform.angle ?? 0) <= 1.0e-12) {
         return {x: offsetX, y: offsetY};
     }
-    const cos = Math.cos(angle);
-    const sin = Math.sin(angle);
     return {
-        x: offsetX * cos - offsetY * sin,
-        y: offsetX * sin + offsetY * cos,
+        x: offsetX * transform.cos - offsetY * transform.sin,
+        y: offsetX * transform.sin + offsetY * transform.cos,
     };
 }
 
@@ -1955,8 +2107,8 @@ function layerAlpha(realOpacity = 0.1) {
     return clamp01(opacity);
 }
 
-function normalizedGfp(cell) {
-    return cell?.genome?.gfpEnabled ? clamp01((cell?.genome?.gfp ?? 0) / 100.0) : 0.0;
+function normalizedBioluminescence(cell) {
+    return cell?.genome?.bioluminescenceEnabled ? clamp01((cell?.genome?.bioluminescence ?? 0) / 100.0) : 0.0;
 }
 
 function seedFor(cell, visual, preview = false, fallback = 1) {
@@ -2057,7 +2209,5 @@ function clamp(value, min, max) {
     if (!Number.isFinite(Number(value))) return min;
     return Math.max(min, Math.min(max, Number(value)));
 }
-
-
 
 
