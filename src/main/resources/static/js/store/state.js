@@ -30,7 +30,7 @@ export const state = {
         directedLightMap: false,
         scatteredLightMap: false,
         lightDirection: false,
-        quadtree: false,
+        spatialGrid: false,
         cellDirections: false,
     },
 };
@@ -213,9 +213,9 @@ function mergeLighting(previous, incoming) {
         scatteredLightMap: definedMap(incoming.scatteredLightMap) ?? (compatible ? previous.scatteredLightMap : incoming.scatteredLightMap),
         opacityMap: definedMap(incoming.opacityMap) ?? (compatible ? previous.opacityMap : incoming.opacityMap),
         lightDirectionArrows: definedMap(incoming.lightDirectionArrows) ?? (compatible ? previous.lightDirectionArrows : incoming.lightDirectionArrows),
-        quadtreeNodes: Array.isArray(incoming.quadtreeNodes) && incoming.quadtreeNodes.length > 0
-            ? incoming.quadtreeNodes
-            : (compatible ? previous.quadtreeNodes : incoming.quadtreeNodes),
+        spatialGridCells: Array.isArray(incoming.spatialGridCells) && incoming.spatialGridCells.length > 0
+            ? incoming.spatialGridCells
+            : (compatible ? previous.spatialGridCells : incoming.spatialGridCells),
     };
 }
 
@@ -325,4 +325,6 @@ function _clearExpiredSelectedPreviewNotice() {
         state.selectedPreviewNotice = null;
     }
 }
+
+
 

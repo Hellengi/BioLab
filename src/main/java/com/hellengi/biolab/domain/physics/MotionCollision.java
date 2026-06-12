@@ -3,8 +3,8 @@ package com.hellengi.biolab.domain.physics;
 import com.hellengi.biolab.config.YamlConfig;
 import com.hellengi.biolab.domain.model.Cell;
 import com.hellengi.biolab.domain.model.ImpulseEvent;
-import com.hellengi.biolab.domain.spatial.Quadtree;
-import com.hellengi.biolab.domain.spatial.SpatialBounds;
+import com.hellengi.biolab.domain.spatial.SpatialHashGrid;
+import com.hellengi.biolab.domain.spatial.SpatialIndexTuning;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -17,22 +17,21 @@ import static com.hellengi.biolab.util.Utils.*;
 @RequiredArgsConstructor
 public class MotionCollision {
     private static final double WALL_ELASTICITY = 1.0;
-
     private final YamlConfig config;
+    private final SpatialHashGrid<Cell> cellIndex = new SpatialHashGrid<>(Cell::getX, Cell::getY);
+    private final List<Cell> candidates = new ArrayList<>();
 
     public void resolveAll(List<Cell> cells) {
         if (cells == null || cells.isEmpty()) {
             return;
         }
 
-        Quadtree<Cell> cellIndex = new Quadtree<>(worldBounds(), this::cellBounds);
-        for (Cell cell : cells) {
-            if (!cell.isMarkedForRemoval()) {
-                cellIndex.insert(cell);
-            }
+        double maxRadius = maxActiveRadius(cells);
+        if (maxRadius <= 0.0) {
+            return;
         }
 
-        List<Cell> candidates = new ArrayList<>();
+        cellIndex.rebuild(cells, SpatialIndexTuning.collisionBucketSize(maxRadius), cell -> !cell.isMarkedForRemoval());
         for (Cell first : cells) {
             if (first.isMarkedForRemoval()) {
                 continue;
@@ -40,7 +39,7 @@ public class MotionCollision {
 
             double firstRadius = first.getRadius();
             candidates.clear();
-            cellIndex.query(SpatialBounds.fromCenterAndRadius(first.getX(), first.getY(), firstRadius), candidates);
+            cellIndex.queryCircle(first.getX(), first.getY(), firstRadius + maxRadius, candidates);
 
             for (Cell second : candidates) {
                 if (second == first || second.isMarkedForRemoval()) {
@@ -53,21 +52,19 @@ public class MotionCollision {
                 resolvePair(first, firstRadius, second, second.getRadius());
             }
         }
+        candidates.clear();
     }
 
-    private SpatialBounds cellBounds(Cell cell) {
-        return SpatialBounds.fromCenterAndRadius(cell.getX(), cell.getY(), cell.getRadius());
+    private double maxActiveRadius(List<Cell> cells) {
+        double maxRadius = 0.0;
+        for (Cell cell : cells) {
+            if (!cell.isMarkedForRemoval()) {
+                maxRadius = Math.max(maxRadius, cell.getRadius());
+            }
+        }
+        return maxRadius;
     }
 
-    private SpatialBounds worldBounds() {
-        double margin = Math.max(
-                32.0,
-                config.getCell().getBaseRadius()
-                        + config.getCell().getEnergyToRadiusFactor()
-        );
-        double diameter = config.getTubeDiameter();
-        return SpatialBounds.fromMinMax(-margin, -margin, diameter + margin, diameter + margin);
-    }
 
     private void resolvePair(Cell first, double firstRadius, Cell second, double secondRadius) {
         double dx = second.getX() - first.getX();
@@ -141,26 +138,19 @@ public class MotionCollision {
 
         double dx = cell.getX() - centerX;
         double dy = cell.getY() - centerY;
-        double distance = Math.sqrt(dx * dx + dy * dy);
+        double distanceSquared = dx * dx + dy * dy;
+        double allowedDistanceSquared = allowedDistance * allowedDistance;
 
-        if (distance < EPSILON) {
+        if (distanceSquared <= allowedDistanceSquared) {
             return;
         }
 
+        double distance = Math.sqrt(avoidZero(distanceSquared));
         double nx = dx / distance;
         double ny = dy / distance;
 
-        boolean outside = distance > allowedDistance;
-
-        if (outside) {
-            cell.setX(centerX + nx * allowedDistance);
-            cell.setY(centerY + ny * allowedDistance);
-        }
-
-        if (!outside) {
-            return;
-        }
-
+        cell.setX(centerX + nx * allowedDistance);
+        cell.setY(centerY + ny * allowedDistance);
         resolveWallCollision(cell, nx, ny);
     }
 
@@ -216,7 +206,3 @@ public class MotionCollision {
         return Math.max(0.0, Math.min(1.0, value));
     }
 }
-
-
-
-

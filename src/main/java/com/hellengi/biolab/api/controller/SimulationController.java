@@ -29,16 +29,18 @@ public class SimulationController {
     private final EventLogStore eventLogStore;
 
     @PostMapping("/reset")
-    public ResponseEntity<Map<String, String>> reset() {
+    public ResponseEntity<Map<String, String>> reset(@RequestParam(defaultValue = "true") boolean log) {
         simulationEngine.reset();
-        eventLogStore.append(new EventLogAppendRequestDto(
-                "world-reset",
-                "World reset",
-                "Simulation world reset to initial state.",
-                "info",
-                "R",
-                Map.of("source", "server")
-        ));
+        if (log) {
+            eventLogStore.append(new EventLogAppendRequestDto(
+                    "world-reset",
+                    "World reset",
+                    "Simulation world reset to initial state.",
+                    "info",
+                    "R",
+                    Map.of("source", "server")
+            ));
+        }
         return ResponseEntity.ok(Map.of("status", "reset"));
     }
 
@@ -129,6 +131,8 @@ public class SimulationController {
         return ResponseEntity.ok(Map.of("status", "deleted"));
     }
 }
+
+
 
 
 

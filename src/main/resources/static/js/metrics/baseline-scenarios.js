@@ -1,7 +1,7 @@
 export const BASELINE_SCENARIOS = Object.freeze([
     {
         id: "small-debug-off",
-        name: "100 cells / 100 food / debug off",
+        name: "100 cells / 100 food",
         shortName: "100 cells / 100 food",
         cells: 100,
         food: 100,
@@ -11,7 +11,7 @@ export const BASELINE_SCENARIOS = Object.freeze([
     },
     {
         id: "medium-debug-off",
-        name: "1000 cells / 1000 food / debug off",
+        name: "1000 cells / 1000 food",
         shortName: "1000 cells / 1000 food",
         cells: 1000,
         food: 1000,
@@ -21,7 +21,7 @@ export const BASELINE_SCENARIOS = Object.freeze([
     },
     {
         id: "large-debug-off",
-        name: "5000 cells / 5000 food / debug off",
+        name: "5000 cells / 5000 food",
         shortName: "5000 cells / 5000 food",
         cells: 5000,
         food: 5000,
@@ -61,7 +61,7 @@ export function layersOff() {
         directedLightMap: false,
         scatteredLightMap: false,
         lightDirection: false,
-        quadtree: false,
+        spatialGrid: false,
         cellDirections: false,
         selectedCellId: null,
         selectedCellMode: "general",
@@ -74,7 +74,7 @@ export function debugLayers() {
         directedLightMap: true,
         scatteredLightMap: true,
         lightDirection: true,
-        quadtree: true,
+        spatialGrid: true,
         cellDirections: true,
         selectedCellId: null,
         selectedCellMode: "general",
@@ -117,3 +117,5 @@ export function cloneScenario(scenario, overrides = {}) {
         },
     };
 }
+
+

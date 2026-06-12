@@ -28,8 +28,9 @@ export function deleteWorld(id) {
     return del(`/api/simulation/snapshots/${id}`);
 }
 
-export function resetSimulation() {
-    return post("/api/simulation/reset");
+export function resetSimulation(options = {}) {
+    const logEvent = options.logEvent !== false;
+    return post(`/api/simulation/reset?log=${encodeURIComponent(String(logEvent))}`);
 }
 
 export function getLightAt(x, y) {
@@ -66,3 +67,5 @@ export async function clearEventLog() {
     const response = await del("/api/simulation/event-log");
     return response.json();
 }
+
+

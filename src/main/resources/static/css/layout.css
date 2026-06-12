@@ -686,7 +686,7 @@ canvas {
 /* ── Benchmark toolbar indicator ────────────────────────── */
 :root {
     --toolbar-time-display-height: 41px;
-    --benchmark-toolbar-width: 340px;
+    --benchmark-toolbar-width: 320px;
 }
 
 .time-display,
@@ -795,7 +795,7 @@ canvas {
 :root {
     /* time-display uses content-box height + 4px vertical padding + 1px border */
     --benchmark-toolbar-height: calc(var(--toolbar-time-display-height) + 10px);
-    --benchmark-toolbar-width: 36ch;
+    --benchmark-toolbar-width: 320px;
 }
 
 .benchmark-toolbar-indicator {
@@ -862,7 +862,7 @@ canvas {
 
 /* ── Benchmark toolbar indicator v9 stable compact layout ────────────────── */
 :root {
-    --benchmark-toolbar-width: 31ch;
+    --benchmark-toolbar-width: 320px;
 }
 
 .benchmark-toolbar-indicator {
@@ -964,7 +964,7 @@ canvas {
 
 /* ── Benchmark toolbar indicator v10 width/height restore ───────────────── */
 :root {
-    --benchmark-toolbar-width: 36ch;
+    --benchmark-toolbar-width: 320px;
 }
 
 .benchmark-toolbar-indicator {
@@ -1065,7 +1065,7 @@ canvas {
 
 /* ── Benchmark toolbar indicator v11 final width + v9 typography ─────────── */
 :root {
-    --benchmark-toolbar-width: 420px;
+    --benchmark-toolbar-width: 320px;
     --benchmark-toolbar-height: var(--toolbar-time-display-height, 41px);
 }
 
@@ -1169,4 +1169,22 @@ canvas {
     width: 1px;
     height: 14px;
     background: var(--c-border-soft);
+}
+
+
+
+/* ── Benchmark toolbar: pin label to the top of the compact indicator ────── */
+.benchmark-toolbar-copy {
+    grid-template-rows: max-content minmax(0, 1fr);
+    align-items: start;
+    padding-top: 1px;
+}
+
+.benchmark-toolbar-label {
+    align-self: start;
+}
+
+.benchmark-toolbar-title {
+    align-self: start;
+    margin-top: 2px;
 }

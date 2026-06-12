@@ -1,4 +1,3 @@
-
 package com.hellengi.biolab.domain.model;
 
 import com.hellengi.biolab.config.YamlConfig;
@@ -441,10 +440,20 @@ public class Cell {
         if (genome == null) {
             return EPSILON;
         }
-        double structuralMass = getOrganelles().stream()
-                .filter(Organelle::present)
-                .mapToDouble(organelle -> organelle.mass(this, config.getCell()))
-                .sum();
+        YamlConfig.CellProperties cellConfig = config.getCell();
+        double structuralMass = 0.0;
+        structuralMass += nucleus().mass(this, cellConfig);
+        structuralMass += cytosol().mass(this, cellConfig);
+        structuralMass += membrane().mass(this, cellConfig);
+        if (chloroplasts().present()) {
+            structuralMass += chloroplasts().mass(this, cellConfig);
+        }
+        if (lysosomes().present()) {
+            structuralMass += lysosomes().mass(this, cellConfig);
+        }
+        if (flagella().present()) {
+            structuralMass += flagella().mass(this, cellConfig);
+        }
         return Math.max(EPSILON, structuralMass);
     }
 
@@ -574,11 +583,19 @@ public class Cell {
 
     public double getAverageLysosomeDamage() {
         if (lysosomeSlots.isEmpty()) return 0.0;
-        return lysosomeSlots.stream().mapToDouble(LysosomeSlot::getDamage).average().orElse(0.0);
+        double total = 0.0;
+        for (LysosomeSlot slot : lysosomeSlots) {
+            total += slot.getDamage();
+        }
+        return total / lysosomeSlots.size();
     }
 
     public double getMaxLysosomeDamage() {
-        return lysosomeSlots.stream().mapToDouble(LysosomeSlot::getDamage).max().orElse(0.0);
+        double max = 0.0;
+        for (LysosomeSlot slot : lysosomeSlots) {
+            max = Math.max(max, slot.getDamage());
+        }
+        return max;
     }
 
     public double getLysosomeDamage() {
@@ -634,7 +651,11 @@ public class Cell {
 
     public double getAverageFlagellumDamage() {
         if (flagellumSlots.isEmpty()) return 0.0;
-        return flagellumSlots.stream().mapToDouble(FlagellumSlot::getDamage).average().orElse(0.0);
+        double total = 0.0;
+        for (FlagellumSlot slot : flagellumSlots) {
+            total += slot.getDamage();
+        }
+        return total / flagellumSlots.size();
     }
 
     public double getFlagellumLength() {

@@ -196,7 +196,7 @@ public class SocketHandler extends TextWebSocketHandler {
                 Boolean.TRUE.equals(payload.get("directedLightMap")),
                 Boolean.TRUE.equals(payload.get("scatteredLightMap")),
                 Boolean.TRUE.equals(payload.get("lightDirection")),
-                Boolean.TRUE.equals(payload.get("quadtree")),
+                Boolean.TRUE.equals(payload.get("spatialGrid")),
                 Boolean.TRUE.equals(payload.get("cellDirections")),
                 selectedCellId(payload.get("selectedCellId")),
                 String.valueOf(payload.get("selectedCellMode") == null ? "general" : payload.get("selectedCellMode"))
@@ -371,5 +371,3 @@ public class SocketHandler extends TextWebSocketHandler {
         }
     }
 }
-
-

@@ -6,8 +6,7 @@ import com.hellengi.biolab.domain.model.Cell;
 import com.hellengi.biolab.domain.model.Food;
 import com.hellengi.biolab.domain.physics.Lighting;
 import com.hellengi.biolab.domain.settings.RuntimeOverrides;
-import com.hellengi.biolab.domain.spatial.Quadtree;
-import com.hellengi.biolab.domain.spatial.SpatialBounds;
+import com.hellengi.biolab.domain.spatial.SpatialHashGrid;
 import com.hellengi.biolab.domain.spawn.FoodFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -17,7 +16,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static com.hellengi.biolab.util.Utils.*;
 
 @Component
 @RequiredArgsConstructor
@@ -31,20 +29,27 @@ public class Lifecycle {
     private final CellDamageRepair cellDamageRepair;
     private final FoodDigestion foodDigestion;
 
+    private static final double MIN_FOOD_BUCKET_SIZE = 8.0;
+    private static final double FOOD_BUCKET_RADIUS_FACTOR = 2.0;
+
+    private final SpatialHashGrid<Food> foodIndex = new SpatialHashGrid<>(Food::getX, Food::getY);
+
     public void process(SimulationWorld world, double tickScale) {
         List<Cell> newborns = new ArrayList<>();
-        Quadtree<Food> foodIndex = buildFoodIndex(world);
+        buildFoodIndex(world);
         Map<Long, Food> foodById = foodById(world);
         for (Cell cell : world.getCells()) {
             if (cell.isMarkedForRemoval()) continue;
             if (cell.isAlive()) {
-                updateLivingCell(world, cell, tickScale, newborns, foodIndex, foodById);
+                updateLivingCell(world, cell, tickScale, newborns, foodById);
             } else {
                 updateDeadCell(world, cell, tickScale);
             }
         }
         newborns.forEach(world::addCell);
-        foodDigestion.releaseOrphanedCapturedFood(world, cellById(world));
+        if (hasCapturedFood(world)) {
+            foodDigestion.releaseOrphanedCapturedFood(world, cellById(world));
+        }
     }
 
     private void updateLivingCell(
@@ -52,7 +57,6 @@ public class Lifecycle {
             Cell cell,
             double tickScale,
             List<Cell> newborns,
-            Quadtree<Food> foodIndex,
             Map<Long, Food> foodById
     ) {
         foodDigestion.process(world, cell, foodIndex, foodById, tickScale);
@@ -88,7 +92,7 @@ public class Lifecycle {
     }
 
     private Map<Long, Food> foodById(SimulationWorld world) {
-        Map<Long, Food> byId = new HashMap<>();
+        Map<Long, Food> byId = new HashMap<>(hashCapacity(world.getFoods().size()));
         for (Food food : world.getFoods()) {
             if (!food.isMarkedForRemoval()) {
                 byId.put(food.getId(), food);
@@ -97,8 +101,17 @@ public class Lifecycle {
         return byId;
     }
 
+    private boolean hasCapturedFood(SimulationWorld world) {
+        for (Food food : world.getFoods()) {
+            if (food.isCaptured()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private Map<Long, Cell> cellById(SimulationWorld world) {
-        Map<Long, Cell> byId = new HashMap<>();
+        Map<Long, Cell> byId = new HashMap<>(hashCapacity(world.getCells().size()));
         for (Cell cell : world.getCells()) {
             if (!cell.isMarkedForRemoval()) {
                 byId.put(cell.getId(), cell);
@@ -107,24 +120,23 @@ public class Lifecycle {
         return byId;
     }
 
-    private Quadtree<Food> buildFoodIndex(SimulationWorld world) {
-        Quadtree<Food> foodIndex = new Quadtree<>(worldBounds(), this::foodBounds);
-        for (Food food : world.getFoods()) {
-            if (!food.isMarkedForRemoval() && !food.isCaptured()) {
-                foodIndex.insert(food);
-            }
-        }
-        return foodIndex;
+    private int hashCapacity(int expectedSize) {
+        return Math.max(16, (int) (expectedSize / 0.75f) + 1);
     }
 
-    private SpatialBounds foodBounds(Food food) {
-        return SpatialBounds.fromCenterAndRadius(food.getX(), food.getY(), 0.0);
+    private void buildFoodIndex(SimulationWorld world) {
+        foodIndex.rebuild(
+                world.getFoods(),
+                foodBucketSize(),
+                food -> !food.isMarkedForRemoval() && !food.isCaptured()
+        );
     }
 
-    private SpatialBounds worldBounds() {
-        double margin = Math.max(32.0, baseConfig.getCell().getBaseRadius() + baseConfig.getFood().getBaseRadius() * 4.0);
-        double diameter = baseConfig.getTubeDiameter();
-        return SpatialBounds.fromMinMax(-margin, -margin, diameter + margin, diameter + margin);
+    private double foodBucketSize() {
+        double maxFoodRadius = baseConfig.getFood().getBaseRadius()
+                * Math.sqrt(Math.max(0.0, baseConfig.getFood().getMaxEnergy()) / Math.max(0.1, baseConfig.getFood().getMinEnergy()));
+        double maxInteractionRadius = baseConfig.getCell().getBaseRadius() + maxFoodRadius;
+        return Math.max(MIN_FOOD_BUCKET_SIZE, maxInteractionRadius * FOOD_BUCKET_RADIUS_FACTOR);
     }
 
 }

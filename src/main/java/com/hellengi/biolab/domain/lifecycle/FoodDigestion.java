@@ -5,8 +5,7 @@ import com.hellengi.biolab.domain.SimulationWorld;
 import com.hellengi.biolab.domain.model.Cell;
 import com.hellengi.biolab.domain.model.Food;
 import com.hellengi.biolab.domain.model.LysosomeSlot;
-import com.hellengi.biolab.domain.spatial.Quadtree;
-import com.hellengi.biolab.domain.spatial.SpatialBounds;
+import com.hellengi.biolab.domain.spatial.SpatialHashGrid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -28,8 +27,10 @@ public class FoodDigestion {
     private static final double MIN_SATURATION_DIGESTION_FACTOR = 0.06;
 
     private final YamlConfig config;
+    private final List<Food> nearbyFoods = new ArrayList<>();
+    private final List<Food> touchedFoods = new ArrayList<>();
 
-    public void process(SimulationWorld world, Cell cell, Quadtree<Food> foodIndex, Map<Long, Food> foodById, double tickScale) {
+    public void process(SimulationWorld world, Cell cell, SpatialHashGrid<Food> foodIndex, Map<Long, Food> foodById, double tickScale) {
         if (cell.getGenome() == null || !cell.isAlive() || tickScale <= 0.0) {
             cell.rememberDigestion(0.0, 0.0, 0.0);
             return;
@@ -138,15 +139,14 @@ public class FoodDigestion {
         return energyDeficit01 > CAPTURE_ENERGY_DEFICIT_THRESHOLD;
     }
 
-    private void captureTouchedFood(Cell cell, Quadtree<Food> foodIndex) {
+    private void captureTouchedFood(Cell cell, SpatialHashGrid<Food> foodIndex) {
         double maxFoodRadius = config.getFood().getBaseRadius()
                 * Math.sqrt(Math.max(0.0, config.getFood().getMaxEnergy()) / Math.max(0.1, config.getFood().getMinEnergy()));
         double queryRadius = cell.getRadius() + maxFoodRadius;
-        List<Food> nearbyFoods = foodIndex.query(
-                SpatialBounds.fromCenterAndRadius(cell.getX(), cell.getY(), queryRadius)
-        );
+        nearbyFoods.clear();
+        touchedFoods.clear();
+        foodIndex.queryCircle(cell.getX(), cell.getY(), queryRadius, nearbyFoods);
 
-        List<Food> touchedFoods = new ArrayList<>();
         for (Food food : nearbyFoods) {
             if (food.isMarkedForRemoval() || food.isCaptured() || !touches(cell, food)) {
                 continue;
@@ -166,6 +166,8 @@ public class FoodDigestion {
             slot.syncFood(food);
             slot.setTargetFoodRadius(food.getRadius());
         }
+        nearbyFoods.clear();
+        touchedFoods.clear();
     }
 
     private DigestionResult updateCapturedFood(Cell cell, Map<Long, Food> foodById, double tickScale) {

@@ -142,7 +142,7 @@ function bindDisplayLayerEvents() {
         dom.directedLightLayerToggle,
         dom.scatteredLightLayerToggle,
         dom.lightDirectionLayerToggle,
-        dom.quadtreeLayerToggle,
+        dom.spatialGridLayerToggle,
         dom.cellDirectionsLayerToggle,
     ].filter(Boolean);
 
@@ -426,6 +426,8 @@ function bindSidebarToggle() {
         }
     });
 }
+
+
 
 
 

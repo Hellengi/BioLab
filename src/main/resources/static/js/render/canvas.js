@@ -1,5 +1,6 @@
 import { drawDeadCellEffects, updateDeadCellEffects } from "./effects.js";
 import { drawBackground, drawDisplayLayers, drawLightSourceBodies } from "./lighting.js";
+import { drawAnimatedDashedCircle } from "./dashed-ring.js";
 import { ORGANIC_BROWN_COLOR } from "./colors.js";
 import { clamp01, grayscaleRgb, hash01, hsla, organicBrownHsla, rgb, seededRandom, smoothstep } from "./render-utils.js";
 import { buildCapturedFoodSlotMap, drawBiologyCell } from "./cell-renderer.js";
@@ -133,6 +134,7 @@ export function render(ctx, state) {
     drawDisplayLayers(ctx, state.world.lighting, state.displayLayers, {
         worldWidth: worldSize,
         worldHeight: worldSize,
+        spatialGridSearchCircle: spatialGridSearchCircle(state),
     });
     drawCellDirectionLayer(ctx, state, visibleBounds);
 
@@ -454,6 +456,27 @@ function midpoint(a, b) {
     };
 }
 
+function spatialGridSearchCircle(state) {
+    if (!state.displayLayers?.spatialGrid || !state.selectedCellId || !state.world?.cells?.length) {
+        return null;
+    }
+
+    const selectedCell = state.cellById.get(state.selectedCellId);
+    if (!selectedCell) return null;
+
+    const selectedRadius = Math.max(0.0, Number(selectedCell.radius) || 0.0);
+    const maxRadius = state.world.cells.reduce((max, cell) => {
+        const radius = Math.max(0.0, Number(cell?.radius) || 0.0);
+        return Math.max(max, radius);
+    }, selectedRadius);
+
+    return {
+        x: Number(selectedCell.x) || 0.0,
+        y: Number(selectedCell.y) || 0.0,
+        radius: selectedRadius + maxRadius,
+    };
+}
+
 function drawSelectedCellOverlay(ctx, state, diagnosticLayerEnabled) {
     if (!state.selectedCellId) return;
 
@@ -466,29 +489,20 @@ function drawSelectedCellOverlay(ctx, state, diagnosticLayerEnabled) {
 function drawSelectedCellOutline(ctx, selectedCell, lighting, diagnosticLayerEnabled) {
     const radius = selectedCell.radius + SELECTED_CELL_RING.padding;
     const strokeColor = calculateSelectionStrokeColor(selectedCell, radius, lighting, diagnosticLayerEnabled);
-    const circumference = Math.PI * 2 * radius;
-    const segmentCount = Math.max(
-        SELECTED_CELL_RING.minSegments,
-        Math.round(circumference / SELECTED_CELL_RING.targetSegmentLength)
-    );
-    const segmentLength = circumference / segmentCount;
-    const dashLength = segmentLength * SELECTED_CELL_RING.dashFraction;
-    const gapLength = Math.max(1.0, segmentLength - dashLength);
-    const offset = -circumference * (performance.now() * 0.001 * SELECTED_CELL_RING.rotationsPerSecond % 1);
 
-    ctx.save();
-    ctx.translate(selectedCell.x, selectedCell.y);
-    ctx.strokeStyle = strokeColor;
-    ctx.lineWidth = SELECTED_CELL_RING.width;
-    ctx.lineCap = "round";
-    ctx.setLineDash([dashLength, gapLength]);
-    ctx.lineDashOffset = offset;
-
-    ctx.beginPath();
-    ctx.arc(0, 0, radius, 0, Math.PI * 2);
-    ctx.stroke();
-
-    ctx.restore();
+    drawAnimatedDashedCircle(ctx, {
+        x: selectedCell.x,
+        y: selectedCell.y,
+        radius,
+        strokeStyle: strokeColor,
+        lineWidth: SELECTED_CELL_RING.width,
+        lineCap: "round",
+        dashFraction: SELECTED_CELL_RING.dashFraction,
+        targetSegmentLength: SELECTED_CELL_RING.targetSegmentLength,
+        minSegments: SELECTED_CELL_RING.minSegments,
+        rotationsPerSecond: SELECTED_CELL_RING.rotationsPerSecond,
+        rotationDirection: "clockwise",
+    });
 }
 
 function calculateSelectionStrokeColor(selectedCell, radius, lighting, diagnosticLayerEnabled) {
@@ -623,3 +637,5 @@ function clamp(value, min, max) {
     if (!Number.isFinite(value)) return min;
     return Math.max(min, Math.min(max, value));
 }
+
+

@@ -17,6 +17,7 @@ import com.hellengi.biolab.dto.SimulationWorldDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Component
@@ -37,11 +38,15 @@ public class SimulationWorldMapper {
         DisplayLayersDto layers = normalize(displayLayers);
 
         RenderMappingContext context = renderContext(world, grid);
-        List<CellDto> cells = world.getCells().stream()
-                .map(cell -> cellMapper.toDto(cell, layers, context))
-                .toList();
+        List<CellDto> cells = new ArrayList<>(world.getCells().size());
+        for (Cell cell : world.getCells()) {
+            cells.add(cellMapper.toDto(cell, layers, context));
+        }
 
-        List<FoodDto> foods = world.getFoods().stream().map(foodMapper::toDto).toList();
+        List<FoodDto> foods = new ArrayList<>(world.getFoods().size());
+        for (com.hellengi.biolab.domain.model.Food food : world.getFoods()) {
+            foods.add(foodMapper.toDto(food));
+        }
         LightingDto lightingDto = lightingMapper.toDto(
                 world,
                 grid.lightMap(),
@@ -73,22 +78,25 @@ public class SimulationWorldMapper {
             ClientViewport viewport,
             Long tps
     ) {
-        LightGrid grid = currentLightGrid();
+        LightGrid grid = currentRenderLightGrid(world);
         ClientViewport visibleArea = viewport == null
                 ? ClientViewport.FULL_WORLD
                 : viewport.normalized(com.hellengi.biolab.api.websocket.BroadcastConstants.VIEWPORT_MARGIN_WORLD_UNITS);
 
-        List<CellRenderDto> cells;
         RenderMappingContext context = renderContext(world, grid);
-        cells = world.getCells().stream()
-                .filter(cell -> visibleArea.intersectsCircle(cell.getX(), cell.getY(), cell.getRadius()))
-                .map(cell -> cellMapper.toRenderDto(cell, context))
-                .toList();
+        List<CellRenderDto> cells = new ArrayList<>(world.getCells().size());
+        for (Cell cell : world.getCells()) {
+            if (visibleArea.intersectsCircle(cell.getX(), cell.getY(), cell.getRadius())) {
+                cells.add(cellMapper.toRenderDto(cell, context));
+            }
+        }
 
-        List<FoodDto> foods = world.getFoods().stream()
-                .filter(food -> food.getCapturedByCellId() != null || visibleArea.intersectsCircle(food.getX(), food.getY(), food.getRadius()))
-                .map(foodMapper::toDto)
-                .toList();
+        List<FoodDto> foods = new ArrayList<>(world.getFoods().size());
+        for (com.hellengi.biolab.domain.model.Food food : world.getFoods()) {
+            if (food.getCapturedByCellId() != null || visibleArea.intersectsCircle(food.getX(), food.getY(), food.getRadius())) {
+                foods.add(foodMapper.toDto(food));
+            }
+        }
         LightingDto lightingMetadata = lightingMapper.toMetadataDto(world, grid.step(), grid.width(), grid.height());
 
         return new SimulationRenderFrameDto(
@@ -127,11 +135,13 @@ public class SimulationWorldMapper {
 
         LightGrid grid = currentLightGrid();
         RenderMappingContext context = renderContext(world, grid);
-        CellDto selected = world.getCells().stream()
-                .filter(cell -> cell.getId() == selectedCellId)
-                .findFirst()
-                .map(cell -> cellMapper.toDto(cell, layers, context))
-                .orElse(null);
+        CellDto selected = null;
+        for (Cell cell : world.getCells()) {
+            if (cell.getId() == selectedCellId) {
+                selected = cellMapper.toDto(cell, layers, context);
+                break;
+            }
+        }
         return new CellDetailsDto(world.getTick(), selectedCellId, selected);
     }
 
@@ -139,11 +149,15 @@ public class SimulationWorldMapper {
         LightGrid grid = currentLightGrid();
 
         RenderMappingContext context = renderContext(world, grid);
-        List<CellDto> cells = world.getCells().stream()
-                .map(cell -> cellMapper.toSnapshotDto(cell, context))
-                .toList();
+        List<CellDto> cells = new ArrayList<>(world.getCells().size());
+        for (Cell cell : world.getCells()) {
+            cells.add(cellMapper.toSnapshotDto(cell, context));
+        }
 
-        List<FoodDto> foods = world.getFoods().stream().map(foodMapper::toDto).toList();
+        List<FoodDto> foods = new ArrayList<>(world.getFoods().size());
+        for (com.hellengi.biolab.domain.model.Food food : world.getFoods()) {
+            foods.add(foodMapper.toDto(food));
+        }
         LightingDto lightingDto = lightingMapper.toDto(
                 world,
                 grid.lightMap(),
@@ -185,6 +199,30 @@ public class SimulationWorldMapper {
         );
     }
 
+    private LightGrid currentRenderLightGrid(SimulationWorld world) {
+        return hasNonUniformRenderLight(world) ? currentLightGrid() : configuredLightGridMetadata();
+    }
+
+    private boolean hasNonUniformRenderLight(SimulationWorld world) {
+        if (!world.getLightSources().isEmpty()) {
+            return true;
+        }
+        for (Cell cell : world.getCells()) {
+            if (!cell.isMarkedForRemoval() && cell.getBioluminescenceBrightness() > 0.0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private LightGrid configuredLightGridMetadata() {
+        int step = Math.max(1, config.getLight().getGridStep());
+        int width = (int) Math.ceil(config.getTubeDiameter() / (double) step);
+        int height = (int) Math.ceil(config.getTubeDiameter() / (double) step);
+        return new LightGrid(null, null, null, step, width, height);
+    }
+
+
     private DisplayLayersDto normalize(DisplayLayersDto displayLayers) {
         return displayLayers == null ? DisplayLayersDto.off() : displayLayers.normalized();
     }
@@ -199,5 +237,3 @@ public class SimulationWorldMapper {
     ) {
     }
 }
-
-

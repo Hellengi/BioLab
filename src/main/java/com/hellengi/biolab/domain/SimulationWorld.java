@@ -17,6 +17,9 @@ public class SimulationWorld {
     private final List<Cell> cells = new ArrayList<>();
     private final List<Food> foods = new ArrayList<>();
     private final List<LightSource> lightSources = new ArrayList<>();
+    private final List<Cell> cellsView = Collections.unmodifiableList(cells);
+    private final List<Food> foodsView = Collections.unmodifiableList(foods);
+    private final List<LightSource> lightSourcesView = Collections.unmodifiableList(lightSources);
     @Getter
     private final GlobalLight globalLight = new GlobalLight();
 
@@ -28,15 +31,15 @@ public class SimulationWorld {
     private double foodSpawnBudget = 0.0;
 
     public List<Cell> getCells() {
-        return Collections.unmodifiableList(cells);
+        return cellsView;
     }
 
     public List<Food> getFoods() {
-        return Collections.unmodifiableList(foods);
+        return foodsView;
     }
 
     public List<LightSource> getLightSources() {
-        return Collections.unmodifiableList(lightSources);
+        return lightSourcesView;
     }
 
     public void incrementTick(double sec) {
@@ -102,5 +105,3 @@ public class SimulationWorld {
         foodSpawnBudget = 0.0;
     }
 }
-
-

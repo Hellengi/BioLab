@@ -27,7 +27,7 @@ const DISPLAY_LAYER_KEYS = [
     "directedLightMap",
     "scatteredLightMap",
     "lightDirection",
-    "quadtree",
+    "spatialGrid",
     "cellDirections",
 ];
 
@@ -148,35 +148,33 @@ async function runBenchmarkFromUi(scenarioId) {
             ? createBenchmarkReport([rawResult], { mode: "single", warmupMs, runMs, wsClients })
             : normalizeBenchmarkReport(rawResult, { warmupMs, runMs, wsClients });
 
-        await appendBenchmarkResultsToEventLog(lastBenchmarkReport);
         await resetAfterBenchmark();
         restoreDisplayLayersAfterBenchmark();
+        await appendBenchmarkResultsToEventLog(lastBenchmarkReport, { includeReset: true });
         await refreshEventLog();
         renderBenchmarkResult(lastBenchmarkReport);
         openModal(dom.benchmarkResultsModal);
     } catch (error) {
         const timedOut = error?.name === "TimeoutError";
         const aborted = isBenchmarkAbortError(error);
-        if (timedOut || !aborted) {
-            const message = error?.message || String(error);
-            await appendEventLog({
-                type: timedOut ? "benchmark-watchdog" : "benchmark-error",
-                title: timedOut ? "Benchmark watchdog stopped run" : "Benchmark failed",
-                body: message,
-                tone: timedOut ? "benchmark" : "danger",
-                icon: "!",
-            });
-            console.error("Benchmark failed", error);
-        } else {
+        const event = benchmarkFailureEvent(error, timedOut, aborted);
+        if (aborted) {
             console.warn("Benchmark aborted", error);
+        } else {
+            console.error("Benchmark failed", error);
         }
+
+        let resetCompleted = false;
         try {
             await resetAfterBenchmark();
+            resetCompleted = true;
             restoreDisplayLayersAfterBenchmark();
-            await refreshEventLog();
         } catch (resetError) {
             console.error("Benchmark reset failed", resetError);
         }
+
+        await appendEventLog(withBenchmarkResetCompanion(event, resetCompleted));
+        await refreshEventLog();
     } finally {
         restoreDisplayLayersAfterBenchmark();
         running = false;
@@ -258,7 +256,7 @@ async function resetAfterBenchmark() {
         state.config = await updateConfig(clonePlain(savedWorldConfigBeforeBenchmark));
         applySimulationConfig();
     }
-    await handleSimulationReset();
+    await handleSimulationReset({ logEvent: false });
     savedWorldConfigBeforeBenchmark = null;
 }
 
@@ -358,7 +356,8 @@ function scenarioLabel(item) {
     const parts = [scenario.shortName ?? scenario.name ?? "Scenario"];
     if (Number(scenario.wsClients) > 1) parts.push(`${scenario.wsClients} WS clients`);
     if (scenario.lighting?.localLightSourcesEnabled) parts.push(`${scenario.lighting.lightSourceCount ?? "?"} lights`);
-    if (hasDebugLayers(scenario.layers)) parts.push("debug layers");
+    if (hasAllDisplayLayers(scenario.layers)) parts.push("all display layers");
+    else if (hasDebugLayers(scenario.layers)) parts.push("display layers");
     if (isFailedResult(item)) parts.push("failed");
     return parts.join(" · ");
 }
@@ -367,17 +366,17 @@ function isFailedResult(item) {
     return Boolean(item?.summary?.failed || item?.error || item?.summary?.error);
 }
 
-async function appendBenchmarkResultsToEventLog(report) {
+async function appendBenchmarkResultsToEventLog(report, options = {}) {
     const normalized = normalizeBenchmarkReport(report);
     const suite = normalized.mode === "suite" || (normalized.results?.length ?? 0) > 1;
-    await appendEventLog({
+    await appendEventLog(withBenchmarkResetCompanion({
         type: "benchmark-result",
         title: suite ? "Benchmark suite" : (normalized.results?.[0]?.scenario?.shortName ?? normalized.results?.[0]?.scenario?.name ?? "Benchmark"),
         body: suite ? suiteEventSummary(normalized) : eventSummary(normalized.results?.[0]),
         tone: "benchmark",
         icon: "B",
         payload: { benchmarkReport: normalized },
-    });
+    }, options.includeReset === true));
 }
 
 function eventSummary(result) {
@@ -385,8 +384,12 @@ function eventSummary(result) {
     const params = [
         `${scenario.cells ?? "?"} cells`,
         `${scenario.food ?? "?"} food`,
-        hasDebugLayers(scenario.layers) ? "debug on" : "debug off",
     ];
+    if (hasAllDisplayLayers(scenario.layers)) {
+        params.push("all display layers");
+    } else if (hasDebugLayers(scenario.layers)) {
+        params.push("display layers");
+    }
     if (scenario.lighting?.localLightSourcesEnabled) {
         params.push(`${scenario.lighting.lightSourceCount ?? "?"} lights`);
     }
@@ -412,7 +415,52 @@ function suiteEventSummary(report) {
         : null;
     const failed = results.filter(isFailedResult).length;
     const failedText = failed > 0 ? ` · ${failed} failed` : "";
-    return `Run all baseline scenarios → ${results.length} scenarios · avg FPS ${formatNumber(averageFps, 1)} · avg TPS ${formatNumber(averageTps, 0)}${failedText}`;
+    return `${results.length} scenarios → avg FPS ${formatNumber(averageFps, 1)} · avg TPS ${formatNumber(averageTps, 0)}${failedText}`;
+}
+
+function benchmarkFailureEvent(error, timedOut, aborted) {
+    if (aborted) {
+        return {
+            type: "benchmark-aborted",
+            title: "Benchmark interrupted",
+            body: "Stopped by Escape.",
+            tone: "benchmark",
+            icon: "!",
+        };
+    }
+
+    const message = error?.message || String(error);
+    return {
+        type: timedOut ? "benchmark-watchdog" : "benchmark-error",
+        title: timedOut ? "Benchmark watchdog stopped run" : "Benchmark failed",
+        body: message,
+        tone: timedOut ? "benchmark" : "danger",
+        icon: "!",
+    };
+}
+
+function withBenchmarkResetCompanion(entry, includeReset) {
+    if (!includeReset) return entry;
+    return {
+        ...entry,
+        payload: {
+            ...(entry.payload ?? {}),
+            combinedEntries: [benchmarkResetCompanion()],
+        },
+    };
+}
+
+function benchmarkResetCompanion() {
+    return {
+        id: `benchmark-reset-${Date.now()}`,
+        type: "world-reset",
+        title: "World reset",
+        body: "Simulation world reset after benchmark run.",
+        tone: "info",
+        icon: "R",
+        createdAt: new Date().toISOString(),
+        payload: { source: "benchmark" },
+    };
 }
 
 function setBenchmarkUiLocked(locked) {
@@ -482,7 +530,7 @@ function updateBenchmarkIndicator(scenario, progress) {
         const index = Number(progress?.index ?? 1);
         const progressText = total > 1 ? `${index}/${total}` : "single";
         const phase = progress?.phase ?? "setup";
-        renderToolbarSegments(dom.benchmarkToolbarProgress, [progressText, phase, "speed 1x"]);
+        renderToolbarSegments(dom.benchmarkToolbarProgress, [progressText, phase]);
     }
 }
 
@@ -544,8 +592,19 @@ function setBenchmarkResultButtonsEnabled(enabled) {
     if (dom.benchmarkCopyJsonBtn) dom.benchmarkCopyJsonBtn.disabled = !enabled;
 }
 
+function hasAllDisplayLayers(layers) {
+    return Boolean(
+        layers?.opacityMap
+        && layers?.directedLightMap
+        && layers?.scatteredLightMap
+        && layers?.lightDirection
+        && layers?.spatialGrid
+        && layers?.cellDirections
+    );
+}
+
 function hasDebugLayers(layers) {
-    return Boolean(layers?.opacityMap || layers?.directedLightMap || layers?.scatteredLightMap || layers?.lightDirection || layers?.quadtree || layers?.cellDirections);
+    return Boolean(layers?.opacityMap || layers?.directedLightMap || layers?.scatteredLightMap || layers?.lightDirection || layers?.spatialGrid || layers?.cellDirections);
 }
 
 function formatDateTime(value) {
@@ -558,3 +617,5 @@ function numericInput(input, fallback, min, max) {
     const value = Number(input?.value);
     return Number.isFinite(value) ? Math.max(min, Math.min(max, Math.round(value))) : fallback;
 }
+
+

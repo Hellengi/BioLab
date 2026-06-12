@@ -956,3 +956,163 @@
 .log-entry--type-world-reset .log-entry-icon {
     color: var(--c-warning);
 }
+
+
+
+/* ── Event log: combined benchmark/reset entries ─────────────────────────── */
+.log-entry-divider {
+    height: 1px;
+    margin: 3px 0;
+    background: linear-gradient(90deg, transparent, var(--c-border-soft), transparent);
+}
+
+.log-entry-combined {
+    display: grid;
+    gap: 2px;
+    color: var(--c-text-sub);
+}
+
+.log-entry-combined-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--gap-xs);
+    min-width: 0;
+}
+
+.log-entry-combined-title {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--c-text);
+    font-weight: 550;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.log-entry-combined-time {
+    flex: 0 0 auto;
+    color: var(--c-text-muted);
+    font-family: var(--font-mono);
+    font-size: 10px;
+}
+
+.log-entry-combined-body {
+    color: var(--c-text-sub);
+    overflow-wrap: anywhere;
+}
+
+.log-entry--type-benchmark-aborted .log-entry-icon {
+    color: var(--c-warning);
+}
+
+/* ── Event log: stable smooth-scroll target and benchmark reset companion ── */
+.log-entry-icon-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    min-width: 20px;
+}
+
+.log-entry-icon-divider {
+    width: 1px;
+    height: 8px;
+    background: linear-gradient(180deg, transparent, var(--c-border-soft), transparent);
+}
+
+.log-entry-icon--combined {
+    margin-top: 0;
+}
+
+.log-entry--type-benchmark-result .log-entry-icon--type-world-reset,
+.log-entry--type-benchmark-aborted .log-entry-icon--type-world-reset,
+.log-entry--type-benchmark-watchdog .log-entry-icon--type-world-reset,
+.log-entry--type-benchmark-error .log-entry-icon--type-world-reset,
+.log-entry-icon--type-world-reset {
+    color: var(--c-warning);
+}
+
+.log-entry-combined-body {
+    color: var(--c-text-sub);
+    font-size: var(--font-sm);
+    line-height: 1.38;
+    overflow-wrap: anywhere;
+}
+
+
+/* ── Event log benchmark companion icon alignment ───────────────────────── */
+.log-entry--has-combined {
+    align-items: start;
+}
+
+.log-entry--has-combined .log-entry-icon--primary {
+    grid-column: 1;
+    grid-row: 1;
+}
+
+.log-entry--has-combined > .log-entry-content {
+    grid-column: 2;
+    grid-row: 1;
+}
+
+.log-entry--has-combined > .log-entry-divider {
+    grid-column: 2;
+    width: 100%;
+    margin: 3px 0;
+}
+
+.log-entry--has-combined > .log-entry-icon--combined {
+    grid-column: 1;
+    align-self: start;
+    margin-top: 1px;
+}
+
+.log-entry--has-combined > .log-entry-combined {
+    grid-column: 2;
+    display: grid;
+    gap: 2px;
+    min-height: 20px;
+}
+
+.log-entry--has-combined .log-entry-combined-title {
+    color: var(--c-text);
+    font-size: var(--font-sm);
+    font-weight: 550;
+    line-height: 1.2;
+    text-transform: none;
+    letter-spacing: 0.01em;
+}
+
+.log-entry--has-combined .log-entry-combined-body {
+    margin: 0;
+    font-size: var(--font-sm);
+    line-height: 1.38;
+}
+
+.log-entry--has-combined .log-entry-actions {
+    margin-top: 1px;
+}
+
+
+/* ── Event log: reusable combined-entry spacing and title normalization ───── */
+.log-entry--has-combined > .log-entry-divider {
+    margin: 3px 0;
+}
+
+.log-entry-combined {
+    gap: 2px;
+}
+
+.log-entry-combined-title {
+    color: var(--c-text);
+    font-size: var(--font-sm);
+    font-weight: 550;
+    line-height: 1.2;
+    letter-spacing: 0.01em;
+    text-transform: none;
+}
+
+.log-entry-combined-body {
+    font-size: var(--font-sm);
+    line-height: 1.38;
+}

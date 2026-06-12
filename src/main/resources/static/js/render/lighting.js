@@ -1,4 +1,5 @@
 import { cssVar } from "../core/utils.js";
+import { drawAnimatedDashedCircle } from "./dashed-ring.js";
 
 const BG_DARK = 40;
 const BG_LIGHT = 200;
@@ -44,7 +45,7 @@ const LIGHT_DIRECTION_LAYER = Object.freeze({
     bucketCount: 4,
 });
 
-const QUADTREE_GRID = Object.freeze({
+const SPATIAL_GRID = Object.freeze({
     lineWidth: 0.85,
     maxBrightnessSamples: 64,
     lightSceneThreshold: 185,
@@ -54,7 +55,16 @@ const QUADTREE_GRID = Object.freeze({
     darkAlpha: 0.62,
 });
 
-const quadtreeStrokeColorCache = new Map();
+const SPATIAL_GRID_SEARCH_RADIUS = Object.freeze({
+    lineWidth: 1.2,
+    dashFraction: 8 / 13,
+    targetSegmentLength: 13.0,
+    minSegments: 12,
+    rotationsPerSecond: 0.11,
+    strokeVar: "--c-warning",
+});
+
+const spatialGridStrokeColorCache = new Map();
 
 const backgroundRasterCache = createRasterCache();
 const opacityOverlayRasterCache = createRasterCache();
@@ -183,8 +193,9 @@ export function drawDisplayLayers(ctx, lighting, displayLayers, options = {}) {
         drawLightDirectionLayer(ctx, lighting);
     }
 
-    if (displayLayers.quadtree) {
-        drawQuadtreeGrid(ctx, lighting, displayLayers);
+    if (displayLayers.spatialGrid) {
+        drawSpatialGrid(ctx, lighting, displayLayers);
+        drawSpatialGridSearchRadius(ctx, options.spatialGridSearchCircle);
     }
 }
 
@@ -616,36 +627,59 @@ function smoothstep(value) {
     return t * t * (3 - 2 * t);
 }
 
-function drawQuadtreeGrid(ctx, lighting, displayLayers = {}) {
-    const nodes = Array.isArray(lighting?.quadtreeNodes) ? lighting.quadtreeNodes : [];
-    if (!nodes.length) return;
+function drawSpatialGrid(ctx, lighting, displayLayers = {}) {
+    const gridCells = Array.isArray(lighting?.spatialGridCells) ? lighting.spatialGridCells : [];
+    if (!gridCells.length) return;
 
     const sceneBrightness = estimateSceneBrightness(lighting, displayLayers);
-    const lightScene = sceneBrightness >= QUADTREE_GRID.lightSceneThreshold;
+    const lightScene = sceneBrightness >= SPATIAL_GRID.lightSceneThreshold;
 
     ctx.save();
-    ctx.strokeStyle = quadtreeStrokeColor(
-        lightScene ? QUADTREE_GRID.darkStrokeVar : QUADTREE_GRID.lightStrokeVar
+    ctx.strokeStyle = spatialGridStrokeColor(
+        lightScene ? SPATIAL_GRID.darkStrokeVar : SPATIAL_GRID.lightStrokeVar
     );
-    ctx.globalAlpha = lightScene ? QUADTREE_GRID.darkAlpha : QUADTREE_GRID.lightAlpha;
-    ctx.lineWidth = QUADTREE_GRID.lineWidth;
+    ctx.globalAlpha = lightScene ? SPATIAL_GRID.darkAlpha : SPATIAL_GRID.lightAlpha;
+    ctx.lineWidth = SPATIAL_GRID.lineWidth;
     ctx.setLineDash([]);
 
     ctx.beginPath();
-    for (const node of nodes) {
-        ctx.rect(node.x, node.y, node.width, node.height);
+    for (const cell of gridCells) {
+        ctx.rect(cell.x, cell.y, cell.width, cell.height);
     }
     ctx.stroke();
 
     ctx.restore();
 }
 
-function quadtreeStrokeColor(varName) {
-    if (!quadtreeStrokeColorCache.has(varName)) {
-        quadtreeStrokeColorCache.set(varName, cssVar(varName));
+function drawSpatialGridSearchRadius(ctx, circle) {
+    const x = Number(circle?.x);
+    const y = Number(circle?.y);
+    const radius = Number(circle?.radius);
+    if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(radius) || radius <= 0) {
+        return;
     }
 
-    return quadtreeStrokeColorCache.get(varName);
+    drawAnimatedDashedCircle(ctx, {
+        x,
+        y,
+        radius,
+        strokeStyle: spatialGridStrokeColor(SPATIAL_GRID_SEARCH_RADIUS.strokeVar),
+        lineWidth: SPATIAL_GRID_SEARCH_RADIUS.lineWidth,
+        lineCap: "round",
+        dashFraction: SPATIAL_GRID_SEARCH_RADIUS.dashFraction,
+        targetSegmentLength: SPATIAL_GRID_SEARCH_RADIUS.targetSegmentLength,
+        minSegments: SPATIAL_GRID_SEARCH_RADIUS.minSegments,
+        rotationsPerSecond: SPATIAL_GRID_SEARCH_RADIUS.rotationsPerSecond,
+        rotationDirection: "counterclockwise",
+    });
+}
+
+function spatialGridStrokeColor(varName) {
+    if (!spatialGridStrokeColorCache.has(varName)) {
+        spatialGridStrokeColorCache.set(varName, cssVar(varName));
+    }
+
+    return spatialGridStrokeColorCache.get(varName);
 }
 
 function estimateSceneBrightness(lighting, displayLayers = {}) {
@@ -657,7 +691,7 @@ function estimateSceneBrightness(lighting, displayLayers = {}) {
         return backgroundValue(lighting?.globalLight ?? 0.75);
     }
 
-    const sampleLimit = Math.max(1, QUADTREE_GRID.maxBrightnessSamples);
+    const sampleLimit = Math.max(1, SPATIAL_GRID.maxBrightnessSamples);
     const sampleStride = Math.max(1, Math.ceil(lightMap.length / sampleLimit));
     const opacityMap = displayLayers.opacityMap && Array.isArray(lighting?.opacityMap)
         ? lighting.opacityMap
@@ -790,3 +824,5 @@ function drawTrapezoidSource(ctx, source) {
     ctx.strokeStyle = 'rgba(255,255,255,0.9)';
     ctx.stroke();
 }
+
+

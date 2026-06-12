@@ -14,6 +14,8 @@ public record LightingDto(
         double[] scatteredLightMap,
         double[] opacityMap,
         double[] lightDirectionArrows,
-        List<QuadtreeNodeDto> quadtreeNodes
+        List<SpatialGridCellDto> spatialGridCells
 ) {
 }
+
+

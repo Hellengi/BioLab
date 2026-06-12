@@ -5,12 +5,13 @@ import com.hellengi.biolab.domain.SimulationWorld;
 import com.hellengi.biolab.domain.model.Cell;
 import com.hellengi.biolab.domain.model.LightSource;
 import com.hellengi.biolab.domain.physics.Lighting;
-import com.hellengi.biolab.domain.spatial.Quadtree;
 import com.hellengi.biolab.domain.spatial.SpatialBounds;
+import com.hellengi.biolab.domain.spatial.SpatialHashGrid;
+import com.hellengi.biolab.domain.spatial.SpatialIndexTuning;
 import com.hellengi.biolab.dto.DisplayLayersDto;
 import com.hellengi.biolab.dto.LightSourceDto;
 import com.hellengi.biolab.dto.LightingDto;
-import com.hellengi.biolab.dto.QuadtreeNodeDto;
+import com.hellengi.biolab.dto.SpatialGridCellDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -88,7 +89,7 @@ public class LightingMapper {
         double[] lightDirectionArrows = includeDebugMaps && layers.lightDirection()
                 ? buildLightDirectionArrows(world, directedLightMap, gridStep, width, height)
                 : new double[0];
-        List<QuadtreeNodeDto> quadtreeNodes = includeDebugMaps && layers.quadtree() ? buildQuadtreeNodes(world) : List.of();
+        List<SpatialGridCellDto> spatialGridCells = includeDebugMaps && layers.spatialGrid() ? buildSpatialGridCells(world) : List.of();
 
         return new LightingDto(
                 world.getGlobalLight().getValue(),
@@ -102,7 +103,7 @@ public class LightingMapper {
                 scatteredLightMap,
                 opacityMap,
                 lightDirectionArrows,
-                quadtreeNodes
+                spatialGridCells
         );
     }
 
@@ -196,37 +197,41 @@ public class LightingMapper {
         return Math.round(value * 10000.0) / 10000.0;
     }
 
-    private List<QuadtreeNodeDto> buildQuadtreeNodes(SimulationWorld world) {
-        Quadtree<Cell> cellIndex = new Quadtree<>(worldBounds(), this::cellBounds);
-
-        for (Cell cell : world.getCells()) {
-            if (!cell.isMarkedForRemoval()) {
-                cellIndex.insert(cell);
-            }
+    private List<SpatialGridCellDto> buildSpatialGridCells(SimulationWorld world) {
+        double maxRadius = maxActiveRadius(world);
+        if (maxRadius <= 0.0) {
+            return List.of();
         }
 
-        return cellIndex.nodeBounds().stream()
-                .map(bounds -> new QuadtreeNodeDto(
-                        bounds.minX(),
-                        bounds.minY(),
-                        bounds.maxX() - bounds.minX(),
-                        bounds.maxY() - bounds.minY()
-                ))
+        SpatialHashGrid<Cell> grid = new SpatialHashGrid<>(Cell::getX, Cell::getY);
+        grid.rebuild(
+                world.getCells(),
+                SpatialIndexTuning.collisionBucketSize(maxRadius),
+                cell -> !cell.isMarkedForRemoval()
+        );
+
+        return grid.bucketBounds().stream()
+                .map(this::toSpatialGridCellDto)
                 .toList();
     }
 
-    private SpatialBounds cellBounds(Cell cell) {
-        return SpatialBounds.fromCenterAndRadius(cell.getX(), cell.getY(), cell.getRadius());
+    private SpatialGridCellDto toSpatialGridCellDto(SpatialBounds bounds) {
+        return new SpatialGridCellDto(
+                bounds.minX(),
+                bounds.minY(),
+                bounds.maxX() - bounds.minX(),
+                bounds.maxY() - bounds.minY()
+        );
     }
 
-    private SpatialBounds worldBounds() {
-        double margin = Math.max(
-                32.0,
-                config.getCell().getBaseRadius()
-                        + config.getCell().getEnergyToRadiusFactor()
-        );
-        double diameter = config.getTubeDiameter();
-        return SpatialBounds.fromMinMax(-margin, -margin, diameter + margin, diameter + margin);
+    private double maxActiveRadius(SimulationWorld world) {
+        double maxRadius = 0.0;
+        for (Cell cell : world.getCells()) {
+            if (!cell.isMarkedForRemoval()) {
+                maxRadius = Math.max(maxRadius, cell.getRadius());
+            }
+        }
+        return maxRadius;
     }
 
     private LightSourceDto toDto(LightSource source, double centerX, double centerY) {
@@ -241,5 +246,7 @@ public class LightingMapper {
         );
     }
 }
+
+
 
 

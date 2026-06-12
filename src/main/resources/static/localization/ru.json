@@ -1,4 +1,3 @@
-
 {
   "0% aligned backward; 100% radial inward; mutually limited with surface distribution so the visible tail stays outside the membrane": "0% — назад; 100% — радиально внутрь; взаимно ограничивается с Surface distribution, чтобы видимый хвост оставался снаружи мембраны",
   "Actual basal supply": "Фактическое базовое питание",
@@ -335,7 +334,7 @@
   "Production is localized in chloroplasts or lysosomes depending on scope": "Выработка локализована в хлоропластах или лизосомах в зависимости от области",
   "Production: {value}": "Выработка: {value}",
   "Properties": "Свойства",
-  "Quadtree grid": "Сетка quadtree",
+  "Spatial grid": "Пространственная сетка",
   "Radiation": "Радиация",
   "Radius": "Радиус",
   "Rate components": "Компоненты скорости",
@@ -368,7 +367,7 @@
   "Shared energy supply": "Общее поступление энергии",
   "Shows computed illumination and optical density": "Показывает рассчитанную освещённость и оптическую плотность",
   "Shows dominant light propagation direction": "Показывает основное направление распространения света",
-  "Shows spatial partitions used for collision lookup": "Показывает пространственные области, используемые для поиска столкновений",
+  "Shows SpatialHashGrid center buckets used for collision lookup": "Показывает bucket-сетку SpatialHashGrid для центров клеток и поиска столкновений",
   "Shows where cells are facing": "Показывает, куда направлены клетки",
   "Simulation Settings": "Настройки симуляции",
   "Simulation speed: 0.01× … 100×": "Скорость симуляции: 0,01× … 100×",
@@ -432,3 +431,5 @@
   "One": "Один",
   "Pair": "Пара"
 }
+
+

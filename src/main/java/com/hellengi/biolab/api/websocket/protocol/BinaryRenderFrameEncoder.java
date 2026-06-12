@@ -21,9 +21,9 @@ import static com.hellengi.biolab.api.websocket.protocol.BinaryRenderProtocol.*;
 
 /**
  * Binary render encoder for the hot WebSocket lane. The protocol intentionally
- * keeps the current visual model lossless: the browser reconstructs the same
- * render cell objects it used to receive as JSON, but without JSON.parse and
- * without textual field names for every entity.
+ * keeps the current visual model intact: the browser reconstructs the same
+ * render cell objects it used to receive as JSON, but stores visual numbers as
+ * Float32 values to halve the hot-lane payload without affecting simulation.
  */
 @Component
 public class BinaryRenderFrameEncoder {
@@ -36,8 +36,8 @@ public class BinaryRenderFrameEncoder {
             out.writeShort(VERSION);
             out.writeByte(MESSAGE_RENDER_FRAME);
             out.writeLong(frame.tick());
-            out.writeDouble(frame.time());
-            out.writeDouble(frame.foodSpawnProgress());
+            writeFloat(out, frame.time());
+            writeFloat(out, frame.foodSpawnProgress());
             out.writeInt(frame.tubeDiameter());
             out.writeLong(frame.tps() == null ? NULL_LONG : frame.tps());
 
@@ -55,13 +55,13 @@ public class BinaryRenderFrameEncoder {
     private int estimateSize(SimulationRenderFrameDto frame) {
         int cells = frame.cells() == null ? 0 : frame.cells().size();
         int foods = frame.foods() == null ? 0 : frame.foods().size();
-        return 128 + cells * 520 + foods * 96;
+        return 96 + cells * 320 + foods * 64;
     }
 
     private void writeLightingMetadata(DataOutputStream out, LightingDto lighting) throws IOException {
         if (lighting == null) {
-            out.writeDouble(0.0);
-            out.writeDouble(0.0);
+            writeFloat(out, 0.0);
+            writeFloat(out, 0.0);
             out.writeInt(0);
             out.writeInt(1);
             out.writeInt(0);
@@ -69,18 +69,18 @@ public class BinaryRenderFrameEncoder {
             return;
         }
 
-        out.writeDouble(lighting.globalLight());
-        out.writeDouble(lighting.cycleTick());
+        writeFloat(out, lighting.globalLight());
+        writeFloat(out, lighting.cycleTick());
 
         List<LightSourceDto> sources = safeList(lighting.sources());
         out.writeInt(sources.size());
         for (LightSourceDto source : sources) {
-            out.writeDouble(source.x());
-            out.writeDouble(source.y());
-            out.writeDouble(source.brightness());
-            out.writeDouble(source.orbitRadius());
-            out.writeDouble(source.orbitSpeed());
-            out.writeDouble(source.angle());
+            writeFloat(out, source.x());
+            writeFloat(out, source.y());
+            writeFloat(out, source.brightness());
+            writeFloat(out, source.orbitRadius());
+            writeFloat(out, source.orbitSpeed());
+            writeFloat(out, source.angle());
             out.writeByte("EDGE".equalsIgnoreCase(source.renderType()) ? LIGHT_SOURCE_EDGE : LIGHT_SOURCE_POINT);
         }
 
@@ -94,40 +94,40 @@ public class BinaryRenderFrameEncoder {
         out.writeInt(safeCells.size());
         for (CellRenderDto cell : safeCells) {
             out.writeLong(cell.id());
-            out.writeDouble(cell.x());
-            out.writeDouble(cell.y());
-            out.writeDouble(cell.vx());
-            out.writeDouble(cell.vy());
-            out.writeDouble(cell.angularVelocity());
-            out.writeDouble(cell.energy());
+            writeFloat(out, cell.x());
+            writeFloat(out, cell.y());
+            writeFloat(out, cell.vx());
+            writeFloat(out, cell.vy());
+            writeFloat(out, cell.angularVelocity());
+            writeFloat(out, cell.energy());
             writeNullableDouble(out, cell.maxEnergy());
-            out.writeDouble(cell.radius());
-            out.writeDouble(cell.nucleusOffsetX());
-            out.writeDouble(cell.nucleusOffsetY());
-            out.writeDouble(cell.nucleusRadius());
-            out.writeDouble(cell.nucleusTargetOffsetX());
-            out.writeDouble(cell.nucleusTargetOffsetY());
+            writeFloat(out, cell.radius());
+            writeFloat(out, cell.nucleusOffsetX());
+            writeFloat(out, cell.nucleusOffsetY());
+            writeFloat(out, cell.nucleusRadius());
+            writeFloat(out, cell.nucleusTargetOffsetX());
+            writeFloat(out, cell.nucleusTargetOffsetY());
             out.writeByte(cell.dead() ? FLAG_DEAD : 0);
             out.writeLong(cell.lifetimeTicks());
-            out.writeDouble(cell.localLight());
-            out.writeDouble(cell.mass());
+            writeFloat(out, cell.localLight());
+            writeFloat(out, cell.mass());
             writeNullableDouble(out, cell.dryMass());
-            out.writeDouble(cell.density());
+            writeFloat(out, cell.density());
             writeNullableDouble(out, cell.opacity());
-            out.writeDouble(cell.nucleusDamage());
-            out.writeDouble(cell.cellDamage());
-            out.writeDouble(cell.cpDamage());
-            out.writeDouble(cell.membraneDamage());
-            out.writeDouble(cell.lysosomeDamage());
-            out.writeDouble(cell.flagellumDamage());
-            out.writeDouble(cell.membraneLightTransmittance());
+            writeFloat(out, cell.nucleusDamage());
+            writeFloat(out, cell.cellDamage());
+            writeFloat(out, cell.cpDamage());
+            writeFloat(out, cell.membraneDamage());
+            writeFloat(out, cell.lysosomeDamage());
+            writeFloat(out, cell.flagellumDamage());
+            writeFloat(out, cell.membraneLightTransmittance());
             out.writeInt(cell.lysosomeCapacity());
             out.writeInt(cell.lysosomeOccupiedSlots());
             writeLysosomeSlots(out, cell.lysosomeSlots());
             out.writeInt(cell.flagellumCapacity());
             writeFlagellumSlots(out, cell.flagellumSlots());
             writeVisual(out, cell.visual());
-            out.writeDouble(cell.directionAngle());
+            writeFloat(out, cell.directionAngle());
         }
     }
 
@@ -137,21 +137,21 @@ public class BinaryRenderFrameEncoder {
         for (LysosomeSlotRenderDto slot : safeSlots) {
             out.writeInt(slot.index());
             writeNullableLong(out, slot.foodId());
-            out.writeDouble(slot.damage());
+            writeFloat(out, slot.damage());
             out.writeBoolean(slot.occupied());
-            out.writeDouble(slot.performance());
-            out.writeDouble(slot.foodEnergy());
-            out.writeDouble(slot.foodRadius());
+            writeFloat(out, slot.performance());
+            writeFloat(out, slot.foodEnergy());
+            writeFloat(out, slot.foodRadius());
             out.writeBoolean(slot.foodInsideLysosome());
-            out.writeDouble(slot.targetFoodRadius());
-            out.writeDouble(slot.layoutX());
-            out.writeDouble(slot.layoutY());
-            out.writeDouble(slot.layoutRadius());
-            out.writeDouble(slot.layoutRotation());
-            out.writeDouble(slot.targetLayoutX());
-            out.writeDouble(slot.targetLayoutY());
-            out.writeDouble(slot.targetLayoutRadius());
-            out.writeDouble(slot.targetLayoutRotation());
+            writeFloat(out, slot.targetFoodRadius());
+            writeFloat(out, slot.layoutX());
+            writeFloat(out, slot.layoutY());
+            writeFloat(out, slot.layoutRadius());
+            writeFloat(out, slot.layoutRotation());
+            writeFloat(out, slot.targetLayoutX());
+            writeFloat(out, slot.targetLayoutY());
+            writeFloat(out, slot.targetLayoutRadius());
+            writeFloat(out, slot.targetLayoutRotation());
         }
     }
 
@@ -160,16 +160,16 @@ public class BinaryRenderFrameEncoder {
         out.writeInt(safeSlots.size());
         for (FlagellumSlotRenderDto slot : safeSlots) {
             out.writeInt(slot.index());
-            out.writeDouble(slot.motorPower());
-            out.writeDouble(slot.damage());
-            out.writeDouble(slot.performance());
-            out.writeDouble(slot.baseX());
-            out.writeDouble(slot.baseY());
-            out.writeDouble(slot.directionX());
-            out.writeDouble(slot.directionY());
-            out.writeDouble(slot.length());
-            out.writeDouble(slot.thickness());
-            out.writeDouble(slot.force());
+            writeFloat(out, slot.motorPower());
+            writeFloat(out, slot.damage());
+            writeFloat(out, slot.performance());
+            writeFloat(out, slot.baseX());
+            writeFloat(out, slot.baseY());
+            writeFloat(out, slot.directionX());
+            writeFloat(out, slot.directionY());
+            writeFloat(out, slot.length());
+            writeFloat(out, slot.thickness());
+            writeFloat(out, slot.force());
         }
     }
 
@@ -186,11 +186,11 @@ public class BinaryRenderFrameEncoder {
         writeColor(out, visual.lysosomeColor());
         out.writeInt(visual.lysosomeAmount());
         writeColor(out, visual.lysosomeGlowColor());
-        out.writeDouble(visual.lysosomeGlowStrength());
+        writeFloat(out, visual.lysosomeGlowStrength());
         writeColor(out, visual.flagellumColor());
         out.writeInt(visual.flagellumCount());
         writeColor(out, visual.bioluminescenceColor());
-        out.writeDouble(visual.bioluminescenceExpression());
+        writeFloat(out, visual.bioluminescenceExpression());
         writeNullableDouble(out, visual.lightDirectionAngle());
         writeNullableDouble(out, visual.lightGradient());
         writeNullableDouble(out, visual.highlightDirectionAngle());
@@ -203,10 +203,10 @@ public class BinaryRenderFrameEncoder {
         out.writeInt(safeFoods.size());
         for (FoodDto food : safeFoods) {
             out.writeLong(food.id());
-            out.writeDouble(food.x());
-            out.writeDouble(food.y());
-            out.writeDouble(food.energy());
-            out.writeDouble(food.radius());
+            writeFloat(out, food.x());
+            writeFloat(out, food.y());
+            writeFloat(out, food.energy());
+            writeFloat(out, food.radius());
             byte flags = 0;
             if (food.consumed()) flags |= FLAG_FOOD_CONSUMED;
             if (food.insideLysosome()) flags |= FLAG_FOOD_INSIDE_LYSOSOME;
@@ -223,7 +223,7 @@ public class BinaryRenderFrameEncoder {
         out.writeByte(clampByte(safe.r()));
         out.writeByte(clampByte(safe.g()));
         out.writeByte(clampByte(safe.b()));
-        out.writeDouble(safe.opacity());
+        writeFloat(out, safe.opacity());
     }
 
     private int clampByte(int value) {
@@ -235,7 +235,11 @@ public class BinaryRenderFrameEncoder {
     }
 
     private void writeNullableDouble(DataOutputStream out, Double value) throws IOException {
-        out.writeDouble(value == null ? NULL_DOUBLE : value);
+        writeFloat(out, value == null ? NULL_DOUBLE : value);
+    }
+
+    private void writeFloat(DataOutputStream out, double value) throws IOException {
+        out.writeFloat((float) value);
     }
 
     private CellVisualDto emptyVisual() {

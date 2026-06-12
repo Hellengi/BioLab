@@ -13,6 +13,7 @@ import com.hellengi.biolab.dto.FlagellumSlotDto;
 import com.hellengi.biolab.dto.FlagellumSlotRenderDto;
 import com.hellengi.biolab.dto.LysosomeSlotRenderDto;
 
+import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -253,45 +254,56 @@ public class CellMapper {
     }
 
     private List<LysosomeSlotRenderDto> lysosomeSlotsToRenderDto(Cell cell) {
-        return cell.getLysosomeSlots().stream()
-                .map(slot -> new LysosomeSlotRenderDto(
-                        slot.getIndex(),
-                        slot.getFoodId(),
-                        slot.getDamage(),
-                        slot.isOccupied(),
-                        slot.performance(),
-                        slot.getFoodEnergy(),
-                        slot.getFoodRadius(),
-                        slot.isFoodInsideLysosome(),
-                        slot.getTargetFoodRadius(),
-                        slot.getLayoutX(),
-                        slot.getLayoutY(),
-                        slot.getLayoutRadius(),
-                        slot.getLayoutRotation(),
-                        slot.getTargetLayoutX(),
-                        slot.getTargetLayoutY(),
-                        slot.getTargetLayoutRadius(),
-                        slot.getTargetLayoutRotation()
-                ))
-                .toList();
+        List<com.hellengi.biolab.domain.model.LysosomeSlot> slots = cell.getLysosomeSlots();
+        List<LysosomeSlotRenderDto> result = new ArrayList<>(slots.size());
+        for (com.hellengi.biolab.domain.model.LysosomeSlot slot : slots) {
+            result.add(new LysosomeSlotRenderDto(
+                    slot.getIndex(),
+                    slot.getFoodId(),
+                    slot.getDamage(),
+                    slot.isOccupied(),
+                    slot.performance(),
+                    slot.getFoodEnergy(),
+                    slot.getFoodRadius(),
+                    slot.isFoodInsideLysosome(),
+                    slot.getTargetFoodRadius(),
+                    slot.getLayoutX(),
+                    slot.getLayoutY(),
+                    slot.getLayoutRadius(),
+                    slot.getLayoutRotation(),
+                    slot.getTargetLayoutX(),
+                    slot.getTargetLayoutY(),
+                    slot.getTargetLayoutRadius(),
+                    slot.getTargetLayoutRotation()
+            ));
+        }
+        return result;
     }
 
     private List<FlagellumSlotRenderDto> flagellumSlotsToRenderDto(Cell cell) {
-        return cell.getFlagellumSlots().stream()
-                .map(slot -> new FlagellumSlotRenderDto(
-                        slot.getIndex(),
-                        cell.flagellumMotorPower(slot.getIndex()),
-                        slot.getDamage(),
-                        flagellumFunctionalPerformance(cell, slot),
-                        cell.getFlagellumBaseLocalX(slot.getIndex()),
-                        cell.getFlagellumBaseLocalY(slot.getIndex()),
-                        cell.getFlagellumDirectionX(slot.getIndex()),
-                        cell.getFlagellumDirectionY(slot.getIndex()),
-                        cell.getFlagellumLength(slot.getIndex()),
-                        cell.getFlagellumThickness(),
-                        slot.getLastForce()
-                ))
-                .toList();
+        List<com.hellengi.biolab.domain.model.FlagellumSlot> slots = cell.getFlagellumSlots();
+        List<FlagellumSlotRenderDto> result = new ArrayList<>(slots.size());
+        double radius = cell.getRadius();
+        double thickness = radius * cell.flagella().thicknessToRadiusFactor(config.getCell());
+        for (com.hellengi.biolab.domain.model.FlagellumSlot slot : slots) {
+            int index = slot.getIndex();
+            double attachmentAngle = cell.flagellumAttachmentAngle(index);
+            double thrustAngle = cell.flagellumThrustAngle(index);
+            result.add(new FlagellumSlotRenderDto(
+                    index,
+                    cell.flagellumMotorPower(index),
+                    slot.getDamage(),
+                    flagellumFunctionalPerformance(cell, slot),
+                    Math.cos(attachmentAngle) * radius,
+                    Math.sin(attachmentAngle) * radius,
+                    Math.cos(thrustAngle),
+                    Math.sin(thrustAngle),
+                    radius * cell.flagella().localLengthToRadiusFactor(index, config.getCell()),
+                    thickness,
+                    slot.getLastForce()
+            ));
+        }
+        return result;
     }
 
     private List<LysosomeSlotDto> lysosomeSlotsToDto(Cell cell) {
@@ -642,10 +654,6 @@ public class CellMapper {
                     y
             );
         }
-        return lighting.sampleLightAt(x, y);
+        return safeContext.globalLight();
     }
 }
-
-
-
-

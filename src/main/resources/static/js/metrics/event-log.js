@@ -5,7 +5,9 @@ let benchmarkResultHandler = null;
 let eventLogVisibilityObserver = null;
 let pendingEventLogScrollTimer = 0;
 let pendingEventLogScrollAnimation = 0;
-let activeEventLogSmoothScroll = 0;
+let programmaticEventLogScrollUntilMs = 0;
+let eventLogPinnedToBottom = true;
+let trackedEventLogScrollContainer = null;
 
 export function registerBenchmarkResultHandler(handler) {
     benchmarkResultHandler = typeof handler === "function" ? handler : null;
@@ -33,6 +35,7 @@ export function bindEventLogControls() {
         }
     });
 
+    installEventLogScrollTracking();
     installEventLogVisibilityScroll();
     void refreshEventLog();
 }
@@ -45,7 +48,11 @@ export async function refreshEventLog(options = {}) {
         const entries = await getEventLog();
         renderEventLog(Array.isArray(entries) ? entries : []);
         if (shouldScrollAfterRefresh) {
-            scheduleEventLogScrollToBottom({ force: true, settle: true });
+            scheduleEventLogScrollToBottom({
+                force: true,
+                smooth: isLogPanelVisible(),
+                settle: true,
+            });
         }
         return entries;
     } catch (error) {
@@ -93,12 +100,20 @@ async function clearEventHistory() {
 
 function renderEventLog(entries) {
     if (!dom.eventLogList) return;
+    const container = eventLogScrollContainer();
+    const previousScrollTop = container?.scrollTop ?? 0;
+
     for (const entry of Array.from(dom.eventLogList.querySelectorAll(".log-entry--dynamic"))) {
         entry.remove();
     }
     for (const entry of entries) {
         appendRenderedEntry(entry, { scroll: false });
     }
+
+    if (container) {
+        container.scrollTop = Math.min(previousScrollTop, eventLogBottomTop(container));
+    }
+    eventLogPinnedToBottom = isEventLogAtBottom();
 }
 
 function appendRenderedEntry(rawEntry, options = {}) {
@@ -107,57 +122,121 @@ function appendRenderedEntry(rawEntry, options = {}) {
     const shouldScrollAfterAppend = options.scroll === true
         || (options.scroll !== false && shouldAutoScrollForNewEntry());
 
-    const entry = normalizeEntry(rawEntry);
+    dom.eventLogList.appendChild(createLogEntryArticle(normalizeEntry(rawEntry)));
+
+    if (shouldScrollAfterAppend) {
+        eventLogPinnedToBottom = true;
+        scheduleEventLogScrollToBottom({ force: true, smooth: isLogPanelVisible() });
+    } else {
+        eventLogPinnedToBottom = isEventLogAtBottom();
+    }
+}
+
+function createLogEntryArticle(entry) {
     const article = document.createElement("article");
     article.className = `log-entry log-entry--dynamic log-entry--${entry.tone} log-entry--type-${cssToken(entry.type)}`;
     article.dataset.eventLogId = entry.id ?? "";
 
+    const combinedEntries = normalizedCombinedEntries(entry);
+    if (combinedEntries.length > 0) {
+        article.classList.add("log-entry--has-combined");
+    }
+
+    appendLogEntrySection(article, entry, {
+        iconClassName: "log-entry-icon log-entry-icon--primary",
+        contentClassName: "log-entry-content",
+        headerClassName: "log-entry-header",
+        titleClassName: "log-entry-title",
+        timeClassName: "log-entry-time",
+        bodyClassName: "log-entry-body",
+        includeBenchmarkActions: true,
+    });
+
+    for (const combinedEntry of combinedEntries) {
+        article.appendChild(createLogEntryDivider());
+        appendLogEntrySection(article, combinedEntry, {
+            iconClassName: `log-entry-icon log-entry-icon--combined log-entry-icon--type-${cssToken(combinedEntry.type)}`,
+            contentClassName: `log-entry-combined log-entry-combined--type-${cssToken(combinedEntry.type)}`,
+            headerClassName: "log-entry-combined-header",
+            titleClassName: "log-entry-combined-title",
+            timeClassName: "log-entry-combined-time",
+            bodyClassName: "log-entry-combined-body",
+            includeBenchmarkActions: false,
+        });
+    }
+
+    return article;
+}
+
+function appendLogEntrySection(article, entry, classes) {
     const iconEl = document.createElement("div");
-    iconEl.className = "log-entry-icon";
+    iconEl.className = classes.iconClassName;
     iconEl.textContent = entry.icon;
 
     const content = document.createElement("div");
-    content.className = "log-entry-content";
+    content.className = classes.contentClassName;
 
+    content.append(
+        createLogEntryHeader(entry, classes),
+        createLogEntryBody(entry, classes)
+    );
+
+    if (classes.includeBenchmarkActions && entry.payload?.benchmarkReport) {
+        content.appendChild(createBenchmarkActions(entry.payload.benchmarkReport));
+    }
+
+    article.append(iconEl, content);
+}
+
+function createLogEntryHeader(entry, classes) {
     const header = document.createElement("div");
-    header.className = "log-entry-header";
+    header.className = classes.headerClassName;
 
     const titleEl = document.createElement("div");
-    titleEl.className = "log-entry-title";
+    titleEl.className = classes.titleClassName;
     titleEl.textContent = entry.title;
 
     const timeEl = document.createElement("time");
-    timeEl.className = "log-entry-time";
+    timeEl.className = classes.timeClassName;
     timeEl.dateTime = entry.createdAt;
     timeEl.textContent = formatTime(entry.createdAt);
 
     header.append(titleEl, timeEl);
+    return header;
+}
 
+function createLogEntryBody(entry, classes) {
     const bodyEl = document.createElement("div");
-    bodyEl.className = "log-entry-body";
+    bodyEl.className = classes.bodyClassName;
     bodyEl.textContent = entry.body;
+    return bodyEl;
+}
 
-    content.append(header, bodyEl);
+function createBenchmarkActions(benchmarkReport) {
+    const actions = document.createElement("div");
+    actions.className = "log-entry-actions";
 
-    const benchmarkReport = entry.payload?.benchmarkReport;
-    if (benchmarkReport) {
-        const actions = document.createElement("div");
-        actions.className = "log-entry-actions";
-        const showBtn = document.createElement("button");
-        showBtn.type = "button";
-        showBtn.className = "btn btn-outline-secondary log-entry-action-btn";
-        showBtn.textContent = "show results";
-        showBtn.addEventListener("click", () => benchmarkResultHandler?.(benchmarkReport));
-        actions.appendChild(showBtn);
-        content.appendChild(actions);
-    }
+    const showBtn = document.createElement("button");
+    showBtn.type = "button";
+    showBtn.className = "btn btn-outline-secondary log-entry-action-btn";
+    showBtn.textContent = "Show results";
+    showBtn.addEventListener("click", () => benchmarkResultHandler?.(benchmarkReport));
 
-    article.append(iconEl, content);
-    dom.eventLogList.appendChild(article);
+    actions.appendChild(showBtn);
+    return actions;
+}
 
-    if (shouldScrollAfterAppend) {
-        scheduleEventLogScrollToBottom({ force: true, smooth: isLogPanelVisible() });
-    }
+function createLogEntryDivider() {
+    const divider = document.createElement("div");
+    divider.className = "log-entry-divider";
+    return divider;
+}
+
+function normalizedCombinedEntries(entry) {
+    const combinedEntries = Array.isArray(entry.payload?.combinedEntries)
+        ? entry.payload.combinedEntries
+        : [];
+    return combinedEntries.map(normalizeEntry);
 }
 
 function normalizeEntry(entry = {}) {
@@ -195,15 +274,40 @@ function installEventLogVisibilityScroll() {
     const panel = document.getElementById("tabLogs");
     if (!panel || eventLogVisibilityObserver) return;
     eventLogVisibilityObserver = new MutationObserver(() => {
+        installEventLogScrollTracking();
         if (isLogPanelVisible()) {
+            eventLogPinnedToBottom = true;
             scheduleEventLogScrollToBottom({ force: true, settle: true });
         }
     });
     eventLogVisibilityObserver.observe(panel, { attributes: true, attributeFilter: ["class"] });
 }
 
+function installEventLogScrollTracking() {
+    const container = eventLogScrollContainer();
+    if (!container || container === trackedEventLogScrollContainer) return;
+    if (trackedEventLogScrollContainer) {
+        trackedEventLogScrollContainer.removeEventListener("scroll", handleEventLogScroll);
+    }
+    trackedEventLogScrollContainer = container;
+    trackedEventLogScrollContainer.addEventListener("scroll", handleEventLogScroll, { passive: true });
+}
+
+function handleEventLogScroll() {
+    if (performance.now() < programmaticEventLogScrollUntilMs) {
+        eventLogPinnedToBottom = true;
+        return;
+    }
+    eventLogPinnedToBottom = isEventLogAtBottom();
+}
+
 function shouldAutoScrollForNewEntry() {
-    return isLogPanelVisible() && isEventLogAtBottom();
+    return isLogPanelVisible() && (eventLogPinnedToBottom || isEventLogScrollPending() || isEventLogAtBottom());
+}
+
+function isEventLogScrollPending() {
+    return Boolean(pendingEventLogScrollTimer || pendingEventLogScrollAnimation)
+        || performance.now() < programmaticEventLogScrollUntilMs;
 }
 
 function isLogPanelVisible() {
@@ -212,9 +316,13 @@ function isLogPanelVisible() {
 }
 
 function eventLogScrollContainer() {
-    const sidebar = dom.eventLogList?.closest(".cell-sidebar");
-    if (sidebar) return sidebar;
-    return dom.eventLogList ?? null;
+    const list = dom.eventLogList;
+    if (!list) return null;
+    // The sidebar is the real scroll container. The log list itself is overflow: visible
+    // so benchmark/reset cards can keep project-native spacing. Detecting overflow
+    // dynamically made the target switch between the list and the sidebar during
+    // layout updates, which caused one-frame jumps and missed smooth scrolling.
+    return list.closest(".cell-sidebar") ?? list;
 }
 
 function eventLogBottomTop(container) {
@@ -225,31 +333,29 @@ function isEventLogAtBottom() {
     const container = eventLogScrollContainer();
     if (!container) return false;
     const distance = eventLogBottomTop(container) - container.scrollTop;
-    return distance <= 16;
+    return distance <= 24;
 }
 
 function scheduleEventLogScrollToBottom({ force = false, smooth = false, settle = false } = {}) {
     if (!force && !shouldAutoScrollForNewEntry()) return;
+    eventLogPinnedToBottom = true;
 
     cancelAnimationFrame(pendingEventLogScrollAnimation);
-    cancelAnimationFrame(activeEventLogSmoothScroll);
     clearTimeout(pendingEventLogScrollTimer);
 
     pendingEventLogScrollAnimation = requestAnimationFrame(() => {
-        pendingEventLogScrollAnimation = requestAnimationFrame(() => {
-            if (smooth) {
-                smoothScrollEventLogToBottom();
-            } else {
-                scrollEventLogToBottom({ behavior: "auto" });
-            }
-        });
+        pendingEventLogScrollAnimation = 0;
+        scrollEventLogToBottom({ behavior: smooth ? "smooth" : "auto" });
     });
 
-    if (settle && !smooth) {
+    const settleDelayMs = smooth ? 260 : 90;
+    if (settle || smooth) {
         pendingEventLogScrollTimer = setTimeout(() => {
-            scrollEventLogToBottom({ behavior: "auto" });
-            requestAnimationFrame(() => scrollEventLogToBottom({ behavior: "auto" }));
-        }, 120);
+            pendingEventLogScrollTimer = 0;
+            if (eventLogPinnedToBottom || force) {
+                scrollEventLogToBottom({ behavior: smooth ? "smooth" : "auto" });
+            }
+        }, settleDelayMs);
     }
 }
 
@@ -257,42 +363,13 @@ function scrollEventLogToBottom({ behavior = "auto" } = {}) {
     const container = eventLogScrollContainer();
     if (!container) return;
     const top = eventLogBottomTop(container);
+    programmaticEventLogScrollUntilMs = performance.now() + (behavior === "smooth" ? 600 : 180);
     if (typeof container.scrollTo === "function") {
         container.scrollTo({ top, behavior });
     } else {
         container.scrollTop = top;
     }
-}
-
-function smoothScrollEventLogToBottom() {
-    const container = eventLogScrollContainer();
-    if (!container) return;
-
-    const startTop = container.scrollTop;
-    const targetTop = eventLogBottomTop(container);
-    const distance = targetTop - startTop;
-    if (Math.abs(distance) <= 1) {
-        container.scrollTop = targetTop;
-        return;
-    }
-
-    const durationMs = Math.min(420, Math.max(180, Math.abs(distance) * 2.2));
-    const startedAt = performance.now();
-
-    function step(now) {
-        const nextTargetTop = eventLogBottomTop(container);
-        const t = Math.min(1, (now - startedAt) / durationMs);
-        const eased = 1 - Math.pow(1 - t, 3);
-        container.scrollTop = startTop + (nextTargetTop - startTop) * eased;
-
-        if (t < 1) {
-            activeEventLogSmoothScroll = requestAnimationFrame(step);
-        } else {
-            container.scrollTop = eventLogBottomTop(container);
-        }
-    }
-
-    activeEventLogSmoothScroll = requestAnimationFrame(step);
+    eventLogPinnedToBottom = true;
 }
 
 function formatTime(value) {
@@ -300,3 +377,5 @@ function formatTime(value) {
     if (Number.isNaN(date.getTime())) return "--:--:--";
     return date.toLocaleTimeString();
 }
+
+

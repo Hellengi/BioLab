@@ -1,4 +1,3 @@
-
 {
   "0% aligned backward; 100% radial inward; mutually limited with surface distribution so the visible tail stays outside the membrane": "0% aligned backward; 100% radial inward; mutually limited with surface distribution so the visible tail stays outside the membrane",
   "Actual basal supply": "Actual basal supply",
@@ -336,7 +335,7 @@
   "Production is localized in chloroplasts or lysosomes depending on scope": "Production is localized in chloroplasts or lysosomes depending on scope",
   "Production: {value}": "Production: {value}",
   "Properties": "Properties",
-  "Quadtree grid": "Quadtree grid",
+  "Spatial grid": "Spatial grid",
   "Radiation": "Radiation",
   "Radius": "Radius",
   "Rate components": "Rate components",
@@ -369,7 +368,7 @@
   "Shared energy supply": "Shared energy supply",
   "Shows computed illumination and optical density": "Shows computed illumination and optical density",
   "Shows dominant light propagation direction": "Shows dominant light propagation direction",
-  "Shows spatial partitions used for collision lookup": "Shows spatial partitions used for collision lookup",
+  "Shows SpatialHashGrid center buckets used for collision lookup": "Shows SpatialHashGrid center buckets used for collision lookup",
   "Shows where cells are facing": "Shows where cells are facing",
   "Simulation Settings": "Simulation Settings",
   "Simulation speed: 0.01× … 100×": "Simulation speed: 0.01× … 100×",
@@ -434,3 +433,5 @@
   "One": "One",
   "Pair": "Pair"
 }
+
+

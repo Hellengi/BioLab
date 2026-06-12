@@ -7,7 +7,7 @@ public record DisplayLayersDto(
         boolean directedLightMap,
         boolean scatteredLightMap,
         boolean lightDirection,
-        boolean quadtree,
+        boolean spatialGrid,
         boolean cellDirections,
         Long selectedCellId,
         String selectedCellMode
@@ -19,7 +19,7 @@ public record DisplayLayersDto(
     }
 
     public boolean hasLightingDebugLayers() {
-        return opacityMap || directedLightMap || scatteredLightMap || lightDirection || quadtree;
+        return opacityMap || directedLightMap || scatteredLightMap || lightDirection || spatialGrid;
     }
 
     public boolean hasSelectedCell() {
@@ -45,7 +45,7 @@ public record DisplayLayersDto(
                 directedLightMap,
                 scatteredLightMap,
                 lightDirection,
-                quadtree,
+                spatialGrid,
                 false,
                 null,
                 "general"
@@ -75,7 +75,7 @@ public record DisplayLayersDto(
                 directedLightMap,
                 scatteredLightMap,
                 lightDirection,
-                quadtree,
+                spatialGrid,
                 cellDirections,
                 selectedCellId,
                 normalizedSelectedCellMode()
@@ -96,5 +96,7 @@ public record DisplayLayersDto(
         return new DisplayLayersDto(false, false, false, false, false, false, null, "general");
     }
 }
+
+
 
 

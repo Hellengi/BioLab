@@ -86,8 +86,8 @@ export function updateStats() {
 // ── Жизненный цикл симуляции ─────────────────────────────────────────────────
 
 /** Сбрасывает симуляцию до начального состояния. */
-export async function handleSimulationReset() {
-    await resetSimulation();
+export async function handleSimulationReset(options = {}) {
+    await resetSimulation({ logEvent: options.logEvent !== false });
     resetClientState();
     await loadSimulationConfig();
     applySimulationConfig();
@@ -124,6 +124,8 @@ export async function togglePause() {
     updateStats();
     render(dom.ctx, state);
 }
+
+
 
 
 

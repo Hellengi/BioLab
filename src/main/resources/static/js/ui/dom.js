@@ -97,7 +97,7 @@ export function bindDom() {
     dom.directedLightLayerToggle = optionalEl("directedLightLayerToggle");
     dom.scatteredLightLayerToggle = optionalEl("scatteredLightLayerToggle");
     dom.lightDirectionLayerToggle = optionalEl("lightDirectionLayerToggle");
-    dom.quadtreeLayerToggle = optionalEl("quadtreeLayerToggle");
+    dom.spatialGridLayerToggle = optionalEl("spatialGridLayerToggle");
     dom.cellDirectionsLayerToggle = optionalEl("cellDirectionsLayerToggle");
 
     dom.selectedCellTitle = optionalEl("selectedCellTitle");
@@ -288,5 +288,7 @@ export function bindDom() {
     dom.eventLogList = optionalEl("eventLogList");
     dom.eventLogClearBtn = optionalEl("eventLogClearBtn");
 }
+
+
 
 

@@ -13,7 +13,7 @@ export function decodeBinaryRenderFrame(buffer) {
     }
 
     const version = reader.uint16();
-    if (version !== 2) {
+    if (version !== 3) {
         throw new Error(`Unsupported binary render version: ${version}`);
     }
 
@@ -23,8 +23,8 @@ export function decodeBinaryRenderFrame(buffer) {
     }
 
     const tick = reader.longNumber();
-    const time = reader.float64();
-    const foodSpawnProgress = reader.float64();
+    const time = reader.float32();
+    const foodSpawnProgress = reader.float32();
     const tubeDiameter = reader.int32();
     const tps = reader.nullableLongNumber();
     const lighting = readLightingMetadata(reader);
@@ -45,18 +45,18 @@ export function decodeBinaryRenderFrame(buffer) {
 }
 
 function readLightingMetadata(reader) {
-    const globalLight = reader.float64();
-    const cycleTick = reader.float64();
+    const globalLight = reader.float32();
+    const cycleTick = reader.float32();
     const sourceCount = reader.int32();
     const sources = [];
     for (let i = 0; i < sourceCount; i++) {
         sources.push({
-            x: reader.float64(),
-            y: reader.float64(),
-            brightness: reader.float64(),
-            orbitRadius: reader.float64(),
-            orbitSpeed: reader.float64(),
-            angle: reader.float64(),
+            x: reader.float32(),
+            y: reader.float32(),
+            brightness: reader.float32(),
+            orbitRadius: reader.float32(),
+            orbitSpeed: reader.float32(),
+            angle: reader.float32(),
             renderType: reader.uint8() === 0 ? "EDGE" : "POINT",
         });
     }
@@ -73,7 +73,7 @@ function readLightingMetadata(reader) {
         scatteredLightMap: null,
         opacityMap: null,
         lightDirectionArrows: [],
-        quadtreeNodes: [],
+        spatialGridCells: [],
     };
 }
 
@@ -84,42 +84,42 @@ function readCells(reader) {
         const id = reader.longNumber();
         const cell = {
             id,
-            x: reader.float64(),
-            y: reader.float64(),
-            vx: reader.float64(),
-            vy: reader.float64(),
-            angularVelocity: reader.float64(),
-            energy: reader.float64(),
-            maxEnergy: reader.nullableFloat64(),
-            radius: reader.float64(),
-            nucleusOffsetX: reader.float64(),
-            nucleusOffsetY: reader.float64(),
-            nucleusRadius: reader.float64(),
-            nucleusTargetOffsetX: reader.float64(),
-            nucleusTargetOffsetY: reader.float64(),
+            x: reader.float32(),
+            y: reader.float32(),
+            vx: reader.float32(),
+            vy: reader.float32(),
+            angularVelocity: reader.float32(),
+            energy: reader.float32(),
+            maxEnergy: reader.nullableFloat32(),
+            radius: reader.float32(),
+            nucleusOffsetX: reader.float32(),
+            nucleusOffsetY: reader.float32(),
+            nucleusRadius: reader.float32(),
+            nucleusTargetOffsetX: reader.float32(),
+            nucleusTargetOffsetY: reader.float32(),
         };
         const flags = reader.uint8();
         cell.dead = Boolean(flags & FLAG_DEAD);
         cell.lifetimeTicks = reader.longNumber();
-        cell.localLight = reader.float64();
-        cell.mass = reader.float64();
-        cell.dryMass = reader.nullableFloat64();
-        cell.density = reader.float64();
-        cell.opacity = reader.nullableFloat64();
-        cell.nucleusDamage = reader.float64();
-        cell.cellDamage = reader.float64();
-        cell.cpDamage = reader.float64();
-        cell.membraneDamage = reader.float64();
-        cell.lysosomeDamage = reader.float64();
-        cell.flagellumDamage = reader.float64();
-        cell.membraneLightTransmittance = reader.float64();
+        cell.localLight = reader.float32();
+        cell.mass = reader.float32();
+        cell.dryMass = reader.nullableFloat32();
+        cell.density = reader.float32();
+        cell.opacity = reader.nullableFloat32();
+        cell.nucleusDamage = reader.float32();
+        cell.cellDamage = reader.float32();
+        cell.cpDamage = reader.float32();
+        cell.membraneDamage = reader.float32();
+        cell.lysosomeDamage = reader.float32();
+        cell.flagellumDamage = reader.float32();
+        cell.membraneLightTransmittance = reader.float32();
         cell.lysosomeCapacity = reader.int32();
         cell.lysosomeOccupiedSlots = reader.int32();
         cell.lysosomeSlots = readLysosomeSlots(reader);
         cell.flagellumCapacity = reader.int32();
         cell.flagellumSlots = readFlagellumSlots(reader);
         cell.visual = readVisual(reader);
-        cell.directionAngle = reader.float64();
+        cell.directionAngle = reader.float32();
         cells[i] = cell;
     }
     return cells;
@@ -132,21 +132,21 @@ function readLysosomeSlots(reader) {
         slots[i] = {
             index: reader.int32(),
             foodId: reader.nullableLongNumber(),
-            damage: reader.float64(),
+            damage: reader.float32(),
             occupied: reader.bool(),
-            performance: reader.float64(),
-            foodEnergy: reader.float64(),
-            foodRadius: reader.float64(),
+            performance: reader.float32(),
+            foodEnergy: reader.float32(),
+            foodRadius: reader.float32(),
             foodInsideLysosome: reader.bool(),
-            targetFoodRadius: reader.float64(),
-            layoutX: reader.float64(),
-            layoutY: reader.float64(),
-            layoutRadius: reader.float64(),
-            layoutRotation: reader.float64(),
-            targetLayoutX: reader.float64(),
-            targetLayoutY: reader.float64(),
-            targetLayoutRadius: reader.float64(),
-            targetLayoutRotation: reader.float64(),
+            targetFoodRadius: reader.float32(),
+            layoutX: reader.float32(),
+            layoutY: reader.float32(),
+            layoutRadius: reader.float32(),
+            layoutRotation: reader.float32(),
+            targetLayoutX: reader.float32(),
+            targetLayoutY: reader.float32(),
+            targetLayoutRadius: reader.float32(),
+            targetLayoutRotation: reader.float32(),
         };
     }
     return slots;
@@ -158,16 +158,16 @@ function readFlagellumSlots(reader) {
     for (let i = 0; i < count; i++) {
         slots[i] = {
             index: reader.int32(),
-            motorPower: reader.float64(),
-            damage: reader.float64(),
-            performance: reader.float64(),
-            baseX: reader.float64(),
-            baseY: reader.float64(),
-            directionX: reader.float64(),
-            directionY: reader.float64(),
-            length: reader.float64(),
-            thickness: reader.float64(),
-            force: reader.float64(),
+            motorPower: reader.float32(),
+            damage: reader.float32(),
+            performance: reader.float32(),
+            baseX: reader.float32(),
+            baseY: reader.float32(),
+            directionX: reader.float32(),
+            directionY: reader.float32(),
+            length: reader.float32(),
+            thickness: reader.float32(),
+            force: reader.float32(),
         };
     }
     return slots;
@@ -184,16 +184,16 @@ function readVisual(reader) {
         lysosomeColor: reader.color(),
         lysosomeAmount: reader.int32(),
         lysosomeGlowColor: reader.color(),
-        lysosomeGlowStrength: reader.float64(),
+        lysosomeGlowStrength: reader.float32(),
         flagellumColor: reader.color(),
         flagellumCount: reader.int32(),
         bioluminescenceColor: reader.color(),
-        bioluminescenceExpression: reader.float64(),
-        lightDirectionAngle: reader.nullableFloat64(),
-        lightGradient: reader.nullableFloat64(),
-        highlightDirectionAngle: reader.nullableFloat64(),
-        highlightStrength: reader.nullableFloat64(),
-        highlightClarity: reader.nullableFloat64(),
+        bioluminescenceExpression: reader.float32(),
+        lightDirectionAngle: reader.nullableFloat32(),
+        lightGradient: reader.nullableFloat32(),
+        highlightDirectionAngle: reader.nullableFloat32(),
+        highlightStrength: reader.nullableFloat32(),
+        highlightClarity: reader.nullableFloat32(),
     };
 }
 
@@ -204,18 +204,18 @@ function readFoods(reader) {
         const id = reader.longNumber();
         const food = {
             id,
-            x: reader.float64(),
-            y: reader.float64(),
-            energy: reader.float64(),
-            radius: reader.float64(),
+            x: reader.float32(),
+            y: reader.float32(),
+            energy: reader.float32(),
+            radius: reader.float32(),
         };
         const flags = reader.uint8();
         food.consumed = Boolean(flags & FLAG_FOOD_CONSUMED);
         food.insideLysosome = Boolean(flags & FLAG_FOOD_INSIDE_LYSOSOME);
         food.capturedByCellId = reader.nullableLongNumber();
         food.digestionSlotIndex = reader.int32();
-        food.capturedCellAnchorX = reader.nullableFloat64();
-        food.capturedCellAnchorY = reader.nullableFloat64();
+        food.capturedCellAnchorX = reader.nullableFloat32();
+        food.capturedCellAnchorY = reader.nullableFloat32();
         foods[i] = food;
     }
     return foods;
@@ -249,9 +249,9 @@ class BinaryReader {
         return value;
     }
 
-    float64() {
-        const value = this.view.getFloat64(this.offset, false);
-        this.offset += 8;
+    float32() {
+        const value = this.view.getFloat32(this.offset, false);
+        this.offset += 4;
         return value;
     }
 
@@ -270,8 +270,8 @@ class BinaryReader {
         return value === NULL_LONG ? null : Number(value);
     }
 
-    nullableFloat64() {
-        const value = this.float64();
+    nullableFloat32() {
+        const value = this.float32();
         return Number.isNaN(value) ? null : value;
     }
 
@@ -280,7 +280,7 @@ class BinaryReader {
             r: this.uint8(),
             g: this.uint8(),
             b: this.uint8(),
-            opacity: this.float64(),
+            opacity: this.float32(),
         };
     }
 }

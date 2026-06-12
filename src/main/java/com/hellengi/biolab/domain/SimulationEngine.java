@@ -60,12 +60,12 @@ public class SimulationEngine {
     public void reset() {
         withWorldLock("reset", () -> {
             world.clear();
-            clock.reset();
             int cellAmount = runtimeConfig.getInitialCellCount();
             int foodAmount = baseConfig.getFood().getStart();
             cellFactory.fill(world, cellAmount);
             foodFactory.fill(world, foodAmount);
             lighting.reset(world);
+            clock.reset();
             return null;
         });
     }
@@ -78,10 +78,10 @@ public class SimulationEngine {
         withWorldLock("baselineReset", () -> {
             runtimeConfig.prepareForBaseline(safeScenario);
             world.clear();
-            clock.reset();
-            cellFactory.fill(world, safeScenario.safeCells());
+            cellFactory.fillForBenchmark(world, safeScenario.safeCells());
             foodFactory.fill(world, safeScenario.safeFood());
             lighting.reset(world);
+            clock.reset();
             performanceMetrics.incrementCounter("server.baseline.reset");
             performanceMetrics.setGauge("server.baseline.cells", safeScenario.safeCells());
             performanceMetrics.setGauge("server.baseline.food", safeScenario.safeFood());
@@ -271,6 +271,8 @@ public class SimulationEngine {
         }
     }
 }
+
+
 
 
 

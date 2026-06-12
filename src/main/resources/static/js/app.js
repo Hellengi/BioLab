@@ -145,7 +145,7 @@ function currentRenderSignature() {
         state.displayLayers?.directedLightMap ? 1 : 0,
         state.displayLayers?.scatteredLightMap ? 1 : 0,
         state.displayLayers?.lightDirection ? 1 : 0,
-        state.displayLayers?.quadtree ? 1 : 0,
+        state.displayLayers?.spatialGrid ? 1 : 0,
         state.displayLayers?.cellDirections ? 1 : 0,
         state.config?.tubeDiameter ?? "-",
     ].join("|");
@@ -156,6 +156,8 @@ function rounded(value, multiplier = 100) {
     if (!Number.isFinite(number)) return 0;
     return Math.round(number * multiplier) / multiplier;
 }
+
+
 
 
 
